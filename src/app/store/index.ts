@@ -37,7 +37,7 @@ export const useUserSettingsStore = create<
       fontFamily: "robotoMono",
       padding: 60,
       presentational: false,
-      editor: "minimal",
+      editor: "default",
       editorShowLineNumbers: false,
       editorRef: null,
       user: null,

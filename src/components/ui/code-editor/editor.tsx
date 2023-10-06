@@ -18,7 +18,6 @@ import { Button } from "../button";
 import WidthMeasurement from "./width-measurement";
 import * as S from "./styles";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
-import { Tooltip } from "../tooltip";
 import { LoginDialog } from "@/app/auth/login";
 
 type EditorProps = {

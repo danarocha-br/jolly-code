@@ -12,6 +12,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { UserTools } from '@/components/user-tools';
 
 export default function Home() {
   const supabase = createClientComponentClient();
@@ -136,6 +137,8 @@ export default function Home() {
             <CodeEditor />
 
             <SettingsPanel />
+
+            <UserTools />
           </main>
         </div>
       </div>
