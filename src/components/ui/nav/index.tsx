@@ -5,7 +5,6 @@ import { useUserSettingsStore } from "@/app/store";
 import { Button } from "../button";
 import { toast } from "sonner";
 import { ExportMenu } from "./export-menu";
-import { EditorOptionsMenu } from "./editor-options-menu";
 
 export const Nav = () => {
   const { theme, setTheme } = useTheme();
@@ -51,8 +50,6 @@ export const Nav = () => {
       </Button>
 
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
-        <EditorOptionsMenu />
-
         <ExportMenu />
 
         <Button

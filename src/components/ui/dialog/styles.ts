@@ -15,6 +15,13 @@ export const overlay = cva([
 ]);
 
 export const content = cva([
+  "bg-white",
+  "text-foreground",
+  "dark:bg-background",
+  "border",
+  "border-border/60",
+  "p-6",
+  "pt-4",
   "fixed",
   "left-[50%]",
   "top-[50%]",
@@ -25,11 +32,6 @@ export const content = cva([
   "translate-x-[-50%]",
   "translate-y-[-50%]",
   "gap-4",
-  "border",
-  "border-border/60",
-  "bg-background",
-  "p-6",
-  "pt-4",
   "shadow-lg",
   "duration-200",
 

@@ -8,7 +8,7 @@
     --subdued: 17 48% 90%;
     --foreground: 240 10% 8.9%;
 
-    --card: 17 64% 95%;
+    --card: 17 64% 96%;
     --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
@@ -44,10 +44,10 @@
     --subdued: 260 4% 7.37%;
     --foreground: 0 0% 98%;
 
-    --card: 260 8% 14.7%;
+    --card: 260 4% 12.7%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 260 5% 9%;
+    --popover: 260 5% 17%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 250 100% 62%;

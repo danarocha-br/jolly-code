@@ -43,7 +43,7 @@ export const ExportMenu = () => {
 
       toast.success("Image copied to clipboard!");
     } catch (error) {
-      console.error("Failed to copy image to clipboard", error);
+      // console.error("Failed to copy image to clipboard", error);
       toast.error("Something went wrong!");
     }
   }

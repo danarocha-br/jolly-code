@@ -1,4 +1,6 @@
 import React from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from "next/navigation";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 
 import {
@@ -9,9 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useRouter } from "next/navigation";
+
+import { CtaButton } from "@/components/ui/cta-button";
 
 type LoginProps = {
   children: React.ReactNode;
@@ -45,16 +46,12 @@ export const LoginDialog = ({ children }: LoginProps) => {
             </p>
           </DialogDescription>
         </DialogHeader>
+
         <div className="grid gap-4 py-4">
-          <Button
-            type="submit"
-            size="lg"
-            variant="outline"
-            onClick={signInWithGithub}
-          >
+          <CtaButton type="submit" onClick={signInWithGithub}>
             <GitHubLogoIcon className="mr-4 scale-125" />
             Sign in with Github
-          </Button>
+          </CtaButton>
         </div>
       </DialogContent>
     </Dialog>

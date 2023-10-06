@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { Button } from "../button";
+import { Button } from "../ui/button";
 import {
   DropdownMenuSeparator,
   DropdownMenu,
@@ -10,15 +10,14 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
-} from "../dropdown-menu";
+} from "../ui/dropdown-menu";
 import { useUserSettingsStore } from "@/app/store";
+import { Tooltip } from "../ui/tooltip";
 
 type EditorViewPreference = "default" | "minimal";
 
 export const EditorOptionsMenu = () => {
-  const editor = useUserSettingsStore(
-    (state) => state.editor
-  );
+  const editor = useUserSettingsStore((state) => state.editor);
 
   const [editorPreference, setEditorPreference] =
     useState<EditorViewPreference>(editor);
@@ -38,12 +37,14 @@ export const EditorOptionsMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="icon">
-          <i className="ri-more-2-fill text-lg" />
+        <Button variant="ghost" size="icon">
+          <Tooltip content="Editor Options" side='right' sideOffset={16}>
+            <i className="ri-more-2-fill text-lg" />
+          </Tooltip>
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent>
+      <DropdownMenuContent side="right" sideOffset={12}>
         <DropdownMenuLabel>Editor Preferences</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup

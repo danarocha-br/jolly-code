@@ -5,7 +5,7 @@ export const container = cva([
   "border",
   "bg-card",
   "text-card-foreground",
-  "shadow",
+  "shadow/50",
 ]);
 
 export const header = cva(["flex", "flex-col", "space-y-1.5", "p-2"]);
