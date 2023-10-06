@@ -27,8 +27,9 @@ export const trigger = cva([
   "disabled:pointer-events-none",
   "disabled:opacity-50",
 
-  "hover:bg-foreground/5",
+  "data-[state=active]:bg-foreground/[0.02]",
   "data-[state=active]:text-foreground",
+  "hover:data-[state=active]:bg-foreground/5",
 ]);
 
 export const content = cva([

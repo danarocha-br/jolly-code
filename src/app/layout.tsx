@@ -2,17 +2,18 @@ import "./globals.css";
 import "remixicon/fonts/remixicon.css";
 
 import type { Metadata } from "next";
+
 import { Sen } from "next/font/google";
 import { Providers } from "./providers";
 
 const sen = Sen({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "JollyCode",
+  title: "Jolly Code",
   description: "",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;

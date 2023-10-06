@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { User } from '@supabase/supabase-js';
 
 import { ThemeProps } from "@/lib/themes-options";
 import { FontsProps } from "@/lib/fonts-options";
 
-
 export type StoreState = {
+  user: User | null;
   code: string;
   title: string;
   backgroundTheme: ThemeProps;
@@ -39,6 +40,7 @@ export const useUserSettingsStore = create<
       editor: "minimal",
       editorShowLineNumbers: false,
       editorRef: null,
+      user: null,
     }),
     { name: "user-settings" }
   )

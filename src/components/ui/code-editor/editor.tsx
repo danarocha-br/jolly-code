@@ -18,6 +18,8 @@ import { Button } from "../button";
 import WidthMeasurement from "./width-measurement";
 import * as S from "./styles";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
+import { Tooltip } from "../tooltip";
+import { LoginDialog } from "@/app/auth/login";
 
 type EditorProps = {
   padding: number;
@@ -28,6 +30,8 @@ type EditorProps = {
 
 export const Editor = forwardRef<any, EditorProps>(
   ({ padding, width, showWidth = false, setWidth }, ref) => {
+    const user = useUserSettingsStore((state) => state.user);
+
     const { theme } = useTheme();
     const isDarkTheme = theme === "dark";
     const code = useUserSettingsStore((state) => state.code);
@@ -92,6 +96,32 @@ export const Editor = forwardRef<any, EditorProps>(
         ref={ref}
         id="editor"
       >
+        {!user ? (
+          <LoginDialog>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={cn(
+                S.bookmarkButton(),
+                padding > 44 ? "top-2 right-2" : "top-0 right-0"
+              )}
+            >
+              <i className="ri-bookmark-line" />
+            </Button>
+          </LoginDialog>
+        ) : (
+          <Button
+            size="icon"
+            variant="ghost"
+            className={cn(
+              S.bookmarkButton(),
+              padding > 44 ? "top-2 right-2" : "top-0 right-0"
+            )}
+          >
+            <i className="ri-bookmark-line" />
+          </Button>
+        )}
+
         <div className={S.editorContainer({ isDarkTheme })}>
           <Tabs defaultValue="initial">
             <header className={S.header({ editorPreferences })}>
@@ -182,7 +212,10 @@ export const Editor = forwardRef<any, EditorProps>(
             size="sm"
             onClick={() => setWidth("auto")}
             variant="ghost"
-            className={S.widthButton()}
+            className={cn(
+              S.widthButton(),
+              padding > 48 ? "bottom-[1%]" : "bottom-6"
+            )}
           >
             <i className="ri-close-circle-fill mr-2" />
             Reset width

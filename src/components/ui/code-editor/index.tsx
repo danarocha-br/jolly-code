@@ -44,12 +44,6 @@ export const CodeEditor = () => {
         }}
         className={cn("group/editor hidden lg:block relative")}
       >
-        <Tooltip content="Save snippet">
-          <Button size="icon" variant="ghost" className={bookmarkButton()}>
-            <i className="ri-bookmark-line" />
-          </Button>
-        </Tooltip>
-
         <Editor
           padding={padding}
           width={width}

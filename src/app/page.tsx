@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 
 import { useUserSettingsStore } from "./store";
 import { CodeEditor } from "@/components/ui/code-editor";
@@ -11,8 +11,11 @@ import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Home() {
+  const supabase = createClientComponentClient();
+
   const searchParams = useSearchParams();
 
   const shared = searchParams.get("shared");
@@ -27,9 +30,39 @@ export default function Home() {
   );
 
   useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session) {
+        useUserSettingsStore.setState({
+          user: data.session.user,
+        });
+      }
+    };
+
+    getUser();
+  }, [supabase.auth]);
+
+  useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
 
     if (queryParams.size === 0) {
+      return;
+    }
+
+    const codeParam = queryParams.get("code");
+    const encodedPattern = new RegExp("^[0-9a-zA-Z+/=]*$", "i"); // pattern for base64 encoded string
+
+    const loggedInPattern = new RegExp(
+      "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", // pattern for signing in
+      "i"
+    );
+
+    if (codeParam && !encodedPattern.test(codeParam)) {
+      return;
+    }
+
+    if (codeParam && loggedInPattern.test(codeParam)) {
       return;
     }
 
@@ -44,11 +77,11 @@ export default function Home() {
     });
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setHasMounted(true);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (shared === "true") {
       useUserSettingsStore.setState({
         presentational: true,

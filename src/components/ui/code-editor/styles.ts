@@ -128,7 +128,6 @@ export const title = cva(
 
 export const widthButton = cva([
   "relative",
-  "bottom-6",
   "whitespace-nowrap",
   "opacity-70",
   "transition-opacity",
@@ -139,10 +138,10 @@ export const widthButton = cva([
 
 export const bookmarkButton = cva([
   "absolute",
-  "-top-9",
-  "-right-2",
+
   "opacity-0",
   "transition-opacity",
+  "rounded-full",
 
   "group-hover/editor:opacity-100",
 ]);
