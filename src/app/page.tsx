@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useQuery } from "react-query";
+import Hotjar from "@hotjar/browser";
 
 import { useUserSettingsStore } from "./store";
 import { useSearchParams } from "next/navigation";
@@ -37,6 +38,13 @@ export default function Home() {
       }
     },
   });
+
+  useEffect(() => {
+    const siteId = Number(process.env.NEXT_PUBLIC_HOTJAR_SITE_ID);
+    const hotjarVersion = 6;
+
+    Hotjar.init(siteId, hotjarVersion);
+  }, []);
 
   useEffect(() => {
     const presentational = shared === "true";
