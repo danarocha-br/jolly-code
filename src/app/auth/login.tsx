@@ -21,7 +21,7 @@ type LoginProps = {
   children: React.ReactNode;
 };
 
-export const LoginDialog = ({ children }: LoginProps) => {
+export const useSignInWithGithub = () => {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -42,6 +42,13 @@ export const LoginDialog = ({ children }: LoginProps) => {
       },
     }
   );
+
+  return signInWithGithub;
+};
+
+export const LoginDialog = ({ children }: LoginProps) => {
+  const signInWithGithub = useSignInWithGithub();
+  const isLoading = signInWithGithub.isLoading;
 
   const handleSignInWithGithub = useCallback(() => {
     signInWithGithub.mutate();
@@ -68,6 +75,7 @@ export const LoginDialog = ({ children }: LoginProps) => {
           <CtaButton
             label="Sign in with Github"
             onClick={handleSignInWithGithub}
+            isLoading={isLoading}
           >
             <GitHubLogoIcon className="mr-4 scale-125" />
             Sign in with Github

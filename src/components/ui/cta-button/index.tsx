@@ -4,9 +4,15 @@ import * as S from "./styles";
 
 export type ButtonProps = {
   label: string;
+  isLoading?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-export const CtaButton = ({ className, label, ...props }: ButtonProps) => {
+export const CtaButton = ({
+  className,
+  label,
+  isLoading = false,
+  ...props
+}: ButtonProps) => {
   const [coordinates, setCoordinates] = useState({ x: "0px", y: "0px" });
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -36,9 +42,12 @@ export const CtaButton = ({ className, label, ...props }: ButtonProps) => {
         } as React.CSSProperties
       }
       aria-label={label}
+      disabled={isLoading}
       {...props}
     >
       {props.children}
+
+      {isLoading && <i className="ri-loader-4-fill text-xl animate-spin absolute right-4" />}
     </button>
   );
 };

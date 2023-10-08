@@ -11,7 +11,7 @@ const sen = Sen({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Jolly Code",
   description:
-    "Beautify, share, learn, and improve your code. A multi-language, visually-appealing code sharing platform.",
+    "Beautify, share, and improve your code. A multi-language, visually-appealing code sharing platform.",
   authors: [
     {
       name: "Dana Rocha",
@@ -25,12 +25,10 @@ export const metadata: Metadata = {
     url: "https://jollycode.dev",
     siteName: "Jolly Code",
     description:
-      "Beautify, share, learn, and improve your code. A multi-language, visually-appealing code sharing platform.",
+      "Beautify, share, and improve your code. A multi-language, visually-appealing code sharing platform.",
   },
   icons: {
     icon: ["./favicon.ico"],
-    // apple: ["./apple-touch-icon.png"],
-    // shortcut: ["./apple-touch-icon.png"],
   },
 };
 

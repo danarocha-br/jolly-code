@@ -31,7 +31,7 @@ export const button = cva([
   "focus-visible:outline-muted",
 
   "disabled:pointer-events-none",
-  "disabled:opacity-50",
+  "disabled:opacity-30",
 ]);
 
 
