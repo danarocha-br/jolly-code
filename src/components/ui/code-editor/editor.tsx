@@ -91,7 +91,7 @@ export const Editor = forwardRef<any, EditorProps>(
       <div
         className={cn(
           S.background(),
-          showBackground && themes[backgroundTheme].background
+          showBackground && !presentational && themes[backgroundTheme].background
         )}
         style={{ padding }}
         ref={ref}

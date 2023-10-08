@@ -45,3 +45,22 @@ export const footer = cva([
   "2xl:bottom-16",
   "p-3",
 ]);
+
+export const footerShared = cva([
+  "bg-white/20",
+  "rounded-2xl",
+  "backdrop-blur-3xl ",
+
+  "flex",
+  "gap-1",
+  "lg:gap-2",
+  "justify-center",
+  "w-full",
+  "lg:w-auto",
+
+  "fixed",
+  "bottom-1",
+  "md:bottom-10",
+  "2xl:bottom-16",
+  "p-3",
+]);

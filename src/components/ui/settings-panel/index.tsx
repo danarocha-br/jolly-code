@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 import { ThemeSelector } from "./theme-selector";
 import { LanguageSelector } from "./language-selector";
@@ -7,11 +8,10 @@ import { FontSizeSelector } from "./fontsize-selector";
 import { PaddingSelector } from "./padding-selector";
 import { BackgroundSwitch } from "./background-switch";
 import { useUserSettingsStore } from "@/app/store";
+import { codeSnippets } from "@/lib/code-snippets-options";
+import { Button } from "../button";
 
 import * as S from "./styles";
-import { Button } from "../button";
-import { useRouter } from "next/navigation";
-import { codeSnippets } from "@/lib/code-snippets-options";
 
 export const SettingsPanel = () => {
   const router = useRouter();
@@ -21,7 +21,7 @@ export const SettingsPanel = () => {
 
   const state = useUserSettingsStore();
 
-  function sendUserToEditMode() {
+  const sendUserToEditMode = useCallback(() => {
     router.push("/");
 
     useUserSettingsStore.setState({
@@ -30,33 +30,28 @@ export const SettingsPanel = () => {
       padding: 44,
       fontSize: Number(15),
     });
-  }
+  }, [router, state]);
 
-  return (
+  return isPresentational ? (
+    <footer className={S.footerShared()}>
+      <Button size="lg" variant="secondary" onClick={sendUserToEditMode}>
+        <i className="ri-magic-fill text-lg mr-3" />
+        Create my Snippet
+      </Button>
+    </footer>
+  ) : (
     <footer className={S.footer()}>
-      {isPresentational ? (
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={() => sendUserToEditMode()}
-        >
-          Create my Snippet
-        </Button>
-      ) : (
-        <>
-          <ThemeSelector />
+      <ThemeSelector />
 
-          <FontFamilySelector />
+      <FontFamilySelector />
 
-          <FontSizeSelector />
+      <FontSizeSelector />
 
-          <PaddingSelector />
+      <PaddingSelector />
 
-          <BackgroundSwitch />
+      <BackgroundSwitch />
 
-          <LanguageSelector />
-        </>
-      )}
+      <LanguageSelector />
     </footer>
   );
 };

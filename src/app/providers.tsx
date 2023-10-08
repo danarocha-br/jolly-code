@@ -2,7 +2,7 @@
 
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
-import { QueryClient, QueryClientProvider, useQuery } from "react-query";
+import { QueryClient, QueryClientProvider } from "react-query";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient();

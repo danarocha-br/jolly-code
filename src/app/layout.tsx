@@ -10,7 +10,23 @@ const sen = Sen({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Jolly Code",
-  description: "",
+  description:
+    "Beautify, share, learn, and improve your code. A multi-language, visually-appealing code sharing platform.",
+  authors: [
+    {
+      name: "Dana Rocha",
+      url: "https://bento.me/danarocha",
+    },
+  ],
+
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://jollycode.dev",
+    siteName: "Jolly Code",
+    description:
+      "Beautify, share, learn, and improve your code. A multi-language, visually-appealing code sharing platform.",
+  },
   icons: {
     icon: ["./favicon.ico"],
     // apple: ["./apple-touch-icon.png"],

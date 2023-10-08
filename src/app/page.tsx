@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useMutation } from "react-query";
+import { useQuery } from "react-query";
 
 import { useUserSettingsStore } from "./store";
 import { useSearchParams } from "next/navigation";
@@ -28,7 +28,7 @@ export default function Home() {
     (state) => state.presentational
   );
 
-  const { isLoading } = useMutation(() => supabase.auth.getSession(), {
+  const { isLoading } = useQuery("session", () => supabase.auth.getSession(), {
     onSuccess: (data) => {
       if (data?.data.session) {
         useUserSettingsStore.setState({
@@ -39,17 +39,13 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (shared === "true") {
-      useUserSettingsStore.setState({
-        presentational: true,
-        showBackground: false,
-      });
-    } else {
-      useUserSettingsStore.setState({
-        presentational: false,
-        showBackground: true,
-      });
-    }
+    const presentational = shared === "true";
+    const showBackground = shared !== "true";
+
+    useUserSettingsStore.setState({
+      presentational,
+      showBackground,
+    });
   }, [shared]);
 
   const [hasMounted, setHasMounted] = useState(false);
