@@ -1,6 +1,7 @@
 import "./globals.css";
 import "remixicon/fonts/remixicon.css";
 
+import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 
 import { Sen } from "next/font/google";
@@ -41,6 +42,7 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning={true}>
       <body className={sen.className}>
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
