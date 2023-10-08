@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { Button } from "../ui/button";
+import { Button } from "../../ui/button";
 import {
   DropdownMenuSeparator,
   DropdownMenu,
@@ -10,9 +10,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
-} from "../ui/dropdown-menu";
+} from "../../ui/dropdown-menu";
 import { useUserSettingsStore } from "@/app/store";
-import { Tooltip } from "../ui/tooltip";
+import { Tooltip } from "../../ui/tooltip";
 
 type EditorViewPreference = "default" | "minimal";
 

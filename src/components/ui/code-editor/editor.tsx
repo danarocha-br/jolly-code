@@ -13,22 +13,24 @@ import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
 import { cn } from "@/lib/utils";
 import { useUserSettingsStore } from "@/app/store";
+import { LoginDialog } from "@/app/auth/login";
 import { TitleInput } from "./title-input";
 import { Button } from "../button";
-import WidthMeasurement from "./width-measurement";
-import * as S from "./styles";
+import { WidthMeasurement } from "./width-measurement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
-import { LoginDialog } from "@/app/auth/login";
+import { Skeleton } from "../skeleton";
+import * as S from "./styles";
 
 type EditorProps = {
   padding: number;
   width: string;
   setWidth: (value: React.SetStateAction<string>) => void;
-  showWidth: boolean;
+  isWidthVisible: boolean;
+  isLoading: boolean;
 };
 
 export const Editor = forwardRef<any, EditorProps>(
-  ({ padding, width, showWidth = false, setWidth }, ref) => {
+  ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
     const user = useUserSettingsStore((state) => state.user);
 
     const { theme } = useTheme();
@@ -65,7 +67,7 @@ export const Editor = forwardRef<any, EditorProps>(
         return;
       }
       useUserSettingsStore.setState(randomSnippet);
-    }, []);
+    }, [presentational]);
 
     useEffect(() => {
       if (autoDetectLanguage) {
@@ -154,7 +156,7 @@ export const Editor = forwardRef<any, EditorProps>(
                     : "text-stone-800 contrast-200 brightness-[0.65]"
                 )}
               >
-                {editorShowLineNumbers ? (
+                {editorShowLineNumbers && !isLoading ? (
                   <div
                     className={S.lineNumbers()}
                     style={{ lineHeight: fontSize * 1.7 + "px" }}
@@ -165,44 +167,52 @@ export const Editor = forwardRef<any, EditorProps>(
                   </div>
                 ) : null}
 
-                <CodeEditor
-                  className={S.editor({
-                    showLineNumbers: editorShowLineNumbers,
-                  })}
-                  value={code}
-                  onValueChange={(code) => {
-                    useUserSettingsStore.setState({ code });
-                  }}
-                  disabled={presentational}
-                  highlight={(code) =>
-                    hljs.highlight(code, { language: language || "plaintext" })
-                      .value
-                  }
-                  style={{
-                    fontFamily: fonts[fontFamily].name,
-                    fontSize: fontSize,
-                    lineHeight: fontSize * 1.7 + "px",
-                  }}
-                  textareaClassName="focus:outline-none"
-                  onClick={(e) => {
-                    (e.target as HTMLTextAreaElement).select();
-                  }}
-                />
+                {!isLoading ? (
+                  <CodeEditor
+                    className={S.editor({
+                      showLineNumbers: editorShowLineNumbers,
+                    })}
+                    value={code}
+                    onValueChange={(code) => {
+                      useUserSettingsStore.setState({ code });
+                    }}
+                    disabled={presentational}
+                    highlight={(code) =>
+                      hljs.highlight(code, {
+                        language: language || "plaintext",
+                      }).value
+                    }
+                    style={{
+                      fontFamily: fonts[fontFamily].name,
+                      fontSize: fontSize,
+                      lineHeight: fontSize * 1.7 + "px",
+                    }}
+                    textareaClassName="focus:outline-none"
+                    onClick={(e) => {
+                      (e.target as HTMLTextAreaElement).select();
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-col w-full space-y-4">
+                    <Skeleton />
+                    <Skeleton />
+                    <Skeleton />
+                    <Skeleton />
+                  </div>
+                )}
               </section>
             </TabsContent>
 
-            <TabsContent value="password">
-              Change your password here.
-            </TabsContent>
+            <TabsContent value="new-tab"></TabsContent>
           </Tabs>
         </div>
 
-        <WidthMeasurement showWidth={showWidth} width={width} />
+        <WidthMeasurement isVisible={isWidthVisible} width={width} />
 
         <div
           className={cn(
             "transition-opacity w-fit mx-auto relative -mb-12",
-            showWidth || width === "auto"
+            isWidthVisible || width === "auto"
               ? "invisible opacity-0"
               : "visible opacity-100"
           )}

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { CtaButton } from "@/components/ui/cta-button";
+import { Logo } from '@/components/ui/logo';
 
 type LoginProps = {
   children: React.ReactNode;
@@ -36,9 +37,9 @@ export const LoginDialog = ({ children }: LoginProps) => {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle></DialogTitle>
-          <DialogDescription className="text-center">
-            <span className="text-xl mt-6 text-white">𝐉𝐨ℓℓ𝐲 𝐂𝐨𝐝𝐞</span>
-            <p className="mt-8 font-semibold text-transparent text-3xl bg-clip-text bg-gradient-to-r from-purple-400 via-purple-300  to-amber-500">
+          <DialogDescription className="text-center flex flex-col justify-center items-center">
+            <Logo variant='short' />
+            <p className="mt-8 font-semibold text-3xl">
               Create an account
             </p>
             <p className="mt-4 text-base font-normal">
@@ -48,7 +49,7 @@ export const LoginDialog = ({ children }: LoginProps) => {
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <CtaButton type="submit" onClick={signInWithGithub}>
+          <CtaButton label='Sign in with Github' type="submit" onClick={signInWithGithub}>
             <GitHubLogoIcon className="mr-4 scale-125" />
             Sign in with Github
           </CtaButton>

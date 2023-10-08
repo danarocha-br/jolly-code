@@ -14,7 +14,7 @@ export const container = cva(
     "left-0",
     "top-2",
     "bottom-2",
-    "z-[999]"
+    "z-[999]",
   ],
   {
     variants: {
@@ -28,20 +28,17 @@ export const container = cva(
 
 export const logo = cva(
   [
-    "tracking-wider",
-    "whitespace-nowrap",
-    "absolute",
     "top-[46%]",
     "-rotate-90",
+    "scale-[.65]",
     "absolute",
-    "-right-3",
     "transition-opacity",
-    "duration-300",
+    "grayscale",
   ],
   {
     variants: {
       show: {
-        true: ["opacity-50"],
+        true: ["opacity-90", "dark:opacity-30"],
         false: ["opacity-0"],
       },
     },
@@ -51,19 +48,19 @@ export const logo = cva(
   }
 );
 
-export const author = cva(
+export const logoShort = cva(
   [
-    "absolute",
-    "left-4",
-    "bottom-8",
-    "text-xs",
-    "whitespace-nowrap",
-    "transition-opacity",
+    "scale-[.6]",
+    "grayscale",
+    "hover:grayscale-0",
+    "hover:opacity-100",
+    "transition-all",
+    "cursor-pointer",
   ],
   {
     variants: {
       show: {
-        true: ["opacity-50", "delay-200"],
+        true: ["opacity-70", "dark:opacity-30"],
         false: ["opacity-0"],
       },
     },
@@ -72,3 +69,11 @@ export const author = cva(
     },
   }
 );
+
+export const author = cva([
+  "text-sm",
+  "text-foreground",
+  "whitespace-nowrap",
+  "pt-2",
+  "pl-2"
+]);

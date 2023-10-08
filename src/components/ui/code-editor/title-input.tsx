@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { useUserSettingsStore } from "@/app/store";
 import { input } from "./styles";
 import { Button } from "../button";
@@ -10,6 +10,16 @@ type TitleInputProps = {
   deletable?: boolean;
 } & React.InputHTMLAttributes<HTMLInputElement>;
 
+/**
+ * Renders a TitleInput component.
+ *
+ * @param {React.ReactNode} icon - The icon to display.
+ * @param {boolean} deletable - Whether the input is deletable or not. Default is false.
+ * @param {string} defaultValue - The default value for the input.
+ * @param {string} placeholder - The placeholder text for the input.
+ * @param {Function} onChange - The function to call when the input value changes.
+ * @return {React.ReactNode} The rendered TitleInput component.
+ */
 export const TitleInput = ({
   icon,
   deletable = false,
@@ -17,6 +27,16 @@ export const TitleInput = ({
 }: TitleInputProps) => {
   const title = useUserSettingsStore((state) => state.title);
   const editor = useUserSettingsStore((state) => state.editor);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    useUserSettingsStore.setState({ title: e.target.value });
+  }, []);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+    if (e.target instanceof HTMLTextAreaElement) {
+      e.target.select();
+    }
+  }, []);
 
   return (
     <div className="flex gap-2 items-center justify-center w-full group/tab">
@@ -31,11 +51,9 @@ export const TitleInput = ({
           className={input()}
           type="text"
           value={title}
-          onChange={(e) => {
-            useUserSettingsStore.setState({ title: e.target.value });
-          }}
+          onChange={handleChange}
           spellCheck={false}
-          onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+          onClick={handleClick}
           {...props}
         />
 

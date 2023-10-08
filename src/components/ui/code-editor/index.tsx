@@ -4,25 +4,20 @@ import { Resizable } from "re-resizable";
 import { Editor } from "./editor";
 import { cn } from "@/lib/utils";
 import { useUserSettingsStore } from "@/app/store";
-import { Button } from "../button";
-import { Tooltip } from "../tooltip";
-import { bookmarkButton, resizableButton } from "./styles";
+import { resizableButton } from "./styles";
 
-export const CodeEditor = () => {
+type CodeEditor = {
+  isLoading: boolean;
+};
+
+export const CodeEditor = ({ isLoading }: CodeEditor) => {
   const [width, setWidth] = useState("auto");
   const padding = useUserSettingsStore((state) => state.padding);
-  const [showWidth, setShowWidth] = useState(false);
+  const [isWidthVisible, setIsWidthVisible] = useState(false);
 
-  const ResizableHandleRight = () => {
+  const ResizableHandle = ({ direction }: { direction: string }) => {
     return (
-      <div className={cn(resizableButton(), "-right-4")}>
-        <i className="ri-draggable text-md"></i>
-      </div>
-    );
-  };
-  const ResizableHandleLeft = () => {
-    return (
-      <div className={cn(resizableButton(), "-left-4")}>
+      <div className={cn(resizableButton(), direction === "right" ? "-right-4" : "-left-4")}>
         <i className="ri-draggable text-md"></i>
       </div>
     );
@@ -35,12 +30,12 @@ export const CodeEditor = () => {
         minWidth={padding * 2 + 320}
         maxWidth="90vw"
         onResize={(e, dir, ref) => setWidth(ref.offsetWidth.toString())}
-        onResizeStart={() => setShowWidth(true)}
-        onResizeStop={() => setShowWidth(false)}
+        onResizeStart={() => setIsWidthVisible(true)}
+        onResizeStop={() => setIsWidthVisible(false)}
         size={{ width, height: "auto" }}
         handleComponent={{
-          right: <ResizableHandleRight />,
-          left: <ResizableHandleLeft />,
+          right: <ResizableHandle direction="right" />,
+          left: <ResizableHandle direction="left" />,
         }}
         className={cn("group/editor hidden lg:block relative")}
       >
@@ -48,7 +43,8 @@ export const CodeEditor = () => {
           padding={padding}
           width={width}
           setWidth={setWidth}
-          showWidth={showWidth}
+          isWidthVisible={isWidthVisible}
+          isLoading={isLoading}
         />
       </Resizable>
 
@@ -57,7 +53,8 @@ export const CodeEditor = () => {
           padding={padding}
           width={width}
           setWidth={setWidth}
-          showWidth={showWidth}
+          isWidthVisible={isWidthVisible}
+          isLoading={isLoading}
         />
       </div>
     </>

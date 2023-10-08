@@ -11,6 +11,11 @@ const sen = Sen({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Jolly Code",
   description: "",
+  icons: {
+    icon: ["./favicon.ico"],
+    // apple: ["./apple-touch-icon.png"],
+    // shortcut: ["./apple-touch-icon.png"],
+  },
 };
 
 export default async function RootLayout({

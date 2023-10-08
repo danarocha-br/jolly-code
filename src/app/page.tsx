@@ -1,27 +1,25 @@
 "use client";
 
-import { Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useMutation } from "react-query";
 
 import { useUserSettingsStore } from "./store";
+import { useSearchParams } from "next/navigation";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
 import { SettingsPanel } from "@/components/ui/settings-panel";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
-import { useSearchParams } from "next/navigation";
+import { UserTools } from "@/components/ui/user-tools";
 import { cn } from "@/lib/utils";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { UserTools } from '@/components/user-tools';
 
 export default function Home() {
   const supabase = createClientComponentClient();
-
   const searchParams = useSearchParams();
-
   const shared = searchParams.get("shared");
 
-  const [hasMounted, setHasMounted] = useState(false);
   const backgroundTheme = useUserSettingsStore(
     (state) => state.backgroundTheme
   );
@@ -30,19 +28,35 @@ export default function Home() {
     (state) => state.presentational
   );
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getSession();
-
-      if (data.session) {
+  const { isLoading } = useMutation(() => supabase.auth.getSession(), {
+    onSuccess: (data) => {
+      if (data?.data.session) {
         useUserSettingsStore.setState({
-          user: data.session.user,
+          user: data.data.session.user,
         });
       }
-    };
+    },
+  });
 
-    getUser();
-  }, [supabase.auth]);
+  useEffect(() => {
+    if (shared === "true") {
+      useUserSettingsStore.setState({
+        presentational: true,
+        showBackground: false,
+      });
+    } else {
+      useUserSettingsStore.setState({
+        presentational: false,
+        showBackground: true,
+      });
+    }
+  }, [shared]);
+
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -77,24 +91,6 @@ export default function Home() {
       fontSize: Number(15),
     });
   }, []);
-
-  useLayoutEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (shared === "true") {
-      useUserSettingsStore.setState({
-        presentational: true,
-        showBackground: false,
-      });
-    } else {
-      useUserSettingsStore.setState({
-        presentational: false,
-        showBackground: true,
-      });
-    }
-  }, [shared]);
 
   if (!hasMounted) {
     return null;
@@ -134,7 +130,7 @@ export default function Home() {
 
         <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
           <main className="relative flex items-center justify-center lg:-ml-16">
-            <CodeEditor />
+            <CodeEditor isLoading={isLoading} />
 
             <SettingsPanel />
 
