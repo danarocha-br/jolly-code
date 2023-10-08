@@ -23,7 +23,9 @@ export const ThemeSelector = () => {
       <Select
         value={backgroundTheme}
         onValueChange={(theme) => {
-          useUserSettingsStore.setState({ backgroundTheme: theme });
+          useUserSettingsStore.setState({
+            backgroundTheme: theme as typeof backgroundTheme,
+          });
         }}
       >
         <Tooltip content="Change theme">
