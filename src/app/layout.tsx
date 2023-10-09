@@ -40,6 +40,12 @@ export default async function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.15.1/devicon.min.css"
+        />
+      </head>
       <body className={sen.className}>
         <Providers>{children}</Providers>
         <Analytics />

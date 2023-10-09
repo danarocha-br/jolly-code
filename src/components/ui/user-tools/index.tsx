@@ -23,6 +23,8 @@ import { EditorOptionsMenu } from "./editor-options-menu";
 import { Tooltip } from "../ui/../tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { useMutation } from "react-query";
+import { Changelog } from "../changelog";
+import { HotKeysPopover } from './hotkeys';
 
 const UserMenu = ({
   username,
@@ -53,8 +55,10 @@ const UserMenu = ({
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onClick={onSignOut}>
-          <i className="ri-logout-circle-fill text-lg mr-3" />
-          Logout
+          <div className='flex items-center'>
+            <i className="ri-logout-circle-fill text-lg mr-3" />
+            Logout
+          </div>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -140,13 +144,22 @@ export const UserTools = () => {
           </Button>
         </Tooltip>
 
+        <HotKeysPopover />
+
         <Separator />
 
-        <Tooltip content="Shortcuts" align="end" side="right" sideOffset={10}>
+        <Changelog>
           <Button size="icon" variant="ghost">
-            <i className="ri-keyboard-line text-lg" />
+            <Tooltip
+              content="Feedback & Updates"
+              align="end"
+              side="right"
+              sideOffset={12}
+            >
+              <i className="ri-question-line text-lg" />
+            </Tooltip>
           </Button>
-        </Tooltip>
+        </Changelog>
       </CardContent>
     </Card>
   );

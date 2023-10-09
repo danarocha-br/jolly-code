@@ -13,8 +13,17 @@ import {
 } from "../../ui/dropdown-menu";
 import { useUserSettingsStore } from "@/app/store";
 import { Tooltip } from "../../ui/tooltip";
+import { hotKeyList } from "@/lib/hot-key-list";
+import { useHotkeys } from "react-hotkeys-hook";
 
 type EditorViewPreference = "default" | "minimal";
+
+const toggleEditorPreferences = hotKeyList.filter(
+  (item) => item.label === "Toggle editor preferences"
+);
+const toggleEditorLineNumbers = hotKeyList.filter(
+  (item) => item.label === "Toggle editor line numbers"
+);
 
 export const EditorOptionsMenu = () => {
   const editor = useUserSettingsStore((state) => state.editor);
@@ -34,11 +43,30 @@ export const EditorOptionsMenu = () => {
     useUserSettingsStore.setState(updatedSettings);
   }
 
+  function handleEditorViewPreferences(value: EditorViewPreference) {
+    setEditorPreference(value);
+    changeEditorViewPreference(value);
+  }
+  function handleShowLineNumbers(checked: boolean) {
+    setShowLineNumbers(checked);
+    useUserSettingsStore.setState({ editorShowLineNumbers: checked });
+  }
+
+  useHotkeys(toggleEditorPreferences[0].hotKey, () => {
+    handleEditorViewPreferences(
+      editorPreference === "default" ? "minimal" : "default"
+    );
+  });
+
+  useHotkeys(toggleEditorLineNumbers[0].hotKey, () => {
+    handleShowLineNumbers(showLineNumbers === true ? false : true);
+  });
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
-          <Tooltip content="Editor Options" side='right' sideOffset={16}>
+          <Tooltip content="Editor Options" side="right" sideOffset={16}>
             <i className="ri-more-2-fill text-lg" />
           </Tooltip>
         </Button>
@@ -49,10 +77,9 @@ export const EditorOptionsMenu = () => {
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup
           value={editorPreference}
-          onValueChange={(value: string) => {
-            setEditorPreference(value as EditorViewPreference);
-            changeEditorViewPreference(value as EditorViewPreference);
-          }}
+          onValueChange={(value: string) =>
+            handleEditorViewPreferences(value as EditorViewPreference)
+          }
         >
           <DropdownMenuRadioItem value="default">Default</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="minimal">Minimal</DropdownMenuRadioItem>
@@ -61,10 +88,7 @@ export const EditorOptionsMenu = () => {
 
         <DropdownMenuCheckboxItem
           checked={showLineNumbers}
-          onCheckedChange={(checked: boolean) => {
-            setShowLineNumbers(checked);
-            useUserSettingsStore.setState({ editorShowLineNumbers: checked });
-          }}
+          onCheckedChange={(checked: boolean) => handleShowLineNumbers(checked)}
         >
           Show line numbers
         </DropdownMenuCheckboxItem>

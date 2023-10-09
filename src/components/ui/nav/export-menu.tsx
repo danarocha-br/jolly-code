@@ -1,5 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useState } from "react";
 import { toBlob, toJpeg, toPng, toSvg } from "html-to-image";
+import { useHotkeys } from "react-hotkeys-hook";
+import { toast } from "sonner";
 
 import { Button } from "../button";
 import {
@@ -9,27 +11,36 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../dropdown-menu";
-import { toast } from "sonner";
+import { Badge } from "../badge";
+import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserSettingsStore } from "@/app/store";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
 
+const exportSVG = hotKeyList.filter((item) => item.label === "Save as SVG");
+const exportPNG = hotKeyList.filter((item) => item.label === "Save as PNG");
+const exportJPG = hotKeyList.filter((item) => item.label === "Save as JPG");
+const copySnippet = hotKeyList.filter((item) => item.label === "Copy snippet");
+const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
+
 export const ExportMenu = () => {
   const title = useUserSettingsStore((state) => state.title);
   const code = useUserSettingsStore((state) => state.code);
+  const editor = React.useRef<HTMLElement | null>(null);
 
+  React.useEffect(() => {
+    editor.current = document.getElementById("editor");
+  }, []);
 
   /**
    * Copies the image from a DOM element to the clipboard.
    *
-   * @param editorRef - The reference to the DOM element containing the image.
    * @returns A promise that resolves when the image is successfully copied to the clipboard.
    */
   async function copyImageToClipboard() {
-
     try {
       toast.loading("Copying...");
-      const imageBlob = await toBlob(document.getElementById("editor")!, {
+      const imageBlob = await toBlob(editor.current!, {
         pixelRatio: 2,
       });
 
@@ -48,6 +59,11 @@ export const ExportMenu = () => {
     }
   }
 
+  /**
+   * Copies the code to the clipboard.
+   *
+   * @return {Promise<void>} A promise that resolves when the code is successfully copied to the clipboard.
+   */
   async function copyCodeToClipboard() {
     try {
       await navigator.clipboard.writeText(code);
@@ -57,26 +73,33 @@ export const ExportMenu = () => {
     }
   }
 
+  /**
+   * Handles saving an image with the given name and format.
+   *
+   * @param {string} name - The name of the image.
+   * @param {ImageFormat} format - The format of the image.
+   * @return {Promise<void>} - A promise that resolves when the image is saved.
+   */
   async function handleSaveImage(name: string, format: ImageFormat) {
     let imageURL, fileName;
 
     switch (format) {
       case "PNG":
-        imageURL = await toPng(document.getElementById("editor")!, {
+        imageURL = await toPng(editor.current!, {
           pixelRatio: 2,
         });
         fileName = `${name}.png`;
         break;
 
       case "JPG":
-        imageURL = await toJpeg(document.getElementById("editor")!, {
+        imageURL = await toJpeg(editor.current!, {
           pixelRatio: 2,
         });
         fileName = `${name}.jpg`;
         break;
 
       case "SVG":
-        imageURL = await toSvg(document.getElementById("editor")!, {
+        imageURL = await toSvg(editor.current!, {
           pixelRatio: 2,
         });
         fileName = `${name}.svg`;
@@ -96,6 +119,49 @@ export const ExportMenu = () => {
     link.click();
   }
 
+  /**
+   * Handles the export of an image in the specified format.
+   *
+   * @param {ImageFormat} format - The format in which the image should be exported. Possible values are "SVG", "PNG", or "JPG".
+   * @return {void} This function does not return anything.
+   */
+  const handleExport = (format: ImageFormat) => {
+    switch (format) {
+      case "SVG":
+        toast.promise(handleSaveImage(title, "SVG"), {
+          loading: "Exporting SVG image...",
+          success: "Successfully exported!",
+          error: "Sorry. Something went wrong.",
+        });
+        break;
+
+      case "PNG":
+        toast.promise(handleSaveImage(title, "PNG"), {
+          loading: "Exporting PNG image...",
+          success: "Successfully exported!",
+          error: "Sorry. Something went wrong.",
+        });
+        break;
+
+      case "JPG":
+        toast.promise(handleSaveImage(title, "JPG"), {
+          loading: "Exporting JPG image...",
+          success: "Successfully exported!",
+          error: "Sorry. Something went wrong.",
+        });
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  useHotkeys(exportSVG[0].hotKey, () => handleExport("SVG"));
+  useHotkeys(exportPNG[0].hotKey, () => handleExport("PNG"));
+  useHotkeys(exportJPG[0].hotKey, () => handleExport("JPG"));
+  useHotkeys(copySnippet[0].hotKey, () => copyCodeToClipboard());
+  useHotkeys(copyImg[0].hotKey, () => copyImageToClipboard());
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -107,53 +173,69 @@ export const ExportMenu = () => {
 
       <DropdownMenuContent>
         <DropdownMenuItem className="gap-2" onClick={copyCodeToClipboard}>
-          <i className="ri-code-box-line text-lg" />
-          Copy Code
+          <div className="flex items-center gap-2">
+            <i className="ri-code-box-line text-lg" />
+            Copy Code
+          </div>
+          <Badge
+            variant="secondary"
+            className="capitalize dark:bg-zinc-900"
+          >
+            {copySnippet[0]?.keyboard}
+          </Badge>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2" onClick={copyImageToClipboard}>
-          <i className="ri-clipboard-line text-lg" />
-          Copy Image
+          <div className="flex items-center gap-2">
+            <i className="ri-clipboard-line text-lg" />
+            Copy Image
+          </div>
+          <Badge
+            variant="secondary"
+            className="capitalize dark:bg-zinc-900"
+          >
+            {copyImg[0]?.keyboard}
+          </Badge>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="gap-2"
-          onClick={() => {
-            toast.promise(handleSaveImage(title, "SVG"), {
-              loading: "Exporting SVG image...",
-              success: "Successfully exported!",
-              error: "Sorry. Something went wrong.",
-            });
-          }}
-        >
-          <i className="ri-circle-fill text-[#6A67C1]" />
-          Save as SVG
+
+        <DropdownMenuItem className="gap-2" onClick={() => handleExport("SVG")}>
+          <div className="flex items-center gap-2">
+            <i className="ri-circle-fill text-[#6A67C1]" />
+            Save as SVG
+          </div>
+          <Badge
+            variant="secondary"
+            className="capitalize dark:bg-zinc-900"
+          >
+            {exportSVG[0]?.keyboard}
+          </Badge>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="gap-2"
-          onClick={() => {
-            toast.promise(handleSaveImage(title, "PNG"), {
-              loading: "Exporting PNG image...",
-              success: "Successfully exported!",
-              error: "Sorry. Something went wrong.",
-            });
-          }}
-        >
-          <i className="ri-circle-fill  text-[#D16575]" />
-          Save as PNG
+
+        <DropdownMenuItem className="gap-2" onClick={() => handleExport("PNG")}>
+          <div className="flex items-center gap-2">
+            <i className="ri-circle-fill  text-[#D16575]" />
+            Save as PNG
+          </div>
+          <Badge
+            variant="secondary"
+            className="capitalize dark:bg-zinc-900"
+          >
+            {exportPNG[0]?.keyboard}
+          </Badge>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="gap-2"
-          onClick={() => {
-            toast.promise(handleSaveImage(title, "JPG"), {
-              loading: "Exporting JPG image...",
-              success: "Successfully exported!",
-              error: "Sorry. Something went wrong.",
-            });
-          }}
-        >
-          <i className="ri-circle-fill  text-[#E0DB32]" />
-          Save as JPG
+
+        <DropdownMenuItem className="gap-2" onClick={() => handleExport("JPG")}>
+          <div className="flex items-center gap-2">
+            <i className="ri-circle-fill  text-[#E0DB32]" />
+            Save as JPG
+          </div>
+          <Badge
+            variant="secondary"
+            className="capitalize dark:bg-zinc-900"
+          >
+            {exportJPG[0]?.keyboard}
+          </Badge>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

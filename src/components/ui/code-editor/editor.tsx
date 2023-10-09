@@ -1,6 +1,6 @@
 "use client";
 
-import React, { forwardRef, useEffect, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
 import flourite from "flourite";
@@ -20,6 +20,8 @@ import { WidthMeasurement } from "./width-measurement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Skeleton } from "../skeleton";
 import * as S from "./styles";
+import { hotKeyList } from "@/lib/hot-key-list";
+import { useHotkeys } from "react-hotkeys-hook";
 
 type EditorProps = {
   padding: number;
@@ -29,10 +31,17 @@ type EditorProps = {
   isLoading: boolean;
 };
 
+const focusEditor = hotKeyList.filter(
+  (item) => item.label === "Focus code editor"
+);
+const unfocusEditor = hotKeyList.filter(
+  (item) => item.label === "Unfocus code editor"
+);
+
 export const Editor = forwardRef<any, EditorProps>(
   ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
+    const editorRef = useRef(null);
     const user = useUserSettingsStore((state) => state.user);
-
     const { theme } = useTheme();
     const isDarkTheme = theme === "dark";
     const code = useUserSettingsStore((state) => state.code);
@@ -85,13 +94,31 @@ export const Editor = forwardRef<any, EditorProps>(
       setLineNumbers(Array.from({ length: lines }, (_, i) => i + 1));
     }, [code]);
 
+    useHotkeys(focusEditor[0].hotKey, () => {
+      if (editorRef.current) {
+        //@ts-ignore
+        const inputElement = editorRef.current._input as HTMLInputElement;
+        inputElement.select();
+      }
+    });
+
+    useHotkeys(unfocusEditor[0].hotKey, () => {
+      if (editorRef.current) {
+        //@ts-ignore
+        const inputElement = editorRef.current._input as HTMLInputElement;
+        inputElement.blur();
+      }
+    });
+
     //TODO: adding tabs and open new clean editor view
 
     return (
       <div
         className={cn(
           S.background(),
-          showBackground && !presentational && themes[backgroundTheme].background
+          showBackground &&
+            !presentational &&
+            themes[backgroundTheme].background
         )}
         style={{ padding }}
         ref={ref}
@@ -169,6 +196,7 @@ export const Editor = forwardRef<any, EditorProps>(
 
                 {!isLoading ? (
                   <CodeEditor
+                    ref={editorRef}
                     className={S.editor({
                       showLineNumbers: editorShowLineNumbers,
                     })}

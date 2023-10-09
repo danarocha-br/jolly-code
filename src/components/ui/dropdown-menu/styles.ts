@@ -32,6 +32,8 @@ export const menuItem = cva([
   "flex",
   "select-none",
   "items-center",
+  "justify-between",
+  "w-full",
   "rounded-sm",
   "px-2",
   "py-1.5",

@@ -1,0 +1,86 @@
+export const hotKeyList = [
+  {
+    label: "Copy link",
+    hotKey: "mod+shift+c",
+    keyboard: "⌘ ⇧ C",
+    group: "export",
+  },
+  {
+    label: "Copy snippet",
+    hotKey: "control+c",
+    keyboard: "⌃ C",
+    group: "export",
+  },
+  {
+    label: "Copy image",
+    hotKey: "control+i",
+    keyboard: "⌃ I",
+    group: "export",
+  },
+  {
+    label: "Save as SVG",
+    hotKey: "alt+s",
+    keyboard: "⌥ S",
+    group: "export",
+  },
+  {
+    label: "Save as PNG",
+    hotKey: "alt+p",
+    keyboard: "⌥ P",
+    group: "export",
+  },
+  {
+    label: "Save as JPG",
+    hotKey: "alt+j",
+    keyboard: "⌥ J",
+    group: "export",
+  },
+  {
+    label: "Focus code editor",
+    hotKey: "mod+E",
+    keyboard: "⌘ E",
+    group: "editor",
+  },
+  {
+    label: "Unfocus code editor",
+    hotKey: "Esc",
+    keyboard: "Esc",
+    group: "editor",
+  },
+  {
+    label: "Toggle editor preferences",
+    hotKey: "E",
+    keyboard: "E",
+    group: "editor",
+  },
+  {
+    label: "Toggle editor line numbers",
+    hotKey: "L",
+    keyboard: "L",
+    group: "editor",
+  },
+  {
+    label: "Toggle background",
+    hotKey: "B",
+    keyboard: "B",
+    group: "theme",
+  },
+  {
+    label: "Toggle theme",
+    hotKey: "T",
+    keyboard: "T",
+    group: "theme",
+  },
+  {
+    label: "Change padding",
+    hotKey: "P",
+    keyboard: "P",
+    group: "theme",
+  },
+  {
+    label: "Change font size",
+    hotKey: "F",
+    keyboard: "F",
+    group: "theme",
+  },
+];

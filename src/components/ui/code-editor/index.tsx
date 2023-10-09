@@ -17,7 +17,12 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
 
   const ResizableHandle = ({ direction }: { direction: string }) => {
     return (
-      <div className={cn(resizableButton(), direction === "right" ? "-right-4" : "-left-4")}>
+      <div
+        className={cn(
+          resizableButton(),
+          direction === "right" ? "-right-4" : "-left-4"
+        )}
+      >
         <i className="ri-draggable text-md"></i>
       </div>
     );
@@ -37,7 +42,7 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
           right: <ResizableHandle direction="right" />,
           left: <ResizableHandle direction="left" />,
         }}
-        className={cn("group/editor hidden lg:block relative")}
+        className={cn("group/editor relative")}
       >
         <Editor
           padding={padding}
@@ -47,16 +52,6 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
           isLoading={isLoading}
         />
       </Resizable>
-
-      <div className="block lg:hidden px-4">
-        <Editor
-          padding={padding}
-          width={width}
-          setWidth={setWidth}
-          isWidthVisible={isWidthVisible}
-          isLoading={isLoading}
-        />
-      </div>
     </>
   );
 };

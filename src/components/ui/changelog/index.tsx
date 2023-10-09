@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { useQuery } from "react-query";
 import { toast } from "sonner";
@@ -9,6 +11,7 @@ import { Separator } from "../separator";
 import { Badge } from "../badge";
 import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { CtaButton } from "../cta-button";
 
 type ChangeLog = {
   id: string;
@@ -23,8 +26,6 @@ type ChangelogProps = {
 };
 
 export const Changelog = ({ children }: ChangelogProps) => {
-  const { isLoading, data } = useQuery("changelogs", fetchData);
-
   async function fetchData() {
     try {
       const response = await fetch("/api/changelog", { method: "POST" });
@@ -40,12 +41,25 @@ export const Changelog = ({ children }: ChangelogProps) => {
     }
   }
 
+  const { isLoading, data } = useQuery("changelogs", fetchData);
+
   return (
     <Popover>
-      <PopoverTrigger>{children}</PopoverTrigger>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
 
-      <PopoverContent>
+      <PopoverContent side="right" sideOffset={12}>
         <div className={S.container()}>
+          <div className={S.ctaCard()}>
+            <h3 className={S.ctaTitle()}>Missing a feature?</h3>
+            <Link
+              href="https://jollycode.canny.io/feature-requests"
+              target="_blank"
+              className={S.ctaLink()}
+            >
+              Tell us more
+            </Link>
+          </div>
+
           <h2 className={S.header()}>Latest updates</h2>
           <Separator className="bg-background/50" />
 
@@ -59,11 +73,14 @@ export const Changelog = ({ children }: ChangelogProps) => {
             !isLoading &&
             data.result.entries.map((entry: ChangeLog, index: number) => (
               <React.Fragment key={entry.id}>
-                <div className="w-[380px]">
+                <div className="w-full pt-4">
                   <div className={S.title()}>
                     <span>
                       {entry.types.length > 0 && (
-                        <Badge variant="success" className="capitalize">
+                        <Badge
+                          variant="success"
+                          className="capitalize scale-90"
+                        >
                           {entry.types[0]}
                         </Badge>
                       )}
@@ -71,14 +88,14 @@ export const Changelog = ({ children }: ChangelogProps) => {
                     <p>{entry.title}</p>
                   </div>
 
-                  <ReactMarkdown className="mb-3 text-sm w-full [&_p]:w-full [&_p]:last-child:truncate">
+                  <ReactMarkdown className="mb-3 text-xs w-full [&_p]:last-child:truncate">
                     {entry.markdownDetails !== null &&
                     entry.markdownDetails !== undefined
                       ? entry.markdownDetails.split("\n").slice(0, 3).join("\n")
                       : ""}
                   </ReactMarkdown>
 
-                  <span className="text-sm">
+                  <span className="text-xs">
                     <i className="ri-time-line mr-3" />
                     {dayjs(entry.publishedAt).format("MMM D, YYYY")}
                   </span>
@@ -93,6 +110,7 @@ export const Changelog = ({ children }: ChangelogProps) => {
           <Link
             className={S.link()}
             href="https://jollycode.canny.io/changelog"
+            target="_blank"
           >
             Read more
           </Link>
