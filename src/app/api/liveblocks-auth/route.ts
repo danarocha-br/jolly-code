@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   // Start an auth session inside your endpoint
-  const session = liveblocks.prepareSession(data.session?.user.id, {
+  const session = liveblocks.prepareSession(data.session?.user.id ?? "", {
     userInfo: data.session?.user.user_metadata,
   });
 
