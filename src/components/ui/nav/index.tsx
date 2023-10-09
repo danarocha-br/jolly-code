@@ -72,7 +72,7 @@ export const Nav = () => {
 
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
         {isPresentational && (
-          <div className="flex pl-3">
+          <div className="flex pr-3">
             {users.slice(0, 3).map(({ connectionId, info }: any) => {
               return (
                 <Avatar
@@ -86,7 +86,7 @@ export const Nav = () => {
             {hasMoreUsers && <div className="">+{users.length - 3}</div>}
 
             {currentUser && (
-              <div className="relative ml-8 first:ml-0">
+              <div className="relative">
                 <Avatar
                   imageSrc={
                     (currentUser.info as { avatar_url: string }).avatar_url

@@ -13,26 +13,26 @@ export async function POST(request: Request) {
   });
 
   // Get the session from Supabase
-  const { data, error } = await supabase.auth.getSession();
 
-  if (error) {
-    // Handle the error
-    console.error(error);
-    return new NextResponse("Error occurred", { status: 500 });
+  const { data } = await supabase.auth.getSession();
+
+  let userId = "anonymous";
+  if (data && data.session?.user?.id) {
+    userId = data.session?.user.id;
   }
 
-  // Start an auth session inside your endpoint
-  const session = liveblocks.prepareSession(data.session?.user.id ?? "", {
-    userInfo: data.session?.user.user_metadata,
+  const session = liveblocks.prepareSession(userId, {
+    userInfo: data?.session?.user?.user_metadata || {},
   });
 
-  // Implement your own security, and give the user access to the room
   const { room } = await request.json();
-  if (room && data.session?.user.id) {
-    session.allow(room, session.FULL_ACCESS);
-  }
+  if (room) session.allow(room, session.FULL_ACCESS);
 
   // Authorize the user and return the result
-  const { status, body } = await session.authorize();
-  return new NextResponse(body, { status });
+  try {
+    const { status, body } = await session.authorize();
+    return new NextResponse(body, { status });
+  } catch (e) {
+    console.error("Error authorizing session:", e);
+  }
 }
