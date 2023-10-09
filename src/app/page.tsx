@@ -1,7 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import {
+  createClientComponentClient,
+} from "@supabase/auth-helpers-nextjs";
 import { useQuery } from "react-query";
 import Hotjar from "@hotjar/browser";
 
@@ -15,6 +17,7 @@ import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { UserTools } from "@/components/ui/user-tools";
 import { cn } from "@/lib/utils";
+import { toast } from 'sonner';
 
 export default function Home() {
   const supabase = createClientComponentClient();
@@ -29,15 +32,22 @@ export default function Home() {
     (state) => state.presentational
   );
 
-  const { isLoading } = useQuery("session", () => supabase.auth.getSession(), {
-    onSuccess: (data) => {
-      if (data?.data.session) {
-        useUserSettingsStore.setState({
-          user: data.data.session.user,
-        });
+  const { isLoading } = useQuery(
+    "session",
+    async () => await supabase.auth.getSession(),
+    {
+      onSuccess: (data) => {
+        if (data?.data.session) {
+          useUserSettingsStore.setState({
+            user: data.data.session.user,
+          });
+        }
+      },
+      onError: () => {
+        toast.error("Sorry, something went wrong.");
       }
-    },
-  });
+    }
+  );
 
   useEffect(() => {
     const siteId = Number(process.env.NEXT_PUBLIC_HOTJAR_SITE_ID);
@@ -139,6 +149,7 @@ export default function Home() {
             <SettingsPanel />
 
             <UserTools />
+
           </main>
         </div>
       </div>

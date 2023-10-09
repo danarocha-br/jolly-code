@@ -1,38 +1,53 @@
-import {withSentryConfig} from "@sentry/nextjs";
-// import { FlytrapTransformPlugin } from "useflytrap/transform";
+import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // reactStrictMode: true,
-
-  // webpack(config) {
-  //   config.plugins = config.plugins ?? [];
-  //   config.plugins.push(FlytrapTransformPlugin.webpack());
-  //   return config;
-  // },
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value:
+              "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
+          },
+        ],
+      },
+    ];
+  },
 };
 
+export default withSentryConfig(
+  nextConfig,
+  {
+    // For all available options, see:
+    // https://github.com/getsentry/sentry-webpack-plugin#options
 
-export default withSentryConfig(nextConfig, {
-// For all available options, see:
-// https://github.com/getsentry/sentry-webpack-plugin#options
+    // Suppresses source map uploading logs during build
+    silent: true,
+    org: "compasso-9c",
+    project: "jolly-code",
+  },
+  {
+    // For all available options, see:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
-// Suppresses source map uploading logs during build
-silent: true,
-org: "compasso-9c",
-project: "jolly-code",
-}, {
-// For all available options, see:
-// https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+    widenClientFileUpload: true,
 
-widenClientFileUpload: true,
+    transpileClientSDK: true,
 
-transpileClientSDK: true,
+    // Routes browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers (increases server load)
+    tunnelRoute: "/monitoring",
 
-// Routes browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers (increases server load)
-tunnelRoute: "/monitoring",
+    hideSourceMaps: true,
 
-hideSourceMaps: true,
-
-disableLogger: true,
-});
+    disableLogger: true,
+  }
+);

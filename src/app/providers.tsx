@@ -23,7 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               a.appendChild(r);
           })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`,
         }}
-      ></Script>
+      />
       <ThemeProvider defaultTheme="dark" attribute="class">
         <QueryClientProvider client={queryClient}>
           {children}
