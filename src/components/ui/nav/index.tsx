@@ -1,19 +1,29 @@
 import React from "react";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 
 import { useUserSettingsStore } from "@/app/store";
 import { Button } from "../button";
-import { toast } from "sonner";
 import { ExportMenu } from "./export-menu";
 import { useHotkeys } from "react-hotkeys-hook";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { Tooltip } from "../tooltip";
+import { Avatar } from "../avatar";
+import { useOthers, useSelf } from "../../../../liveblocks.config";
 
 const copyLink = hotKeyList.filter((item) => item.label === "Copy link");
 const toggleTheme = hotKeyList.filter((item) => item.label === "Toggle theme");
 
 export const Nav = () => {
   const { theme, setTheme } = useTheme();
+  const isPresentational = useUserSettingsStore(
+    (state) => state.presentational
+  );
+
+  const users = useOthers();
+  const userCount = users.length;
+  const currentUser = useSelf();
+  const hasMoreUsers = users.length > 3;
 
   /**
    * Handles copying the link to the clipboard.
@@ -61,6 +71,33 @@ export const Nav = () => {
       </Button>
 
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
+        {isPresentational && (
+          <div className="flex pl-3">
+            {users.slice(0, 3).map(({ connectionId, info }: any) => {
+              return (
+                <Avatar
+                  key={connectionId}
+                  imageSrc={info.avatar_url}
+                  username={info.name}
+                />
+              );
+            })}
+
+            {hasMoreUsers && <div className="">+{users.length - 3}</div>}
+
+            {currentUser && (
+              <div className="relative ml-8 first:ml-0">
+                <Avatar
+                  imageSrc={
+                    (currentUser.info as { avatar_url: string }).avatar_url
+                  }
+                  username="You"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <ExportMenu />
 
         <Tooltip content={copyLink[0].keyboard}>

@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "react-query";
 import Script from "next/script";
 
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient();
 

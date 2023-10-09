@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useQuery } from "react-query";
 import Hotjar from "@hotjar/browser";
+import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 import { useUserSettingsStore } from "./store";
-import { useSearchParams } from "next/navigation";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
@@ -15,7 +16,7 @@ import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { UserTools } from "@/components/ui/user-tools";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { Room } from "./room";
 
 export default function Home() {
   const supabase = createClientComponentClient();
@@ -30,7 +31,7 @@ export default function Home() {
     (state) => state.presentational
   );
 
-  const { isLoading } = useQuery(
+  const { isLoading, data: session } = useQuery(
     "session",
     async () => await supabase.auth.getSession(),
     {
@@ -109,7 +110,7 @@ export default function Home() {
   }
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Room>
       <link
         rel="stylesheet"
         href={themes[backgroundTheme].theme}
@@ -145,6 +146,6 @@ export default function Home() {
           </main>
         </div>
       </div>
-    </Suspense>
+    </Room>
   );
 }
