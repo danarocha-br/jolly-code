@@ -4,7 +4,7 @@ export const image = cva(["aspect-square", "h-full", "w-full"]);
 
 export const fallback = cva([
   "text-xs",
-  "bg-accent",
+  'text-white',
   "rounded-full",
   "flex",
   "h-full",
@@ -13,17 +13,30 @@ export const fallback = cva([
   "justify-center",
 ]);
 
-export const avatar = cva([
-  "relative",
-  "flex",
-  "h-6",
-  "w-6",
-  "border-2",
-  "border-[#A3CC6A]",
-  "shrink-0",
-  "overflow-hidden",
-  "rounded-full",
-  "transition-colors",
-
-  "hover:border-[#d2e6b6]",
-]);
+export const avatar = cva(
+  [
+    "relative",
+    "flex",
+    "border-2",
+    "shrink-0",
+    "overflow-hidden",
+    "rounded-full",
+    "transition-colors",
+  ],
+  {
+    variants: {
+      variant: {
+        "current-user": ["border-[#A3CC6A]", "hover:border-[#d2e6b6]"],
+        "other-user": [],
+      },
+      size: {
+        sm: ["h-6", "w-6"],
+        md: ["h-8", "w-8"],
+      },
+    },
+    defaultVariants: {
+      variant: "current-user",
+      size: "sm",
+    }
+  }
+);

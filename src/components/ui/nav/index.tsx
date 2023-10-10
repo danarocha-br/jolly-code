@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
@@ -25,6 +25,8 @@ export const Nav = () => {
   const currentUser = useSelf();
   const hasMoreUsers = users.length > 3;
 
+  const avatarBackgroundColorRef = useRef<string | null>(generateRandomColor());
+
   /**
    * Handles copying the link to the clipboard.
    *
@@ -48,8 +50,30 @@ export const Nav = () => {
     toast.success("Link copied to clipboard");
   }
 
+  /**
+   * Handles the toggle theme functionality.
+   *
+   * @return {void} No return value.
+   */
   function handleToggleTheme() {
     setTheme(theme === "dark" ? "light" : "dark");
+  }
+
+  useEffect(() => {
+    if (!avatarBackgroundColorRef.current) {
+      avatarBackgroundColorRef.current = generateRandomColor();
+    }
+  }, []);
+
+  /**
+   * Generates a random color.
+   *
+   * @return {string} The randomly generated hexadecimal color.
+   */
+  function generateRandomColor() {
+    // Generate a random hexadecimal number
+    var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
+    return randomColor;
   }
 
   useHotkeys(copyLink[0].hotKey, () => handleCopyLinkToClipboard());
@@ -72,18 +96,26 @@ export const Nav = () => {
 
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
         {isPresentational && (
-          <div className="flex pr-3">
+          <div className="flex pr-3 -space-x-2">
             {users.slice(0, 3).map(({ connectionId, info }: any) => {
               return (
                 <Avatar
                   key={connectionId}
                   imageSrc={info.avatar_url}
                   username={info.name}
+                  color={avatarBackgroundColorRef.current || undefined}
+                  size="md"
                 />
               );
             })}
 
-            {hasMoreUsers && <div className="">+{users.length - 3}</div>}
+            {hasMoreUsers && (
+              <Avatar
+                username={(users.length - 3).toString()}
+                variant="other-user"
+                size="md"
+              />
+            )}
 
             {currentUser && (
               <div className="relative">
@@ -92,6 +124,8 @@ export const Nav = () => {
                     (currentUser.info as { avatar_url: string }).avatar_url
                   }
                   username="You"
+                  size="md"
+                  color={avatarBackgroundColorRef.current || undefined}
                 />
               </div>
             )}
