@@ -1,12 +1,20 @@
+import { cn } from "@/lib/utils";
 import React from "react";
 
 type LogoProps = {
   variant?: "long" | "short" | "typographic";
+  className?: string;
 };
 
-export const Logo = ({ variant = "long" }: LogoProps) => {
+export const Logo = ({ variant = "long", className = "" }: LogoProps) => {
   return variant === "long" ? (
-    <svg width="108" height="29" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      className={className}
+      width="108"
+      height="29"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <path
         fillRule="evenodd"
         clipRule="evenodd"
@@ -32,7 +40,13 @@ export const Logo = ({ variant = "long" }: LogoProps) => {
       </defs>
     </svg>
   ) : variant === "short" ? (
-    <svg width="77" height="70" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      className={className}
+      width="77"
+      height="70"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <path
         fillRule="evenodd"
         clipRule="evenodd"
@@ -110,7 +124,7 @@ export const Logo = ({ variant = "long" }: LogoProps) => {
     </svg>
   ) : (
     <svg
-      className="fill-foreground"
+      className={cn("fill-foreground", className)}
       width="101"
       height="19"
       fill="none"

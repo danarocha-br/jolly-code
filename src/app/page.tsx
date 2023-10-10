@@ -31,7 +31,7 @@ export default function Home() {
     (state) => state.presentational
   );
 
-  const { isLoading, data: session } = useQuery(
+  const { isLoading, data } = useQuery(
     "session",
     async () => await supabase.auth.getSession(),
     {

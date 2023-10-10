@@ -60,10 +60,11 @@ export const LoginDialog = ({ children }: LoginProps) => {
 
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
+          <div className='text-center flex justify-center'>
+            <Logo variant="short" />
+          </div>
+
           <DialogDescription className="text-center flex flex-col justify-center items-center">
-            <div>
-              <Logo variant="short" />
-            </div>
             <p className="mt-8 font-semibold text-3xl">Create an account</p>
             <p className="mt-4 text-base font-normal">
               Create, manage and share code snippets with Jolly Code.
@@ -71,7 +72,7 @@ export const LoginDialog = ({ children }: LoginProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 pt-8 pb-2">
           <CtaButton
             label="Sign in with Github"
             onClick={handleSignInWithGithub}

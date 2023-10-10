@@ -110,7 +110,7 @@ export const UserTools = () => {
     },
     {
       onSuccess: () => {
-        toast.message("See you soon!");
+        toast.message("👋 See you soon!");
         router.refresh();
       },
       onError: () => {

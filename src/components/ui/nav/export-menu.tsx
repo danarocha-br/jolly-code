@@ -10,8 +10,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuShortcut,
 } from "../dropdown-menu";
-import { Badge } from "../badge";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserSettingsStore } from "@/app/store";
 
@@ -172,70 +172,47 @@ export const ExportMenu = () => {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <DropdownMenuItem className="gap-2" onClick={copyCodeToClipboard}>
+        <DropdownMenuItem className="gap-8" onClick={copyCodeToClipboard}>
           <div className="flex items-center gap-2">
             <i className="ri-code-box-line text-lg" />
             Copy Code
           </div>
-          <Badge
-            variant="secondary"
-            className="capitalize dark:bg-zinc-900"
-          >
+          <DropdownMenuShortcut>
             {copySnippet[0]?.keyboard}
-          </Badge>
+          </DropdownMenuShortcut>
         </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2" onClick={copyImageToClipboard}>
+        <DropdownMenuItem className="gap-8" onClick={copyImageToClipboard}>
           <div className="flex items-center gap-2">
             <i className="ri-clipboard-line text-lg" />
             Copy Image
           </div>
-          <Badge
-            variant="secondary"
-            className="capitalize dark:bg-zinc-900"
-          >
-            {copyImg[0]?.keyboard}
-          </Badge>
+          <DropdownMenuShortcut>{copyImg[0]?.keyboard}</DropdownMenuShortcut>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem className="gap-2" onClick={() => handleExport("SVG")}>
+        <DropdownMenuItem className="gap-8" onClick={() => handleExport("SVG")}>
           <div className="flex items-center gap-2">
             <i className="ri-circle-fill text-[#6A67C1]" />
             Save as SVG
           </div>
-          <Badge
-            variant="secondary"
-            className="capitalize dark:bg-zinc-900"
-          >
-            {exportSVG[0]?.keyboard}
-          </Badge>
+          <DropdownMenuShortcut>{exportSVG[0]?.keyboard}</DropdownMenuShortcut>
         </DropdownMenuItem>
 
-        <DropdownMenuItem className="gap-2" onClick={() => handleExport("PNG")}>
+        <DropdownMenuItem className="gap-8" onClick={() => handleExport("PNG")}>
           <div className="flex items-center gap-2">
             <i className="ri-circle-fill  text-[#D16575]" />
             Save as PNG
           </div>
-          <Badge
-            variant="secondary"
-            className="capitalize dark:bg-zinc-900"
-          >
-            {exportPNG[0]?.keyboard}
-          </Badge>
+          <DropdownMenuShortcut>{exportPNG[0]?.keyboard}</DropdownMenuShortcut>
         </DropdownMenuItem>
 
-        <DropdownMenuItem className="gap-2" onClick={() => handleExport("JPG")}>
+        <DropdownMenuItem className="gap-8" onClick={() => handleExport("JPG")}>
           <div className="flex items-center gap-2">
             <i className="ri-circle-fill  text-[#E0DB32]" />
             Save as JPG
           </div>
-          <Badge
-            variant="secondary"
-            className="capitalize dark:bg-zinc-900"
-          >
-            {exportJPG[0]?.keyboard}
-          </Badge>
+          <DropdownMenuShortcut>{exportJPG[0]?.keyboard}</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
