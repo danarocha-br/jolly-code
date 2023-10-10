@@ -4,12 +4,12 @@ export const container = cva([
   "flex",
   "flex-col",
   "justify-center",
-  "space-y-2",
+  "space-y-5",
   "divide-solid",
   "relative",
 ]);
 
-export const header = cva(["text-base", "pt-3"]);
+export const header = cva(["text-base", "pt-2", "px-3"]);
 
 export const title = cva(["text-sm", "flex", "items-center", "gap-3", "mb-4"]);
 
@@ -41,6 +41,7 @@ export const ctaCard = cva([
   "border",
   "border-success",
   "rounded-md",
+  "mx-3",
 ]);
 
 export const ctaTitle = cva([
@@ -61,4 +62,20 @@ export const ctaLink = cva([
   "transition-colors",
 
   "hover:bg-success/10",
+]);
+
+export const changelogContainer = cva([
+  "bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))]",
+
+  "from-green-400/10",
+  "via-green-400/5",
+  "to-accent",
+
+  "dark:from-green-800/40",
+  "dark:via-green-800/10",
+  "dark:to-zinc-900",
+
+  "py-2",
+  "px-3",
+  "rounded-t-lg",
 ]);

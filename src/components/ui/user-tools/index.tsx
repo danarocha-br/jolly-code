@@ -25,6 +25,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { useMutation } from "react-query";
 import { Changelog } from "../changelog";
 import { HotKeysPopover } from './hotkeys';
+import { CodeAnnotationMenu } from './code-annotation-menu';
 
 const UserMenu = ({
   username,
@@ -119,8 +120,6 @@ export const UserTools = () => {
     }
   );
 
-  const { isLoading } = handleSignOut;
-
   return (
     <Card className={S.container()}>
       <CardContent className={S.content()}>
@@ -138,11 +137,8 @@ export const UserTools = () => {
 
         <EditorOptionsMenu />
 
-        <Tooltip content="Comment" align="end" side="right" sideOffset={10}>
-          <Button size="icon" variant="ghost">
-            <i className="ri-chat-1-line text-lg" />
-          </Button>
-        </Tooltip>
+
+          <CodeAnnotationMenu />
 
         <HotKeysPopover />
 

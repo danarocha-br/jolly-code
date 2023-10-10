@@ -120,19 +120,32 @@ export const Editor = forwardRef<any, EditorProps>(
     //TODO: adding tabs and open new clean editor view
 
     return (
-      <div
-        className={cn(
-          S.background(),
-          showBackground &&
-            !presentational &&
-            themes[backgroundTheme].background
-        )}
-        style={{ padding }}
-        ref={ref}
-        id="editor"
-      >
-        {!user ? (
-          <LoginDialog>
+      <>
+        <div
+          className={cn(
+            S.background(),
+            showBackground &&
+              !presentational &&
+              themes[backgroundTheme].background
+          )}
+          style={{ padding }}
+          ref={ref}
+          id="editor"
+        >
+          {!user ? (
+            <LoginDialog>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  S.bookmarkButton(),
+                  padding > 44 ? "top-2 right-2" : "top-0 right-0"
+                )}
+              >
+                <i className="ri-bookmark-line" />
+              </Button>
+            </LoginDialog>
+          ) : (
             <Button
               size="icon"
               variant="ghost"
@@ -143,113 +156,102 @@ export const Editor = forwardRef<any, EditorProps>(
             >
               <i className="ri-bookmark-line" />
             </Button>
-          </LoginDialog>
-        ) : (
-          <Button
-            size="icon"
-            variant="ghost"
-            className={cn(
-              S.bookmarkButton(),
-              padding > 44 ? "top-2 right-2" : "top-0 right-0"
-            )}
-          >
-            <i className="ri-bookmark-line" />
-          </Button>
-        )}
+          )}
 
-        <div className={S.editorContainer({ isDarkTheme })}>
-          <Tabs defaultValue="initial">
-            <header className={S.header({ editorPreferences })}>
-              {editorPreferences === "default" && (
-                <div className="flex gap-1.5">
-                  <div className="rounded-full h-3 w-3 bg-red-500" />
-                  <div className="rounded-full h-3 w-3 bg-yellow-500" />
-                  <div className="rounded-full h-3 w-3 bg-green-500" />
+          <div className={S.editorContainer({ isDarkTheme })}>
+            <Tabs defaultValue="initial">
+              <header className={S.header({ editorPreferences })}>
+                {editorPreferences === "default" && (
+                  <div className="flex gap-1.5">
+                    <div className="rounded-full h-3 w-3 bg-red-500" />
+                    <div className="rounded-full h-3 w-3 bg-yellow-500" />
+                    <div className="rounded-full h-3 w-3 bg-green-500" />
+                  </div>
+                )}
+
+                <div className={S.title({ editorPreferences })}>
+                  <TabsList>
+                    <TabsTrigger value="initial" className="relative">
+                      <TitleInput
+                        icon={languagesLogos[language as LanguageProps]}
+                        disabled={presentational}
+                        deletable={false}
+                      />
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-              )}
+              </header>
 
-              <div className={S.title({ editorPreferences })}>
-                <TabsList>
-                  <TabsTrigger value="initial" className="relative">
-                    <TitleInput
-                      icon={languagesLogos[language as LanguageProps]}
+              <TabsContent value="initial">
+                <section
+                  className={cn(
+                    "px-4 py-4",
+                    isDarkTheme
+                      ? "brightness-110"
+                      : "text-stone-800 contrast-200 brightness-[0.65]"
+                  )}
+                >
+                  {editorShowLineNumbers && !isLoading ? (
+                    <div
+                      className={S.lineNumbers()}
+                      style={{ lineHeight: fontSize * 1.7 + "px" }}
+                    >
+                      {lineNumbers.map((num) => (
+                        <div key={num}>{num}</div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {!isLoading ? (
+                    <CodeEditor
+                      ref={editorRef}
+                      className={S.editor({
+                        showLineNumbers: editorShowLineNumbers,
+                      })}
+                      value={code}
+                      onValueChange={(code) => {
+                        useUserSettingsStore.setState({
+                          hasUserEditedCode: true,
+                        });
+                        useUserSettingsStore.setState({ code });
+                      }}
                       disabled={presentational}
-                      deletable={false}
+                      highlight={(code) =>
+                        hljs.highlight(code, {
+                          language: language || "plaintext",
+                        }).value
+                      }
+                      style={{
+                        fontFamily: fonts[fontFamily].name,
+                        fontSize: fontSize,
+                        lineHeight: fontSize * 1.7 + "px",
+                      }}
+                      textareaClassName="focus:outline-none"
+                      onClick={(e) => {
+                        (e.target as HTMLTextAreaElement).select();
+                      }}
                     />
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </header>
+                  ) : (
+                    <div className="flex flex-col w-full space-y-4">
+                      <Skeleton />
+                      <Skeleton />
+                      <Skeleton />
+                      <Skeleton />
+                    </div>
+                  )}
+                </section>
+              </TabsContent>
 
-            <TabsContent value="initial">
-              <section
-                className={cn(
-                  "px-4 py-4",
-                  isDarkTheme
-                    ? "brightness-110"
-                    : "text-stone-800 contrast-200 brightness-[0.65]"
-                )}
-              >
-                {editorShowLineNumbers && !isLoading ? (
-                  <div
-                    className={S.lineNumbers()}
-                    style={{ lineHeight: fontSize * 1.7 + "px" }}
-                  >
-                    {lineNumbers.map((num) => (
-                      <div key={num}>{num}</div>
-                    ))}
-                  </div>
-                ) : null}
+              <TabsContent value="new-tab"></TabsContent>
+            </Tabs>
+          </div>
 
-                {!isLoading ? (
-                  <CodeEditor
-                    ref={editorRef}
-                    className={S.editor({
-                      showLineNumbers: editorShowLineNumbers,
-                    })}
-                    value={code}
-                    onValueChange={(code) => {
-                      useUserSettingsStore.setState({
-                        hasUserEditedCode: true,
-                      });
-                      useUserSettingsStore.setState({ code });
-                    }}
-                    disabled={presentational}
-                    highlight={(code) =>
-                      hljs.highlight(code, {
-                        language: language || "plaintext",
-                      }).value
-                    }
-                    style={{
-                      fontFamily: fonts[fontFamily].name,
-                      fontSize: fontSize,
-                      lineHeight: fontSize * 1.7 + "px",
-                    }}
-                    textareaClassName="focus:outline-none"
-                    onClick={(e) => {
-                      (e.target as HTMLTextAreaElement).select();
-                    }}
-                  />
-                ) : (
-                  <div className="flex flex-col w-full space-y-4">
-                    <Skeleton />
-                    <Skeleton />
-                    <Skeleton />
-                    <Skeleton />
-                  </div>
-                )}
-              </section>
-            </TabsContent>
-
-            <TabsContent value="new-tab"></TabsContent>
-          </Tabs>
+          <WidthMeasurement isVisible={isWidthVisible} width={width} />
         </div>
-
-        <WidthMeasurement isVisible={isWidthVisible} width={width} />
 
         <div
           className={cn(
-            "transition-opacity w-fit mx-auto relative -mb-12",
+            "transition-opacity w-fit mx-auto relative",
             isWidthVisible || width === "auto"
               ? "invisible opacity-0"
               : "visible opacity-100"
@@ -261,14 +263,14 @@ export const Editor = forwardRef<any, EditorProps>(
             variant="ghost"
             className={cn(
               S.widthButton(),
-              padding > 48 ? "bottom-[1%]" : "bottom-6"
+              padding > 48 ? "bottom-16" : "bottom-10"
             )}
           >
             <i className="ri-close-circle-fill mr-2" />
             Reset width
           </Button>
         </div>
-      </div>
+      </>
     );
   }
 );

@@ -47,8 +47,10 @@ export const Changelog = ({ children }: ChangelogProps) => {
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
 
-      <PopoverContent side="right" sideOffset={12}>
+      <PopoverContent side="right" sideOffset={12} className="p-0">
         <div className={S.container()}>
+          <h2 className={S.header()}>Latest updates</h2>
+
           <div className={S.ctaCard()}>
             <h3 className={S.ctaTitle()}>Missing a feature?</h3>
             <Link
@@ -60,60 +62,62 @@ export const Changelog = ({ children }: ChangelogProps) => {
             </Link>
           </div>
 
-          <h2 className={S.header()}>Latest updates</h2>
-          <Separator className="bg-background/50" />
+          <div className={S.changelogContainer()}>
+            {isLoading && (
+              <div className={S.loading()}>
+                <i className="ri-loader-4-fill text-4xl animate-spin" />
+              </div>
+            )}
 
-          {isLoading && (
-            <div className={S.loading()}>
-              <i className="ri-loader-4-fill text-4xl animate-spin" />
-            </div>
-          )}
+            {!!data &&
+              !isLoading &&
+              data.result.entries.map((entry: ChangeLog, index: number) => (
+                <React.Fragment key={entry.id}>
+                  <div className="w-full pt-4">
+                    <div className={S.title()}>
+                      <span>
+                        {entry.types.length > 0 && (
+                          <Badge
+                            variant="success"
+                            className="capitalize scale-90"
+                          >
+                            {entry.types[0]}
+                          </Badge>
+                        )}
+                      </span>
+                      <p>{entry.title}</p>
+                    </div>
 
-          {!!data &&
-            !isLoading &&
-            data.result.entries.map((entry: ChangeLog, index: number) => (
-              <React.Fragment key={entry.id}>
-                <div className="w-full pt-4">
-                  <div className={S.title()}>
-                    <span>
-                      {entry.types.length > 0 && (
-                        <Badge
-                          variant="success"
-                          className="capitalize scale-90"
-                        >
-                          {entry.types[0]}
-                        </Badge>
-                      )}
+                    <ReactMarkdown className="mb-3 text-xs w-full [&_p]:last-child:truncate">
+                      {entry.markdownDetails !== null &&
+                      entry.markdownDetails !== undefined
+                        ? entry.markdownDetails
+                            .split("\n")
+                            .slice(0, 3)
+                            .join("\n")
+                        : ""}
+                    </ReactMarkdown>
+
+                    <span className="text-xs">
+                      <i className="ri-time-line mr-3" />
+                      {dayjs(entry.publishedAt).format("MMM D, YYYY")}
                     </span>
-                    <p>{entry.title}</p>
                   </div>
 
-                  <ReactMarkdown className="mb-3 text-xs w-full [&_p]:last-child:truncate">
-                    {entry.markdownDetails !== null &&
-                    entry.markdownDetails !== undefined
-                      ? entry.markdownDetails.split("\n").slice(0, 3).join("\n")
-                      : ""}
-                  </ReactMarkdown>
+                  {index !== data.result.entries.length - 1 && (
+                    <Separator className="bg-background/50" />
+                  )}
+                </React.Fragment>
+              ))}
 
-                  <span className="text-xs">
-                    <i className="ri-time-line mr-3" />
-                    {dayjs(entry.publishedAt).format("MMM D, YYYY")}
-                  </span>
-                </div>
-
-                {index !== data.result.entries.length - 1 && (
-                  <Separator className="bg-background/50" />
-                )}
-              </React.Fragment>
-            ))}
-
-          <Link
-            className={S.link()}
-            href="https://jollycode.canny.io/changelog"
-            target="_blank"
-          >
-            Read more
-          </Link>
+            <Link
+              className={S.link()}
+              href="https://jollycode.canny.io/changelog"
+              target="_blank"
+            >
+              Read more
+            </Link>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

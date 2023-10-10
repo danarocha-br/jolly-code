@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import { Popover, PopoverContent, PopoverTrigger } from "../../popover";
 import { Tooltip } from "../../tooltip";
@@ -7,13 +8,24 @@ import * as S from "./styles";
 import { Badge } from "../../badge";
 import { hotKeyList } from "@/lib/hot-key-list";
 
+const shortcuts = hotKeyList.filter((item) => item.label === "Shortcuts");
+
 export const HotKeysPopover = () => {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  useHotkeys(shortcuts[0].hotKey, () => handleOpenPopover());
+
+  const handleOpenPopover = () => setIsPopoverOpen(!isPopoverOpen);
+
   if (!hotKeyList) {
     return null;
   }
 
   return (
-    <Popover>
+    <Popover
+      open={isPopoverOpen}
+      onOpenChange={() => handleOpenPopover()}
+    >
       <PopoverTrigger asChild>
         <Button size="icon" variant="ghost">
           <Tooltip content="Shortcuts" align="end" side="right" sideOffset={10}>

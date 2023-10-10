@@ -83,4 +83,10 @@ export const hotKeyList = [
     keyboard: "F",
     group: "theme",
   },
+  {
+    label: "Shortcuts",
+    hotKey: "/",
+    keyboard: "/",
+    group: "",
+  },
 ];
