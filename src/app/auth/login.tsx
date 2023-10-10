@@ -25,23 +25,22 @@ export const useSignInWithGithub = () => {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  const signInWithGithub = useMutation(
-    async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "github",
-      });
+  const previousRoute = location.href;
+  localStorage.setItem("previousRoute", previousRoute);
 
-      if (error) {
-        console.log(error);
-        toast.error("Sorry, something went wrong. Please try again.");
-      }
-    },
-    {
-      onSuccess: () => {
-        router.refresh();
-      },
+  const signInWithGithub = useMutation(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+    });
+
+    const previousRoute = localStorage.getItem("previousRoute");
+    router.push(previousRoute || "/");
+
+    if (error) {
+      console.log(error);
+      toast.error("Sorry, something went wrong. Please try again.");
     }
-  );
+  });
 
   return signInWithGithub;
 };
@@ -60,7 +59,7 @@ export const LoginDialog = ({ children }: LoginProps) => {
 
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <div className='text-center flex justify-center'>
+          <div className="text-center flex justify-center">
             <Logo variant="short" />
           </div>
 

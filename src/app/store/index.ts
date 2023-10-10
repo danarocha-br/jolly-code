@@ -8,6 +8,7 @@ import { FontsProps } from "@/lib/fonts-options";
 export type StoreState = {
   user: User | null;
   code: string;
+  hasUserEditedCode: boolean;
   title: string;
   backgroundTheme: ThemeProps;
   showBackground: boolean;
@@ -33,6 +34,7 @@ export const useUserSettingsStore = create<
       showBackground: true,
       language: "plaintext",
       autoDetectLanguage: false,
+      hasUserEditedCode: false,
       fontSize: 15,
       fontFamily: "robotoMono",
       padding: 60,

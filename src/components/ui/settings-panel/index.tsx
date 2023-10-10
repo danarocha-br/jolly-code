@@ -15,6 +15,7 @@ import * as S from "./styles";
 
 export const SettingsPanel = () => {
   const router = useRouter();
+
   const isPresentational = useUserSettingsStore(
     (state) => state.presentational
   );
@@ -26,7 +27,6 @@ export const SettingsPanel = () => {
 
     useUserSettingsStore.setState({
       ...state,
-      code: codeSnippets[Math.floor(Math.random() * codeSnippets.length)].code,
       padding: 44,
       fontSize: Number(15),
     });

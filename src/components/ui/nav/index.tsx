@@ -99,35 +99,40 @@ export const Nav = () => {
           <div className="flex pr-3 -space-x-2">
             {users.slice(0, 3).map(({ connectionId, info }: any) => {
               return (
-                <Avatar
-                  key={connectionId}
-                  imageSrc={info.avatar_url}
-                  username={info.name}
-                  color={avatarBackgroundColorRef.current || undefined}
-                  size="md"
-                />
+                <Tooltip content={info.name || "Anonymous"} key={connectionId}>
+                  <Avatar
+                    imageSrc={info.avatar_url || undefined}
+                    username={info.name || "Anonymous"}
+                    color={avatarBackgroundColorRef.current || undefined}
+                    size="md"
+                  />
+                </Tooltip>
               );
             })}
 
             {hasMoreUsers && (
-              <Avatar
-                username={(users.length - 3).toString()}
-                variant="other-user"
-                size="md"
-              />
+              <Tooltip content={`More ${userCount - 3} users`}>
+                <Avatar
+                  username={(userCount - 3).toString()}
+                  variant="other-user"
+                  size="md"
+                />
+              </Tooltip>
             )}
 
             {currentUser && (
-              <div className="relative">
-                <Avatar
-                  imageSrc={
-                    (currentUser.info as { avatar_url: string }).avatar_url
-                  }
-                  username="You"
-                  size="md"
-                  color={avatarBackgroundColorRef.current || undefined}
-                />
-              </div>
+              <Tooltip content="You">
+                <div className="relative">
+                  <Avatar
+                    imageSrc={
+                      (currentUser.info as { avatar_url: string }).avatar_url
+                    }
+                    username="You"
+                    size="md"
+                    color={avatarBackgroundColorRef.current || undefined}
+                  />
+                </div>
+              </Tooltip>
             )}
           </div>
         )}

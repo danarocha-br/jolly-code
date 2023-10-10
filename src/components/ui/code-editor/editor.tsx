@@ -40,11 +40,15 @@ const unfocusEditor = hotKeyList.filter(
 
 export const Editor = forwardRef<any, EditorProps>(
   ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
-    const editorRef = useRef(null);
-    const user = useUserSettingsStore((state) => state.user);
     const { theme } = useTheme();
+    const editorRef = useRef(null);
+
+    const user = useUserSettingsStore((state) => state.user);
     const isDarkTheme = theme === "dark";
     const code = useUserSettingsStore((state) => state.code);
+    const hasUserEditedCode = useUserSettingsStore(
+      (state) => state.hasUserEditedCode
+    );
     const fontFamily = useUserSettingsStore((state) => state.fontFamily);
     const fontSize = useUserSettingsStore((state) => state.fontSize);
     const showBackground = useUserSettingsStore(
@@ -75,8 +79,11 @@ export const Editor = forwardRef<any, EditorProps>(
       if (presentational) {
         return;
       }
-      useUserSettingsStore.setState(randomSnippet);
-    }, [presentational]);
+
+      if (!hasUserEditedCode) {
+        useUserSettingsStore.setState(randomSnippet);
+      }
+    }, [presentational, hasUserEditedCode]);
 
     useEffect(() => {
       if (autoDetectLanguage) {
@@ -202,6 +209,9 @@ export const Editor = forwardRef<any, EditorProps>(
                     })}
                     value={code}
                     onValueChange={(code) => {
+                      useUserSettingsStore.setState({
+                        hasUserEditedCode: true,
+                      });
                       useUserSettingsStore.setState({ code });
                     }}
                     disabled={presentational}
