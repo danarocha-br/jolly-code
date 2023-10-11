@@ -22,9 +22,11 @@ export const itemContainer = cva([
   "justify-between",
   "transition-colors",
   "overflow-hidden",
+  "outline-none",
 
   "hover:bg-muted/60",
   "dark:hover:bg-muted/40",
+  "focus:outline-none"
 ]);
 
 export const footer = cva([

@@ -1,17 +1,14 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { useTheme } from "next-themes";
-import { toast } from "sonner";
+import { useHotkeys } from "react-hotkeys-hook";
 
-import { useUserSettingsStore } from "@/app/store";
 import { Button } from "../button";
 import { ExportMenu } from "./export-menu";
-import { useHotkeys } from "react-hotkeys-hook";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { Tooltip } from "../tooltip";
-import { Avatar } from "../avatar";
-import { useOthers, useSelf } from "../../../../liveblocks.config";
+import { useUserSettingsStore } from "@/app/store";
+import { CopyURLToClipboard } from "./copy-url-to-clipboard";
+import UsersPresence from "./users-presence";
 
-const copyLink = hotKeyList.filter((item) => item.label === "Copy link");
 const toggleTheme = hotKeyList.filter((item) => item.label === "Toggle theme");
 
 export const Nav = () => {
@@ -19,36 +16,6 @@ export const Nav = () => {
   const isPresentational = useUserSettingsStore(
     (state) => state.presentational
   );
-
-  const users = useOthers();
-  const userCount = users.length;
-  const currentUser = useSelf();
-  const hasMoreUsers = users.length > 3;
-
-  const avatarBackgroundColorRef = useRef<string | null>(generateRandomColor());
-
-  /**
-   * Handles copying the link to the clipboard.
-   *
-   * @return {void}
-   */
-  function handleCopyLinkToClipboard() {
-    // Get the user settings state using the useUserSettingsStore hook
-    const state = useUserSettingsStore.getState();
-
-    // Convert the state object to query parameters and encode the 'code' property using base64
-    const queryParams = new URLSearchParams(
-      //@ts-ignore
-      { ...state, code: btoa(state.code) }
-    ).toString();
-
-    // Copy the generated link to the clipboard by writing it as text
-    navigator.clipboard.writeText(
-      `${location.href}?${queryParams}&shared=true`
-    );
-
-    toast.success("Link copied to clipboard");
-  }
 
   /**
    * Handles the toggle theme functionality.
@@ -59,24 +26,6 @@ export const Nav = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   }
 
-  useEffect(() => {
-    if (!avatarBackgroundColorRef.current) {
-      avatarBackgroundColorRef.current = generateRandomColor();
-    }
-  }, []);
-
-  /**
-   * Generates a random color.
-   *
-   * @return {string} The randomly generated hexadecimal color.
-   */
-  function generateRandomColor() {
-    // Generate a random hexadecimal number
-    var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
-    return randomColor;
-  }
-
-  useHotkeys(copyLink[0].hotKey, () => handleCopyLinkToClipboard());
   useHotkeys(toggleTheme[0].hotKey, () => handleToggleTheme());
 
   return (
@@ -95,59 +44,11 @@ export const Nav = () => {
       </Button>
 
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
-        {isPresentational && (
-          <div className="flex pr-3 -space-x-2">
-            {users.slice(0, 3).map(({ connectionId, info }: any) => {
-              return (
-                <Tooltip content={info.name || "Anonymous"} key={connectionId}>
-                  <Avatar
-                    imageSrc={info.avatar_url || undefined}
-                    username={info.name || "Anonymous"}
-                    color={avatarBackgroundColorRef.current || undefined}
-                    size="md"
-                  />
-                </Tooltip>
-              );
-            })}
-
-            {hasMoreUsers && (
-              <Tooltip content={`More ${userCount - 3} users`}>
-                <Avatar
-                  username={(userCount - 3).toString()}
-                  variant="other-user"
-                  size="md"
-                />
-              </Tooltip>
-            )}
-
-            {currentUser && (
-              <Tooltip content="You">
-                <div className="relative">
-                  <Avatar
-                    imageSrc={
-                      (currentUser.info as { avatar_url: string }).avatar_url
-                    }
-                    username="You"
-                    size="md"
-                    color={avatarBackgroundColorRef.current || undefined}
-                  />
-                </div>
-              </Tooltip>
-            )}
-          </div>
-        )}
+        {isPresentational && <UsersPresence />}
 
         <ExportMenu />
 
-        <Tooltip content={copyLink[0].keyboard}>
-          <Button
-            size="sm"
-            onClick={handleCopyLinkToClipboard}
-            className="whitespace-nowrap"
-          >
-            <i className="ri-link text-lg mr-2"></i>Copy Link
-          </Button>
-        </Tooltip>
+        <CopyURLToClipboard />
       </div>
     </nav>
   );

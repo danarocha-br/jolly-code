@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { Room } from "./room";
 
 export default function Home() {
-  const supabase = createClientComponentClient();
+  const supabase = createClientComponentClient<Database>();
   const searchParams = useSearchParams();
   const shared = searchParams.get("shared");
 

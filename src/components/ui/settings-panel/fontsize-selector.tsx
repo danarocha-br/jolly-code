@@ -1,7 +1,7 @@
 import React from "react";
 
 import { useUserSettingsStore } from "@/app/store";
-import { useMediaQuery } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/utils/media-query";
 import { Slider } from "../slider";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useHotkeys } from "react-hotkeys-hook";

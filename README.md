@@ -14,6 +14,10 @@ We support a wide array of programming languages, including Python, JavaScript, 
 
 Fancy showing off your beautiful code? You can share captivating images of your code right from JollyCode.
 
+### 🌍 Short shared url
+
+Once you share your url, it get's shortened for easy sharing via services like Twitter, Facebook, LinkedIn etc.
+
 ### 💾 Code Snippets
 
 Save your code snippets for future reference directly in the tool. Group your saved snippets into categories or tag them for easy retrieval.
