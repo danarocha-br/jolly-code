@@ -37,7 +37,6 @@ export const useSignInWithGithub = () => {
     router.push(previousRoute || "/");
 
     if (error) {
-      console.log(error);
       toast.error("Sorry, something went wrong. Please try again.");
     }
   });
