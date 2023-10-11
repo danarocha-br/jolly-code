@@ -36,17 +36,22 @@ AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, color, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
-    ref={ref}
-    className={cn(S.fallback(), className)}
-    style={{
-      color: color ? getReadableColorForBackground(color) : "#fff",
-      backgroundColor: color ? color : "hsl(260deg, 3.7%, 20%)",
-    }}
-    {...props}
-  />
-));
+>(({ className, color, ...props }, ref) => {
+  const isValidColor = /^#([0-9A-F]{3}){1,2}$/i.test(color || "");
+  return (
+    <AvatarPrimitive.Fallback
+      ref={ref}
+      className={cn(S.fallback(), className)}
+      style={{
+        color: isValidColor
+          ? getReadableColorForBackground(color || "")
+          : "#fff",
+        backgroundColor: color ? color : "hsl(260deg, 3.7%, 20%)",
+      }}
+      {...props}
+    />
+  );
+});
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
 const Avatar = React.forwardRef<
