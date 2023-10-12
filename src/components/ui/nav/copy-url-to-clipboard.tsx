@@ -29,8 +29,9 @@ export const CopyURLToClipboard = () => {
       });
 
       if (response.ok) {
-        const { data: links } = await response.json();
-        const shortUrl = links.data[0].short_url;
+        const data = await response.json();
+
+        const shortUrl = data.short_url;
         navigator.clipboard.writeText(`${getDomain()}/${shortUrl}`);
       } else {
         toast.error("Failed to fetch data.");
@@ -38,6 +39,7 @@ export const CopyURLToClipboard = () => {
 
       return { response };
     } catch (error) {
+      console.log(error);
       toast.error("An error occurred while copying the link.");
     }
   });
@@ -57,7 +59,7 @@ export const CopyURLToClipboard = () => {
 
     await setGeneratedLongUrl(url);
 
-    postLinkDataToDatabase.mutate();
+    await postLinkDataToDatabase.mutate();
 
     toast.success("Link copied to clipboard.");
   }, [setGeneratedLongUrl, postLinkDataToDatabase]);
@@ -67,11 +69,15 @@ export const CopyURLToClipboard = () => {
     []
   );
 
+  useHotkeys(copyLink[0]?.hotKey, () => {
+    if (copyLink[0]) {
+      handleCopyLinkToClipboard();
+    }
+  });
+
   if (!copyLink[0]) {
     return null;
   }
-
-  useHotkeys(copyLink[0].hotKey, handleCopyLinkToClipboard);
 
   return (
     <Tooltip content={copyLink[0].keyboard}>

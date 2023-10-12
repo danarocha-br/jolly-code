@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const result = await supabase
       .from("links")
       .select("url")
-      .eq("short_url)", slug);
+      .eq("short_url", slug);
 
     data = result.data;
 
@@ -74,11 +74,31 @@ export async function POST(request: NextRequest) {
     const longUrl = url ? url : null;
     const validURL = await isValidURL(longUrl);
 
+    let data;
+
     if (!validURL) {
       return NextResponse.json(
         { message: `${longUrl} is not a valid url.` },
         { status: 400 }
       );
+    }
+
+    const { data: existingUrl, error } = await supabase
+      .from("links")
+      .select("url, short_url")
+      .eq("url", longUrl);
+
+    if (error) {
+      console.error(error);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
+
+    if (existingUrl && existingUrl.length > 0) {
+      // URL already exists, return the existing short URL
+      return NextResponse.json({
+        status: 200,
+        short_url: existingUrl[0].short_url,
+      });
     }
 
     const key = nanoid(5);
@@ -94,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const shortUrl = key;
 
-    const data = await supabase
+    const result = await supabase
       .from("links")
       .insert([
         {
@@ -106,9 +126,15 @@ export async function POST(request: NextRequest) {
       ])
       .select();
 
+    data = result.data;
+
+    if (!data || !data[0]) {
+      return NextResponse.json({ error: "No data found." }, { status: 404 });
+    }
+
     return NextResponse.json({
       status: 200,
-      data,
+      short_url: data[0].short_url,
     });
   } catch (error) {
     return NextResponse.json(error, { status: 500 });

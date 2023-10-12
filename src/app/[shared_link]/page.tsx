@@ -20,13 +20,13 @@ type SharedLinkPageProps = {
 export default function SharedLinkPage({ params }: SharedLinkPageProps) {
   const { shared_link } = params;
 
-  if (!shared_link) {
-    return notFound();
-  }
-
   const { data, isLoading, error } = useQuery(
     ["shared_link", shared_link],
     async () => {
+      if (!shared_link) {
+        throw new Error("Shared link not found");
+      }
+
       const params = new URLSearchParams();
       params.append("slug", shared_link);
 
@@ -35,7 +35,7 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
       });
 
       if (!response.ok || !response) {
-        return notFound();
+        throw new Error("Response not OK");
       }
 
       const { url } = await response.json();
@@ -43,6 +43,10 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
       return url;
     }
   );
+
+  if (!shared_link || error) {
+    return notFound();
+  }
 
   if (isLoading) {
     return (
@@ -53,10 +57,6 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
         />
       </div>
     );
-  }
-
-  if (error) {
-    return notFound();
   }
 
   redirect(data);
