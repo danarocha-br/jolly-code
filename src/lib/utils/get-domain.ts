@@ -15,7 +15,7 @@ export function getDomain(
     development: "http",
   };
   const selectedProtocol = protocolMapping[environment] || protocol;
-  const selectedDomain = process.env.PUBLIC_URL || domain;
+  const selectedDomain = process.env.NEXT_PUBLIC_VERCEL_URL || domain;
 
   if (!selectedProtocol || !selectedDomain) {
     throw new Error("Invalid environment variables.");

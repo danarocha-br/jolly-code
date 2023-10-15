@@ -8,7 +8,6 @@ import { Tooltip } from "../tooltip";
 import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserSettingsStore } from "@/app/store";
-import { getDomain } from "@/lib/utils/get-domain";
 
 export const CopyURLToClipboard = () => {
   const user = useUserSettingsStore((state) => state.user);
@@ -38,7 +37,7 @@ export const CopyURLToClipboard = () => {
         const data = await response.json();
 
         const shortUrl = data.short_url;
-        navigator.clipboard.writeText(`${getDomain()}/${shortUrl}`);
+        navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
       } else {
         toast.error("Failed to fetch data.");
       }
