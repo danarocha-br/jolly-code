@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import React, { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -12,7 +12,13 @@ import { getDomain } from "@/lib/utils/get-domain";
 
 export const CopyURLToClipboard = () => {
   const user = useUserSettingsStore((state) => state.user);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+
   const [generatedLongUrl, setGeneratedLongUrl] = useState<string>("");
+
+  useEffect(() => {
+    setCurrentUrl(window.location.href);
+  }, []);
 
   const postLinkDataToDatabase = useMutation(async () => {
     try {
@@ -55,7 +61,7 @@ export const CopyURLToClipboard = () => {
       code: btoa(state.code),
     }).toString();
 
-    const url = `${location.href}?${queryParams}&shared=true`;
+    const url = `${currentUrl}?${queryParams}&shared=true`;
 
     await setGeneratedLongUrl(url);
 
