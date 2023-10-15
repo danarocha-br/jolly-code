@@ -35,8 +35,6 @@ export const EditorOptionsMenu = () => {
     (state) => state.editorShowLineNumbers
   );
 
-  const [showLineNumbers, setShowLineNumbers] = useState(editorShowLineNumbers);
-
   function changeEditorViewPreference(value: EditorViewPreference) {
     const userSettings = useUserSettingsStore.getState();
     const updatedSettings = { ...userSettings, editor: value };
@@ -48,7 +46,6 @@ export const EditorOptionsMenu = () => {
     changeEditorViewPreference(value);
   }
   function handleShowLineNumbers(checked: boolean) {
-    setShowLineNumbers(checked);
     useUserSettingsStore.setState({ editorShowLineNumbers: checked });
   }
 
@@ -59,7 +56,7 @@ export const EditorOptionsMenu = () => {
   });
 
   useHotkeys(toggleEditorLineNumbers[0].hotKey, () => {
-    handleShowLineNumbers(showLineNumbers === true ? false : true);
+    handleShowLineNumbers(editorShowLineNumbers === true ? false : true);
   });
 
   return (
@@ -87,7 +84,7 @@ export const EditorOptionsMenu = () => {
         <DropdownMenuSeparator />
 
         <DropdownMenuCheckboxItem
-          checked={showLineNumbers}
+          checked={editorShowLineNumbers}
           onCheckedChange={(checked: boolean) => handleShowLineNumbers(checked)}
         >
           Show line numbers

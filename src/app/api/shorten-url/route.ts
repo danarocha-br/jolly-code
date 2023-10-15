@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { cookies } from "next/headers";
 import Error from "next/error";
+import { createClient } from "@supabase/supabase-js";
 
 import { isValidURL } from "@/lib/utils/is-valid-url";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
 export const runtime = "edge";
 
@@ -18,6 +18,11 @@ const keySet: Set<string> = new Set();
  * @return {Promise<NextResponse>} A promise that resolves to a NextResponse object containing the URL associated with the slug, or an error response if the slug is invalid or not found.
  */
 export async function GET(request: NextRequest) {
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const url = new URL(request.url);
 
   const slug = url.searchParams.get("slug");
@@ -36,8 +41,6 @@ export async function GET(request: NextRequest) {
   let data;
   let error;
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies });
-
     const result = await supabase
       .from("links")
       .select("url")
@@ -61,9 +64,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const supabase = createRouteHandlerClient<Database>({ cookies });
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
+  try {
     const contentType = await request.headers.get("content-type");
     if (contentType !== "application/json") {
       return NextResponse.json({ error: "Invalid request" }, { status: 415 });
