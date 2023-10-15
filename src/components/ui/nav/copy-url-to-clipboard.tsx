@@ -37,7 +37,7 @@ export const CopyURLToClipboard = () => {
         const data = await response.json();
 
         const shortUrl = data.short_url;
-        navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
+        navigator.clipboard.writeText(`${currentUrl}${shortUrl}`);
       } else {
         toast.error("Failed to fetch data.");
       }
