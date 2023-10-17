@@ -30,7 +30,7 @@ const UsersPresence = () => {
   }, []);
 
   return (
-    <div className="flex pr-3 -space-x-2">
+    <div className="flex pr-3 space-x-1">
       {users.slice(0, 3).map(({ connectionId, info }: any) => {
         return (
           <Tooltip content={info.name || "Anonymous"} key={connectionId}>

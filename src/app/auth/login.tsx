@@ -64,9 +64,9 @@ export const LoginDialog = ({ children }: LoginProps) => {
 
           <DialogDescription className="text-center flex flex-col justify-center items-center">
             {/* <p className="mt-8 font-semibold text-3xl">Create an account</p> */}
-            <p className="mt-8 text-lg font-normal">
+            <span className="mt-8 text-lg font-normal">
               Create, manage and share code snippets with Jolly Code.
-            </p>
+            </span>
           </DialogDescription>
         </DialogHeader>
 
