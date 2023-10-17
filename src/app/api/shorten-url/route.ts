@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await supabase
       .from("links")
-      .select("url")
+      .select("id, url")
       .eq("short_url", slug);
 
     data = result.data;
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     status: 200,
+    id: data[0].id,
     url: data[0].url,
   });
 }

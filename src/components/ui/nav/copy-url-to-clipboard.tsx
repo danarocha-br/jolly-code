@@ -13,13 +13,13 @@ export const CopyURLToClipboard = () => {
   const user = useUserSettingsStore((state) => state.user);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
-  const [generatedLongUrl, setGeneratedLongUrl] = useState<string>("");
-
   useEffect(() => {
-    setCurrentUrl(window.location.href);
+    const urlObj = new URL(window.location.href);
+
+    setCurrentUrl(urlObj.origin);
   }, []);
 
-  const postLinkDataToDatabase = useMutation(async () => {
+  const postLinkDataToDatabase = useMutation(async (url: string) => {
     try {
       const response = await fetch("/api/shorten-url", {
         method: "POST",
@@ -29,18 +29,15 @@ export const CopyURLToClipboard = () => {
         body: JSON.stringify({
           user_id: user?.id,
           snippet_id: "",
-          url: generatedLongUrl,
+          url,
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
 
-        const shortUrl = data.short_url;
-        navigator.clipboard.writeText(`${currentUrl}${shortUrl}`);
-      } else {
-        toast.error("Failed to fetch data.");
-      }
+      const shortUrl = data.short_url;
+      console.log(currentUrl);
+      await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
 
       return { response };
     } catch (error) {
@@ -62,12 +59,10 @@ export const CopyURLToClipboard = () => {
 
     const url = `${currentUrl}?${queryParams}&shared=true`;
 
-    await setGeneratedLongUrl(url);
-
-    await postLinkDataToDatabase.mutate();
+    await postLinkDataToDatabase.mutate(url);
 
     toast.success("Link copied to clipboard.");
-  }, [setGeneratedLongUrl, postLinkDataToDatabase]);
+  }, [postLinkDataToDatabase, currentUrl]);
 
   const copyLink = useMemo(
     () => hotKeyList.filter((item) => item.label === "Copy link"),
@@ -88,7 +83,7 @@ export const CopyURLToClipboard = () => {
     <Tooltip content={copyLink[0].keyboard}>
       <Button
         size="sm"
-        onClick={handleCopyLinkToClipboard}
+        onClick={() => handleCopyLinkToClipboard()}
         className="whitespace-nowrap"
       >
         <i className="ri-link text-lg mr-2"></i>Copy Link

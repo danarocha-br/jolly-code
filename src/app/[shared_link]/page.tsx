@@ -38,14 +38,20 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
         throw new Error("Response not OK");
       }
 
-      const { url } = await response.json();
+      const { url, id } = await response.json();
 
-      return url;
+      return { id, url };
     }
   );
 
+  console.log(data);
+
   if (!shared_link || error) {
     return notFound();
+  }
+
+  if (data?.id) {
+    console.log(data.id);
   }
 
   if (isLoading) {
@@ -59,5 +65,5 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
     );
   }
 
-  redirect(data);
+  redirect(data?.url);
 }

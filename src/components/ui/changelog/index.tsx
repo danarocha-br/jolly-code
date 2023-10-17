@@ -69,8 +69,8 @@ export const Changelog = ({ children }: ChangelogProps) => {
               </div>
             )}
 
-            {!!data &&
-              !isLoading &&
+            {/* {!isLoading &&
+              data &&
               data.result.entries.map((entry: ChangeLog, index: number) => (
                 <React.Fragment key={entry.id}>
                   <div className="w-full pt-4">
@@ -108,7 +108,7 @@ export const Changelog = ({ children }: ChangelogProps) => {
                     <Separator className="bg-background/50" />
                   )}
                 </React.Fragment>
-              ))}
+              ))} */}
 
             <Link
               className={S.link()}
