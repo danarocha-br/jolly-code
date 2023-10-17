@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import { cookies } from "next/headers";
 import Error from "next/error";
-import { createClient } from "@supabase/supabase-js";
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
 
 import { isValidURL } from "@/lib/utils/is-valid-url";
 
 export const runtime = "edge";
+
+const supabase: SupabaseClient = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const shortURLs: { [key: string]: string } = {};
 const keySet: Set<string> = new Set();
@@ -18,11 +22,6 @@ const keySet: Set<string> = new Set();
  * @return {Promise<NextResponse>} A promise that resolves to a NextResponse object containing the URL associated with the slug, or an error response if the slug is invalid or not found.
  */
 export async function GET(request: NextRequest) {
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   const url = new URL(request.url);
 
   const slug = url.searchParams.get("slug");
@@ -65,11 +64,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   try {
     const contentType = await request.headers.get("content-type");
     if (contentType !== "application/json") {

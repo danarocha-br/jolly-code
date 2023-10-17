@@ -1,4 +1,6 @@
-export type Json =
+Need to install the following packages:
+  supabase@1.106.1
+Ok to proceed? (y) export type Json =
   | string
   | number
   | boolean
@@ -47,7 +49,8 @@ export interface Database {
           short_url: string
           snippet_id: string | null
           url: string | null
-          user_id: string
+          user_id: string | null
+          visits: number | null
         }
         Insert: {
           created_at?: string
@@ -55,7 +58,8 @@ export interface Database {
           short_url: string
           snippet_id?: string | null
           url?: string | null
-          user_id: string
+          user_id?: string | null
+          visits?: number | null
         }
         Update: {
           created_at?: string
@@ -63,7 +67,8 @@ export interface Database {
           short_url?: string
           snippet_id?: string | null
           url?: string | null
-          user_id?: string
+          user_id?: string | null
+          visits?: number | null
         }
         Relationships: [
           {

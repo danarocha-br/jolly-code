@@ -36,12 +36,10 @@ export const CopyURLToClipboard = () => {
       const data = await response.json();
 
       const shortUrl = data.short_url;
-      console.log(currentUrl);
       await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
 
       return { response };
     } catch (error) {
-      console.log(error);
       toast.error("An error occurred while copying the link.");
     }
   });

@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
 
+const supabase: SupabaseClient = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+/**
+ * Handles the POST request and updates the visit count for a link in the database.
+ *
+ * @param {NextRequest} request - The incoming request object.
+ * @return {Promise<NextResponse>} - A promise that resolves to the response object.
+ */
 export async function POST(request: NextRequest) {
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   try {
     const contentType = await request.headers.get("content-type");
     if (contentType !== "application/json") {
       return NextResponse.json({ error: "Invalid request" }, { status: 415 });
     }
 
-    const { id, numberOfVisits } = await request.json();
+    const { id } = await request.json();
 
     if (!id) {
       return NextResponse.json(
@@ -22,12 +28,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const getVisitsResult = await supabase
+      .from("links")
+      .select("visits")
+      .eq("id", id);
+
+    if (
+      getVisitsResult.error ||
+      !getVisitsResult.data ||
+      !getVisitsResult.data[0]
+    ) {
+      console.error(getVisitsResult.error);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
+
+    let currentVisits = getVisitsResult.data[0].visits;
+
+    if (currentVisits === null) {
+      currentVisits = 0;
+    }
+
+    const updatedVisitCount = currentVisits + 1;
+
     let data;
 
     const result = await supabase
       .from("links")
-      .update({ visits: numberOfVisits })
-      .match({ id });
+      .update({ visits: updatedVisitCount })
+      .eq("id", id)
+      .select("visits");
 
     if (result.error) {
       console.error(result.error);
@@ -36,13 +65,9 @@ export async function POST(request: NextRequest) {
 
     data = result.data;
 
-    if (!data || !data[0]) {
-      return NextResponse.json({ error: "No data found." }, { status: 404 });
-    }
-
     return NextResponse.json({
       status: 200,
-      visits: data,
+      visits: data[0].visits,
     });
   } catch (error) {
     return NextResponse.json(error, { status: 500 });

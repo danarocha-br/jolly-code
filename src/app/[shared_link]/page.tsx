@@ -41,17 +41,26 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
       const { url, id } = await response.json();
 
       return { id, url };
+    },
+    {
+      async onSuccess(data) {
+        if (data.id) {
+          await fetch(`/api/save-shared-url-visits`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: data?.id,
+            }),
+          });
+        }
+      },
     }
   );
 
-  console.log(data);
-
   if (!shared_link || error) {
     return notFound();
-  }
-
-  if (data?.id) {
-    console.log(data.id);
   }
 
   if (isLoading) {
