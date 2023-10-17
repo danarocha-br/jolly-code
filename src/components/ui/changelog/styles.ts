@@ -65,14 +65,12 @@ export const ctaLink = cva([
 ]);
 
 export const changelogContainer = cva([
-  "bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))]",
+  "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]",
 
   "from-green-400/10",
-  "via-green-400/5",
   "to-accent",
 
-  "dark:from-green-800/40",
-  "dark:via-green-800/10",
+  "dark:from-zinc-800",
   "dark:to-zinc-900",
 
   "py-2",

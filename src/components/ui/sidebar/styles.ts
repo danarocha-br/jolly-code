@@ -3,13 +3,14 @@ import { cva } from "class-variance-authority";
 export const container = cva(
   [
     "relative",
-    "justify-center",
+    "items-center",
     "rounded-tr-[20px]",
     "rounded-br-[20px]",
     "mt-4",
     "mb-4",
     "pt-1",
     "flex",
+    "flex-col",
     "sticky",
     "left-0",
     "top-2",
@@ -21,6 +22,18 @@ export const container = cva(
       isPresentational: {
         true: ["bg-subdued/50", "bg-blend-exclusion"],
         false: ["bg-subdued"],
+      },
+    },
+  }
+);
+
+export const title = cva(
+  ["mt-3", "text-accent-foreground/70", "transition-opacity"],
+  {
+    variants: {
+      show: {
+        true: ["opacity-100"],
+        false: ["opacity-0"],
       },
     },
   }
@@ -75,5 +88,5 @@ export const author = cva([
   "text-foreground",
   "whitespace-nowrap",
   "pt-2",
-  "pl-2"
+  "pl-2",
 ]);

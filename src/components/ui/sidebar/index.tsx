@@ -9,6 +9,8 @@ import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import Link from "next/link";
+import { Skeleton } from "../skeleton";
+import { Snippets } from "./snippets";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -47,6 +49,7 @@ export const Sidebar = () => {
   );
   const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
   const memoizedTheme = useMemo(() => theme, [theme]);
+  const showSidebarContent = useMemo(() => initialWidth !== width, [width]);
 
   return (
     <aside className="hidden lg:flex">
@@ -76,10 +79,14 @@ export const Sidebar = () => {
           )}
         </Button>
 
+        <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
+
+        <Snippets show={showSidebarContent} />
+
         <div className="absolute bottom-3 left-2">
           <HoverCard openDelay={0}>
             <HoverCardTrigger>
-              <div className={S.logoShort({ show: initialWidth !== width })}>
+              <div className={S.logoShort({ show: showSidebarContent })}>
                 <Logo variant="short" />
               </div>
             </HoverCardTrigger>

@@ -7,12 +7,12 @@ export const content = cva([
   "p-4",
   "w-[280px]",
   "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]",
-  "from-green-400/10",
-  "via-green-400/5",
+  "from-green-50",
+  "via-zinc-100",
   "to-accent",
 
-  "dark:from-green-800/40",
-  "dark:via-green-800/10",
+  "dark:from-green-900",
+  "dark:via-zinc-900",
   "dark:to-zinc-900",
 ]);
 

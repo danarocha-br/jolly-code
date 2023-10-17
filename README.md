@@ -18,6 +18,10 @@ Fancy showing off your beautiful code? You can share captivating images of your 
 
 Once you share your url, it get's shortened for easy sharing via services like Twitter, Facebook, LinkedIn etc.
 
+### 🌍 Shared url visitors count
+
+If you shared a link as a logged user, you can visualize how many users have visited your link.
+
 ### 💾 Code Snippets
 
 Save your code snippets for future reference directly in the tool. Group your saved snippets into categories or tag them for easy retrieval.
