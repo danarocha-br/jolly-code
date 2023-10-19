@@ -62,6 +62,7 @@ export const editor = cva([], {
   variants: {
     showLineNumbers: {
       true: ["ml-6"],
+      false: ["ml-0"],
     },
   },
   defaultVariants: {
@@ -139,11 +140,11 @@ export const widthButton = cva([
 export const bookmarkButton = cva([
   "absolute",
 
-  "opacity-0",
+  // "opacity-0",
   "transition-opacity",
   "rounded-full",
 
-  "group-hover/editor:opacity-100",
+  // "group-hover/editor:opacity-100",
 ]);
 
 export const resizableButton = cva([

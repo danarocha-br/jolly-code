@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { User } from '@supabase/supabase-js';
+import { User } from "@supabase/supabase-js";
 
 import { ThemeProps } from "@/lib/themes-options";
 import { FontsProps } from "@/lib/fonts-options";
@@ -20,6 +20,7 @@ export type StoreState = {
   presentational: boolean;
   editor: "default" | "minimal";
   editorShowLineNumbers: boolean;
+  isSnippetSaved: boolean;
 };
 
 export const useUserSettingsStore = create<
@@ -43,6 +44,7 @@ export const useUserSettingsStore = create<
       editorShowLineNumbers: false,
       editorRef: null,
       user: null,
+      isSnippetSaved: false,
     }),
     { name: "user-settings" }
   )

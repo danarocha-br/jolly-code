@@ -40,7 +40,7 @@ export const CopyURLToClipboard = () => {
 
       return { response };
     } catch (error) {
-      toast.error("An error occurred while copying the link.");
+      toast.error("Oh no, something went wrong. Please try again.");
     }
   });
 

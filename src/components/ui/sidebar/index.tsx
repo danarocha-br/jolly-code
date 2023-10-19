@@ -1,16 +1,15 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 import * as S from "./styles";
 import { Button } from "../button";
-import { useUserSettingsStore } from "@/app/store";
 import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
-import Link from "next/link";
-import { Skeleton } from "../skeleton";
 import { Snippets } from "./snippets";
+import { useUserSettingsStore } from "@/app/store";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",

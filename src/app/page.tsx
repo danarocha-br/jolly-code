@@ -56,12 +56,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const presentational = shared === "true";
-    const showBackground = shared !== "true";
-
     useUserSettingsStore.setState({
-      presentational,
-      showBackground,
+      presentational: shared === "true" ? true : false,
+      showBackground: shared === "true" ? false : true,
     });
   }, [shared]);
 
@@ -102,6 +99,7 @@ export default function Home() {
       autoDetectLanguage: state.autoDetectLanguage === "true",
       padding: 28,
       fontSize: Number(15),
+      editorShowLineNumbers: false,
     });
   }, []);
 

@@ -25,7 +25,7 @@ export const PaddingSelector = () => {
       value={[padding]}
       onValueChange={([padding]: number[]) => handleChangePadding(padding)}
       max={92}
-      min={28}
+      min={36}
       step={4}
       iconSlot={<i className=" ri-artboard-2-line scale-105" />}
       className="hidden lg:flex"

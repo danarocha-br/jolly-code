@@ -8,7 +8,6 @@ import { FontSizeSelector } from "./fontsize-selector";
 import { PaddingSelector } from "./padding-selector";
 import { BackgroundSwitch } from "./background-switch";
 import { useUserSettingsStore } from "@/app/store";
-import { codeSnippets } from "@/lib/code-snippets-options";
 import { Button } from "../button";
 
 import * as S from "./styles";

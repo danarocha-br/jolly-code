@@ -1,27 +1,33 @@
 "use client";
 
-import React, { forwardRef, useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
 import flourite from "flourite";
 import { useTheme } from "next-themes";
+import { useMutation, useQueryClient } from "react-query";
+import { useHotkeys } from "react-hotkeys-hook";
 
+import { cn } from "@/lib/utils";
 import { codeSnippets } from "@/lib/code-snippets-options";
 import { languagesLogos } from "@/lib/language-logos";
 import { LanguageProps } from "@/lib/language-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
-import { cn } from "@/lib/utils";
 import { useUserSettingsStore } from "@/app/store";
+import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
-import { TitleInput } from "./title-input";
 import { Button } from "../button";
-import { WidthMeasurement } from "./width-measurement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Skeleton } from "../skeleton";
+import { TitleInput } from "./title-input";
+import { WidthMeasurement } from "./width-measurement";
 import * as S from "./styles";
-import { hotKeyList } from "@/lib/hot-key-list";
-import { useHotkeys } from "react-hotkeys-hook";
+import {
+  createSnippet,
+  getSnippetByMatchingUrl,
+  removeSnippet,
+} from "./helpers";
 
 type EditorProps = {
   padding: number;
@@ -42,6 +48,11 @@ export const Editor = forwardRef<any, EditorProps>(
   ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
     const { theme } = useTheme();
     const editorRef = useRef(null);
+    const [currentHref, setCurrentHref] = useState<string | null>(null);
+    const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
+      null
+    );
+    const queryClient = useQueryClient();
 
     const user = useUserSettingsStore((state) => state.user);
     const isDarkTheme = theme === "dark";
@@ -49,6 +60,7 @@ export const Editor = forwardRef<any, EditorProps>(
     const hasUserEditedCode = useUserSettingsStore(
       (state) => state.hasUserEditedCode
     );
+    const title = useUserSettingsStore((state) => state.title);
     const fontFamily = useUserSettingsStore((state) => state.fontFamily);
     const fontSize = useUserSettingsStore((state) => state.fontSize);
     const showBackground = useUserSettingsStore(
@@ -68,6 +80,11 @@ export const Editor = forwardRef<any, EditorProps>(
     const presentational = useUserSettingsStore(
       (state) => state.presentational
     );
+    const isSnippetSaved = useUserSettingsStore(
+      (state) => state.isSnippetSaved
+    );
+    const state = useUserSettingsStore.getState();
+
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
 
     //TODO: beautify and format the code according to the language
@@ -97,9 +114,21 @@ export const Editor = forwardRef<any, EditorProps>(
     }, [autoDetectLanguage, code]);
 
     useEffect(() => {
+      const urlObj = new URL(window.location.href);
+
+      setCurrentUrlOrigin(urlObj.origin);
+    }, []);
+
+    useEffect(() => {
       const lines = code.split("\n").length;
       setLineNumbers(Array.from({ length: lines }, (_, i) => i + 1));
     }, [code]);
+
+    const user_id = useMemo(() => {
+      if (user) {
+        return user?.id;
+      }
+    }, [user]);
 
     useHotkeys(focusEditor[0].hotKey, () => {
       if (editorRef.current) {
@@ -115,6 +144,68 @@ export const Editor = forwardRef<any, EditorProps>(
         const inputElement = editorRef.current._input as HTMLInputElement;
         inputElement.blur();
       }
+    });
+
+    const { mutate: handleCreateSnippet } = useMutation({
+      mutationFn: () =>
+        createSnippet({
+          user_id,
+          currentUrl: currentUrlOrigin,
+          title,
+          code,
+          language,
+          state,
+        }),
+
+      onMutate: async () => {
+        // (Cancel any outgoing refetches so they don't overwrite our optimistic update)
+        await queryClient.cancelQueries({ queryKey: ["snippets"] });
+
+        const previousSnippets = queryClient.getQueryData(["snippets"]);
+
+        // Optimistically update to the new value
+        // queryClient.setQueryData<Snippet[]>(
+        //   ["snippets"],
+        //   (old: Snippet[] | undefined) => [...(old || []), newSnippet]
+        // );
+
+        useUserSettingsStore.setState({ isSnippetSaved: true });
+
+        return { previousSnippets };
+      },
+
+      onSuccess(data) {
+        setCurrentHref(data?.data.url);
+      },
+
+      onError: (err, newSnippet, context) => {
+        if (context) {
+          queryClient.setQueryData(["snippets"], context.previousSnippets);
+        }
+      },
+
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ["snippets"] });
+      },
+    });
+
+    const { mutate: handleRemoveSnippet } = useMutation({
+      mutationFn: async () => {
+        const data = await getSnippetByMatchingUrl({
+          currentUrl: currentHref,
+        });
+        return removeSnippet({
+          user_id: user?.id,
+          snippet_id: data && data.data.id,
+        });
+      },
+      onSuccess: () => {
+        useUserSettingsStore.setState({ isSnippetSaved: false });
+      },
+
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ["snippets"] });
+      },
     });
 
     //TODO: adding tabs and open new clean editor view
@@ -146,16 +237,33 @@ export const Editor = forwardRef<any, EditorProps>(
               </Button>
             </LoginDialog>
           ) : (
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn(
-                S.bookmarkButton(),
-                padding > 44 ? "top-2 right-2" : "top-0 right-0"
+            <div>
+              {!isSnippetSaved ? (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleCreateSnippet()}
+                  className={cn(
+                    S.bookmarkButton(),
+                    padding > 44 ? "top-2 right-2" : "top-1 right-1"
+                  )}
+                >
+                  <i className="ri-bookmark-line" />
+                </Button>
+              ) : (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleRemoveSnippet()}
+                  className={cn(
+                    S.bookmarkButton(),
+                    padding > 44 ? "top-2 right-2" : "top-1 right-1"
+                  )}
+                >
+                  <i className="ri-bookmark-fill" />
+                </Button>
               )}
-            >
-              <i className="ri-bookmark-line" />
-            </Button>
+            </div>
           )}
 
           <div className={S.editorContainer({ isDarkTheme })}>
