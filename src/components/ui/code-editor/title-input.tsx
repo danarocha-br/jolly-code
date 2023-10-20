@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { EditorState, useEditorStore } from "@/app/store";
+import React, { useCallback, useEffect, useState } from "react";
+
+import { useEditorStore } from "@/app/store";
 import { input } from "./styles";
-import { languagesLogos } from '@/lib/language-logos';
+import { languagesLogos } from "@/lib/language-logos";
 
 type TitleInputProps = {
-  currentState: EditorState;
+  language: string;
   // deletable?: boolean;
 } & React.InputHTMLAttributes<HTMLInputElement>;
-
 
 /**
  * Renders a title input component.
@@ -17,19 +17,26 @@ type TitleInputProps = {
  * @param {TitleInputProps} currentState - the current state of the component
  * @return {JSX.Element} - the rendered title input component
  */
-export const TitleInput = ({
-  currentState,
-  ...props
-}: TitleInputProps) => {
-  const title = currentState.title;
-  const language = currentState.language;
+export const TitleInput = ({ language, ...props }: TitleInputProps) => {
+  const currentState = useEditorStore((state) => state.currentEditorState);
+  const [localTitle, setLocalTitle] = useState(
+    currentState?.title || "Untitled"
+  );
+
   const editorPreferences = useEditorStore((state) => state.editor);
 
   const updateEditor = useEditorStore((state) => state.updateEditor);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    updateEditor(currentState.id, { title: e.target.value });
-  }, []);
+  useEffect(() => {
+    setLocalTitle(currentState?.title || "Untitled");
+  }, [currentState]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalTitle(e.target.value);
+    if (currentState) {
+      updateEditor(currentState.id, { title: e.target.value });
+    }
+  };
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
     if (e.target instanceof HTMLTextAreaElement) {
@@ -49,8 +56,8 @@ export const TitleInput = ({
         <input
           className={input()}
           type="text"
-          value={title}
-          onChange={(e) => handleChange(e)}
+          value={localTitle}
+          onChange={handleChange}
           spellCheck={false}
           onClick={handleClick}
           {...props}

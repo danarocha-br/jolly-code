@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Resizable } from "re-resizable";
 
 import { cn } from "@/lib/utils";
-import { EditorState, useEditorStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { Editor } from "./editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Button } from "../button";
@@ -31,29 +31,28 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
   const [width, setWidth] = useState(isMobile ? "320px" : "720px");
   const [isWidthVisible, setIsWidthVisible] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("1");
-  const tabs = useEditorStore((state) => state.editors);
+  const editors = useEditorStore((state) => state.editors);
+  const [activeTab, setActiveTab] = useState(
+    editors.length > 0 ? editors[0].id : ""
+  );
+  const tabs = Array.isArray(useEditorStore((state) => state.editors))
+    ? useEditorStore((state) => state.editors)
+    : [];
   const padding = useEditorStore((state) => state.padding);
-  const removeEditor = useEditorStore((state) => state.removeEditor);
+
+  const { createNewTab, removeEditor } = useEditorStore();
+
+  useEffect(() => {
+    const currentTabContent = tabs.find((t) => t.id === activeTab);
+    if (currentTabContent) {
+      useEditorStore.setState({
+        currentEditorState: currentTabContent,
+      });
+    }
+  }, [activeTab]);
 
   function handleAddTabs() {
-    const newTabId = `editor${tabs.length + 1}`;
-
-    useEditorStore.setState((oldState) => {
-      const newTab: EditorState = {
-        id: newTabId,
-        code: "",
-        title: `Untitled ${tabs.length + 1}`,
-        language: "plaintext",
-        autoDetectLanguage: false,
-        userHasEditedCode: false,
-        editorShowLineNumbers: false,
-        isSnippetSaved: false,
-      };
-
-      return { ...oldState, editors: [...oldState.editors, newTab] };
-    });
-
+    const newTabId = createNewTab();
     setActiveTab(newTabId);
   }
 
@@ -66,16 +65,19 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
     setActiveTab(newActiveTab);
   }
 
+  function handleTabValueChange(tab: string) {
+    const currentTabContent = tabs.find((t) => t.id === tab);
+    useEditorStore.setState({
+      currentEditorState: currentTabContent,
+    });
+    setActiveTab(tab);
+  }
+
   return (
     <Tabs
-      defaultValue="1"
+      defaultValue={editors.length > 0 ? editors[0].id : ""}
       value={activeTab}
-      onValueChange={(tab) => {
-        useEditorStore.setState(() => ({
-          currentEditorTab: tab,
-        }));
-        setActiveTab(tab);
-      }}
+      onValueChange={(tab) => handleTabValueChange(tab)}
     >
       <TabsList>
         {tabs.map((tab) => (
@@ -84,6 +86,7 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
             value={tab.id}
             className="relative capitalize group/tab"
           >
+            {tab.isSnippetSaved && <i className="ri-bookmark-fill mr-2" />}
             {tab.title}
             {tabs.length > 1 && (
               <Button
@@ -129,7 +132,6 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
               setWidth={setWidth}
               isWidthVisible={isWidthVisible}
               isLoading={isLoading}
-              activeTab={activeTab}
             />
           </Resizable>
         </TabsContent>

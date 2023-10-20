@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   });
 
   try {
-    const { title, code, language, user_id, url } =
+    const { id, title, code, language, user_id, url } =
       await validateContentType(request).json();
 
     if (!user_id) {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!code || !language) {
+    if (!id || !code || !language) {
       return NextResponse.json(
         { error: "Missing required input parameters." },
         { status: 400 }
@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await insertSnippet({
+      id,
       user_id: user_id || null,
       title,
       code,

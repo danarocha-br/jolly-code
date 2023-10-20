@@ -13,13 +13,22 @@ import { CommandEmpty } from "cmdk";
 import { SettingsPanelItem } from "./item";
 
 export const LanguageSelector = () => {
-  const activeEditorTab = useEditorStore((state) => state.currentEditorTab);
-  const currentState = useEditorStore((state) =>
-    state.editors.find((editor) => editor.id === activeEditorTab)
-  );
-  const language = currentState?.language;
-  const autoDetectLanguage = currentState?.autoDetectLanguage;
-  const updateEditor = useEditorStore((state) => state.updateEditor);
+  const currentState = useEditorStore((state) => state.currentEditorState);
+
+  const { language, autoDetectLanguage } = useEditorStore((state) => {
+    const editor = state.editors.find(
+      (editor) => editor.id === currentState?.id
+    );
+    return editor
+      ? {
+          language: editor.language,
+          autoDetectLanguage: editor.autoDetectLanguage,
+        }
+      : {
+          language: "plain-text",
+          autoDetectLanguage: true,
+        };
+  });
 
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState(language);
@@ -27,14 +36,30 @@ export const LanguageSelector = () => {
   function handleChange(language: string) {
     if (currentState) {
       if (language === "auto-detect") {
-        updateEditor(currentState.id, {
-          autoDetectLanguage: true,
-          language: "plaintext",
+        useEditorStore.setState({
+          editors: useEditorStore.getState().editors.map((editor) => {
+            if (editor.id === currentState.id) {
+              return {
+                ...editor,
+                autoDetectLanguage: true,
+                language: "plaintext",
+              };
+            }
+            return editor;
+          }),
         });
       } else {
-        updateEditor(currentState.id, {
-          autoDetectLanguage: false,
-          language,
+        useEditorStore.setState({
+          editors: useEditorStore.getState().editors.map((editor) => {
+            if (editor.id === currentState.id) {
+              return {
+                ...editor,
+                autoDetectLanguage: false,
+                language,
+              };
+            }
+            return editor;
+          }),
         });
         setValue(language);
       }

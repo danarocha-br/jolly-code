@@ -4,6 +4,7 @@ import { toast } from "sonner";
 const headers = { "Content-Type": "application/json" };
 
 type CreateSnippetProps = {
+  id: string;
   user_id: string | undefined;
   currentUrl: string | undefined | null;
   title: string;
@@ -17,15 +18,12 @@ type RemoveSnippetProps = {
   snippet_id: string | undefined;
 };
 
-type GetSnippetByMatchingURLProps = {
-  currentUrl: string | null;
-};
-
 /**
  * Create a code snippet and save it to the database.
  * @return {Promise<{ data }>} The response object with the saved snippet data.
  */
 export async function createSnippet({
+  id,
   currentUrl,
   user_id,
   title,
@@ -36,9 +34,7 @@ export async function createSnippet({
   function transformState(state: EditorState) {
     return Object.fromEntries(
       Object.entries(state).map(([key, value]) => {
-        if (key === "user" && typeof value === "object" && value !== null) {
-          return [key, value.id]; // Extract the id from the user object
-        } else if (typeof value === "object" && value !== null) {
+        if (typeof value === "object" && value !== null) {
           return [key, JSON.stringify(value)];
         } else {
           return [key, String(value)];
@@ -53,6 +49,7 @@ export async function createSnippet({
     const queryParams = new URLSearchParams({
       ...stringifiedState,
       code: encodeURIComponent(code),
+      user_id: user_id ?? "",
     });
 
     queryParams.delete("shared");
@@ -63,6 +60,7 @@ export async function createSnippet({
       method: "POST",
       headers,
       body: JSON.stringify({
+        id,
         user_id,
         title,
         code,
@@ -131,25 +129,25 @@ export async function removeSnippet({
  * @param {GetSnippetByMatchingURLProps} currentUrl - The current URL to match against.
  * @return {Promise<{ data: any }>} An object containing the retrieved data.
  */
-export async function getSnippetByMatchingUrl({
-  currentUrl,
-}: GetSnippetByMatchingURLProps) {
-  try {
-    const queryParams = new URLSearchParams({
-      url: currentUrl || "",
-    });
-    const url = `/api/snippets?${queryParams.toString()}`;
+// export async function getSnippetByMatchingUrl({
+//   currentUrl,
+// }: GetSnippetByMatchingURLProps) {
+//   try {
+//     const queryParams = new URLSearchParams({
+//       url: currentUrl || "",
+//     });
+//     const url = `/api/snippets?${queryParams.toString()}`;
 
-    const response = await fetch(url, { method: "GET", headers });
+//     const response = await fetch(url, { method: "GET", headers });
 
-    if (!response.ok) {
-      toast.error(`Something went wrong, please try again.`);
-    }
+//     if (!response.ok) {
+//       toast.error(`Something went wrong, please try again.`);
+//     }
 
-    const { data } = await response.json();
+//     const { data } = await response.json();
 
-    return { data };
-  } catch (error) {
-    toast.error(`Something went wrong, please try again.`);
-  }
-}
+//     return { data };
+//   } catch (error) {
+//     toast.error(`Something went wrong, please try again.`);
+//   }
+// }

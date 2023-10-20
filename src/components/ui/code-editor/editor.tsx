@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { codeSnippets } from "@/lib/code-snippets-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
-import { EditorState, useEditorStore, useUserStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
 import { useMediaQuery } from "@/lib/utils/media-query";
@@ -22,14 +22,9 @@ import { Skeleton } from "../skeleton";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import * as S from "./styles";
-import {
-  createSnippet,
-  getSnippetByMatchingUrl,
-  removeSnippet,
-} from "./helpers";
+import { createSnippet, removeSnippet } from "./helpers";
 
 type EditorProps = {
-  activeTab: string;
   padding: number;
   width: string;
   setWidth: (value: React.SetStateAction<string>) => void;
@@ -45,16 +40,12 @@ const unfocusEditor = hotKeyList.filter(
 );
 
 export const Editor = forwardRef<any, EditorProps>(
-  (
-    { activeTab, padding, width, isWidthVisible = false, setWidth, isLoading },
-    ref
-  ) => {
+  ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
     const editorRef = useRef(null);
     const { theme } = useTheme();
     const isDarkTheme = theme === "dark";
     const isMobile = useMediaQuery("(max-width: 768px)");
 
-    const [currentHref, setCurrentHref] = useState<string | null>(null);
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
       null
     );
@@ -62,9 +53,9 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const user = useUserStore((state) => state.user);
 
-    const currentState = useEditorStore((state) =>
-      state.editors.find((editor) => editor.id === activeTab)
-    );
+    const currentState = useEditorStore((state) => state.currentEditorState);
+    const editors = useEditorStore((state) => state.editors);
+
     const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
     const showBackground = useEditorStore((state) => state.showBackground);
     const fontFamily = useEditorStore((state) => state.fontFamily);
@@ -72,13 +63,37 @@ export const Editor = forwardRef<any, EditorProps>(
     const editorPreferences = useEditorStore((state) => state.editor);
     const presentational = useEditorStore((state) => state.presentational);
 
-    const updateEditor = useEditorStore((state) => state.updateEditor);
-    const code = currentState?.code;
-    const userHasEditedCode = currentState?.userHasEditedCode;
-    const language = currentState?.language;
-    const autoDetectLanguage = currentState?.autoDetectLanguage;
-    const editorShowLineNumbers = currentState?.editorShowLineNumbers;
-    const isSnippetSaved = currentState?.isSnippetSaved;
+    const {
+      code,
+      userHasEditedCode,
+      isSnippetSaved,
+      language,
+      autoDetectLanguage,
+      editorShowLineNumbers,
+    } = useEditorStore((state) => {
+      const editor = state.editors.find(
+        (editor) => editor.id === currentState?.id
+      );
+      return editor
+        ? {
+            code: editor.code,
+            userHasEditedCode: editor.userHasEditedCode,
+            isSnippetSaved: editor.isSnippetSaved,
+            language: editor.language,
+            autoDetectLanguage: editor.autoDetectLanguage,
+            editorShowLineNumbers: editor.editorShowLineNumbers,
+          }
+        : {
+            code: "",
+            userHasEditedCode: false,
+            isSnippetSaved: false,
+            language: "plain-text",
+            autoDetectLanguage: true,
+            editorShowLineNumbers: false,
+          };
+    });
+
+    const { updateEditor } = useEditorStore((state) => state);
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
 
@@ -88,26 +103,38 @@ export const Editor = forwardRef<any, EditorProps>(
       const randomSnippet =
         codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
-      if (presentational) {
-        return;
-      }
-
-      if (!userHasEditedCode && currentState) {
-        updateEditor(currentState.id, {
-          code: randomSnippet.code,
-          language: randomSnippet.language,
+      if (currentState && editors.length === 1) {
+        useEditorStore.setState({
+          editors: editors.map((editor) => {
+            if (editor.id === currentState?.id) {
+              return {
+                ...editor,
+                code: randomSnippet.code,
+                language: randomSnippet.language,
+              };
+            }
+            return editor;
+          }),
         });
       }
-    }, [presentational, userHasEditedCode]);
+    }, []);
 
     useEffect(() => {
       if (autoDetectLanguage) {
-        const { language: detecTedLanguage } = flourite(code || "", {
+        const { language: detecTedLanguage } = flourite(code, {
           noUnknown: true,
         });
 
-        updateEditor(currentState.id, {
-          language: detecTedLanguage.toLowerCase() || "plaintext",
+        useEditorStore.setState({
+          editors: editors.map((editor) => {
+            if (editor.id === currentState?.id) {
+              return {
+                ...editor,
+                language: detecTedLanguage.toLowerCase() || "plaintext",
+              };
+            }
+            return editor;
+          }),
         });
       }
     }, [autoDetectLanguage, code]);
@@ -119,7 +146,7 @@ export const Editor = forwardRef<any, EditorProps>(
     }, []);
 
     useEffect(() => {
-      const lines = code!.split("\n").length;
+      const lines = code.split("\n").length;
       setLineNumbers(Array.from({ length: lines }, (_, i) => i + 1));
     }, [code]);
 
@@ -148,11 +175,12 @@ export const Editor = forwardRef<any, EditorProps>(
     const { mutate: handleCreateSnippet } = useMutation({
       mutationFn: () =>
         createSnippet({
+          id: currentState?.id!,
           user_id,
           currentUrl: currentUrlOrigin,
           title: currentState?.title || "Untitled",
-          code: code!,
-          language: language!,
+          code: code,
+          language: language,
           state: currentState!,
         }),
 
@@ -168,15 +196,19 @@ export const Editor = forwardRef<any, EditorProps>(
         //   (old: Snippet[] | undefined) => [...(old || []), newSnippet]
         // );
 
-        updateEditor(currentState!.id, {
-          isSnippetSaved: true,
+        useEditorStore.setState({
+          editors: editors.map((editor) => {
+            if (editor.id === currentState?.id) {
+              return {
+                ...editor,
+                isSnippetSaved: true,
+              };
+            }
+            return editor;
+          }),
         });
 
         return { previousSnippets };
-      },
-
-      onSuccess(data) {
-        setCurrentHref(data?.data.url);
       },
 
       onError: (err, newSnippet, context) => {
@@ -192,12 +224,9 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const { mutate: handleRemoveSnippet } = useMutation({
       mutationFn: async () => {
-        const data = await getSnippetByMatchingUrl({
-          currentUrl: currentHref,
-        });
         return removeSnippet({
           user_id: user?.id,
-          snippet_id: data && data.data.id,
+          snippet_id: currentState?.id,
         });
       },
       onSuccess: () => {
@@ -284,7 +313,7 @@ export const Editor = forwardRef<any, EditorProps>(
                   <TabsList>
                     <TabsTrigger value="initial" className="relative">
                       <TitleInput
-                        currentState={currentState || ({} as EditorState)}
+                        language={language}
                         disabled={presentational}
                       />
                     </TabsTrigger>
@@ -318,12 +347,27 @@ export const Editor = forwardRef<any, EditorProps>(
                       className={S.editor({
                         showLineNumbers: editorShowLineNumbers,
                       })}
-                      value={code || ""}
+                      value={code}
                       onValueChange={(code) => {
-                        updateEditor(currentState!.id, {
-                          code,
-                          userHasEditedCode: true,
+                        useEditorStore.setState({
+                          editors: editors.map((editor) => {
+                            if (editor.id === currentState?.id) {
+                              return {
+                                ...editor,
+                                code: code,
+                                userHasEditedCode: true,
+                              };
+                            }
+                            return editor;
+                          }),
                         });
+
+                        // if (currentState) {
+                        //   updateEditor(currentState.id, {
+                        //     code: code,
+                        //     userHasEditedCode: true,
+                        //   });
+                        // }
                       }}
                       disabled={presentational}
                       highlight={(code) =>

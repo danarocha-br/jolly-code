@@ -1,7 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export type Snippet = {
-  id?: string;
+  id: string;
   user_id: string;
   code: string;
   language: string;
@@ -19,6 +19,7 @@ export type Snippet = {
  * @return {Promise<any>} The result of the insert operation.
  */
 export async function insertSnippet({
+  id,
   user_id,
   title,
   code,
@@ -39,6 +40,7 @@ export async function insertSnippet({
       .from("snippet")
       .insert([
         {
+          id,
           user_id,
           title: sanitizedTitle,
           code,
@@ -75,7 +77,7 @@ export async function deleteSnippet({
   supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("snippet")
       .select()
       .eq("id", snippet_id)
@@ -111,26 +113,54 @@ export async function deleteSnippet({
  * @param {SupabaseClient<Database, "public", any>} options.supabase - The Supabase client.
  * @return {Promise<{ id: string }>} The snippet ID.
  */
-export async function getSnippetByMatchingUrl({
+// export async function getSnippetByMatchingUrl({
+//   user_id,
+//   current_url,
+//   supabase,
+// }: {
+//   user_id: string;
+//   current_url: string;
+//   supabase: SupabaseClient<Database, "public", any>;
+// }): Promise<{ id: string }> {
+//   try {
+//     const { data } = await supabase
+//       .from("snippet")
+//       .select("id")
+//       .eq("url", current_url.trim())
+//       .eq("user_id", user_id);
+
+//     if (data && data.length > 0) {
+//       return { id: data[0].id };
+//     } else {
+//       throw new Error("URL not found.");
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     return Promise.reject(
+//       new Error("An error occurred. Please try again later.")
+//     );
+//   }
+// }
+export async function getSnippetById({
   user_id,
-  current_url,
+  snippet_id,
   supabase,
 }: {
   user_id: string;
-  current_url: string;
+  snippet_id: string;
   supabase: SupabaseClient<Database, "public", any>;
 }): Promise<{ id: string }> {
   try {
     const { data } = await supabase
       .from("snippet")
       .select("id")
-      .eq("url", current_url.trim())
+      .eq("id", snippet_id)
       .eq("user_id", user_id);
 
     if (data && data.length > 0) {
       return { id: data[0].id };
     } else {
-      throw new Error("URL not found.");
+      throw new Error("Snippet not found.");
     }
   } catch (error) {
     console.error(error);

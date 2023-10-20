@@ -24,8 +24,13 @@ const copySnippet = hotKeyList.filter((item) => item.label === "Copy snippet");
 const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
 
 export const ExportMenu = () => {
-  const title = useEditorStore((state) => state.title);
-  const code = useEditorStore((state) => state.code);
+  const currentEditorState = useEditorStore(
+    (state) => state.currentEditorState
+  );
+
+  const title = currentEditorState?.title;
+  const code = currentEditorState?.code;
+
   const editor = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
@@ -65,9 +70,14 @@ export const ExportMenu = () => {
    */
   async function copyCodeToClipboard() {
     try {
-      await navigator.clipboard.writeText(code);
-      toast.success("Code copied to clipboard!");
+      if (code) {
+        await navigator.clipboard.writeText(code);
+        toast.success("Code copied to clipboard!");
+      } else {
+        toast.error("Code was not copied! Please try again.");
+      }
     } catch (err) {
+      console.log(err)
       toast.error("Something went wrong!");
     }
   }
@@ -125,33 +135,35 @@ export const ExportMenu = () => {
    * @return {void} This function does not return anything.
    */
   const handleExport = (format: ImageFormat) => {
-    switch (format) {
-      case "SVG":
-        toast.promise(handleSaveImage(title, "SVG"), {
-          loading: "Exporting SVG image...",
-          success: "Successfully exported!",
-          error: "Sorry. Something went wrong.",
-        });
-        break;
+    if (title) {
+      switch (format) {
+        case "SVG":
+          toast.promise(handleSaveImage(title, "SVG"), {
+            loading: "Exporting SVG image...",
+            success: "Successfully exported!",
+            error: "Sorry. Something went wrong.",
+          });
+          break;
 
-      case "PNG":
-        toast.promise(handleSaveImage(title, "PNG"), {
-          loading: "Exporting PNG image...",
-          success: "Successfully exported!",
-          error: "Sorry. Something went wrong.",
-        });
-        break;
+        case "PNG":
+          toast.promise(handleSaveImage(title, "PNG"), {
+            loading: "Exporting PNG image...",
+            success: "Successfully exported!",
+            error: "Sorry. Something went wrong.",
+          });
+          break;
 
-      case "JPG":
-        toast.promise(handleSaveImage(title, "JPG"), {
-          loading: "Exporting JPG image...",
-          success: "Successfully exported!",
-          error: "Sorry. Something went wrong.",
-        });
-        break;
+        case "JPG":
+          toast.promise(handleSaveImage(title, "JPG"), {
+            loading: "Exporting JPG image...",
+            success: "Successfully exported!",
+            error: "Sorry. Something went wrong.",
+          });
+          break;
 
-      default:
-        break;
+        default:
+          break;
+      }
     }
   };
 
