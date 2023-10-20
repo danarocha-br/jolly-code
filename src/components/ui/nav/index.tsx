@@ -9,7 +9,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Button } from "../button";
 import { ExportMenu } from "./export-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { CopyURLToClipboard } from "./copy-url-to-clipboard";
 import UsersPresence from "./users-presence";
 import {
@@ -26,10 +26,10 @@ export const Nav = () => {
   const supabase = createClientComponentClient();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const isPresentational = useUserSettingsStore(
+  const isPresentational = useEditorStore(
     (state) => state.presentational
   );
-  const { user } = useUserSettingsStore();
+  const { user } = useUserStore();
   const username = useMemo(() => user?.user_metadata?.full_name, [user]);
   const imageUrl = useMemo(() => user?.user_metadata?.avatar_url, [user]);
 
@@ -45,7 +45,7 @@ export const Nav = () => {
   const handleSignOut = useMutation(
     async () => {
       await supabase.auth.signOut();
-      useUserSettingsStore.setState({ user: null });
+      useUserStore.setState({ user: null });
     },
     {
       onSuccess: () => {

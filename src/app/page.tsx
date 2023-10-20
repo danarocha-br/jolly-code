@@ -7,7 +7,7 @@ import Hotjar from "@hotjar/browser";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 
-import { useUserSettingsStore } from "./store";
+import { useEditorStore, useUserStore } from "./store";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
@@ -23,11 +23,11 @@ export default function Home() {
   const searchParams = useSearchParams();
   const shared = searchParams.get("shared");
 
-  const backgroundTheme = useUserSettingsStore(
+  const backgroundTheme = useEditorStore(
     (state) => state.backgroundTheme
   );
-  const fontFamily = useUserSettingsStore((state) => state.fontFamily);
-  const isPresentational = useUserSettingsStore(
+  const fontFamily = useEditorStore((state) => state.fontFamily);
+  const isPresentational = useEditorStore(
     (state) => state.presentational
   );
 
@@ -37,7 +37,7 @@ export default function Home() {
     {
       onSuccess: (data) => {
         if (data?.data.session) {
-          useUserSettingsStore.setState({
+          useUserStore.setState({
             user: data.data.session.user,
           });
         }
@@ -56,7 +56,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    useUserSettingsStore.setState({
+    useEditorStore.setState({
       presentational: shared === "true" ? true : false,
       showBackground: shared === "true" ? false : true,
     });
@@ -93,7 +93,7 @@ export default function Home() {
 
     const state = Object.fromEntries(queryParams);
 
-    useUserSettingsStore.setState({
+    useEditorStore.setState({
       ...state,
       code: state.code ? atob(state.code) : "",
       autoDetectLanguage: state.autoDetectLanguage === "true",

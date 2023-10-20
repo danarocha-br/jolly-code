@@ -1,7 +1,7 @@
 import React from "react";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { LanguageProps, languages } from "@/lib/language-options";
 import { cn } from "@/lib/utils";
 import { languagesLogos } from "@/lib/language-logos";
@@ -13,8 +13,8 @@ import { CommandEmpty } from "cmdk";
 import { SettingsPanelItem } from "./item";
 
 export const LanguageSelector = () => {
-  const language = useUserSettingsStore((state) => state.language);
-  const autoDetectLanguage = useUserSettingsStore(
+  const language = useEditorStore((state) => state.language);
+  const autoDetectLanguage = useEditorStore(
     (state) => state.autoDetectLanguage
   );
   const [open, setOpen] = React.useState(false);
@@ -22,12 +22,12 @@ export const LanguageSelector = () => {
 
   function handleChange(language: string) {
     if (language === "auto-detect") {
-      useUserSettingsStore.setState({
+      useEditorStore.setState({
         autoDetectLanguage: true,
         language: "plaintext",
       });
     } else {
-      useUserSettingsStore.setState({ autoDetectLanguage: false, language });
+      useEditorStore.setState({ autoDetectLanguage: false, language });
       setValue(language);
     }
   }

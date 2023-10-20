@@ -1,6 +1,6 @@
 import React from "react";
 
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { useMediaQuery } from "@/lib/utils/media-query";
 import { Slider } from "../slider";
 import { hotKeyList } from "@/lib/hot-key-list";
@@ -10,11 +10,11 @@ const changeFontSize = hotKeyList.filter(
   (item) => item.label === "Change font size"
 );
 export const FontSizeSelector = () => {
-  const fontSize = useUserSettingsStore((state) => state.fontSize);
+  const fontSize = useEditorStore((state) => state.fontSize);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   function handleFontSizeChange(value: number) {
-    useUserSettingsStore.setState({ fontSize: value });
+    useEditorStore.setState({ fontSize: value });
   }
 
   useHotkeys(changeFontSize[0].hotKey, () => {

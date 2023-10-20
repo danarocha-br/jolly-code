@@ -5,20 +5,20 @@ import {
   SelectItem,
   SelectTrigger,
 } from "../select";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { fonts, FontsProps } from "@/lib/fonts-options";
 import { SettingsPanelItem } from './item';
 import { Tooltip } from '../tooltip';
 
 export const FontFamilySelector = () => {
-  const fontFamily = useUserSettingsStore((state) => state.fontFamily);
+  const fontFamily = useEditorStore((state) => state.fontFamily);
 
   return (
     <SettingsPanelItem value={fontFamily}>
       <Select
         value={fontFamily}
         onValueChange={(fontFamily: FontsProps) =>
-          useUserSettingsStore.setState({ fontFamily })
+          useEditorStore.setState({ fontFamily })
         }
       >
         <Tooltip content="Change font">

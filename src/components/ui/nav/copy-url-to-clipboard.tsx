@@ -7,10 +7,10 @@ import { useMutation } from "react-query";
 import { Tooltip } from "../tooltip";
 import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useUserSettingsStore } from "@/app/store";
+import { useUserStore, useEditorStore } from "@/app/store";
 
 export const CopyURLToClipboard = () => {
-  const user = useUserSettingsStore((state) => state.user);
+  const user = useUserStore((state) => state.user);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export const CopyURLToClipboard = () => {
   });
 
   const handleCopyLinkToClipboard = useCallback(async () => {
-    const state = useUserSettingsStore.getState();
+    const state = useEditorStore.getState();
     const stringifiedState = Object.fromEntries(
       Object.entries(state).map(([key, value]) => [key, String(value)])
     );

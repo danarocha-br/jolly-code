@@ -14,7 +14,7 @@ import { languagesLogos } from "@/lib/language-logos";
 import { LanguageProps } from "@/lib/language-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
-import { useUserSettingsStore } from "@/app/store";
+import { EditorStoreState, useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
 import { Button } from "../button";
@@ -28,6 +28,7 @@ import {
   getSnippetByMatchingUrl,
   removeSnippet,
 } from "./helpers";
+import { StoreApi, useStore } from "zustand";
 
 type EditorProps = {
   padding: number;
@@ -35,6 +36,7 @@ type EditorProps = {
   setWidth: (value: React.SetStateAction<string>) => void;
   isWidthVisible: boolean;
   isLoading: boolean;
+  store: StoreApi<EditorStoreState>;
 };
 
 const focusEditor = hotKeyList.filter(
@@ -45,7 +47,10 @@ const unfocusEditor = hotKeyList.filter(
 );
 
 export const Editor = forwardRef<any, EditorProps>(
-  ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
+  (
+    { padding, width, isWidthVisible = false, setWidth, isLoading, store },
+    ref
+  ) => {
     const { theme } = useTheme();
     const editorRef = useRef(null);
     const [currentHref, setCurrentHref] = useState<string | null>(null);
@@ -54,36 +59,37 @@ export const Editor = forwardRef<any, EditorProps>(
     );
     const queryClient = useQueryClient();
 
-    const user = useUserSettingsStore((state) => state.user);
+    const user = useUserStore((state) => state.user);
     const isDarkTheme = theme === "dark";
-    const code = useUserSettingsStore((state) => state.code);
-    const hasUserEditedCode = useUserSettingsStore(
+    const code = useEditorStore((state) => state.code);
+
+    const hasUserEditedCode = useEditorStore(
       (state) => state.hasUserEditedCode
     );
-    const title = useUserSettingsStore((state) => state.title);
-    const fontFamily = useUserSettingsStore((state) => state.fontFamily);
-    const fontSize = useUserSettingsStore((state) => state.fontSize);
-    const showBackground = useUserSettingsStore(
+    const title = useEditorStore((state) => state.title);
+    const fontFamily = useEditorStore((state) => state.fontFamily);
+    const fontSize = useEditorStore((state) => state.fontSize);
+    const showBackground = useEditorStore(
       (state) => state.showBackground
     );
-    const backgroundTheme = useUserSettingsStore(
+    const backgroundTheme = useEditorStore(
       (state) => state.backgroundTheme
     );
-    const language = useUserSettingsStore((state) => state.language);
-    const autoDetectLanguage = useUserSettingsStore(
+    const language = useEditorStore((state) => state.language);
+    const autoDetectLanguage = useEditorStore(
       (state) => state.autoDetectLanguage
     );
-    const editorShowLineNumbers = useUserSettingsStore(
+    const editorShowLineNumbers = useEditorStore(
       (state) => state.editorShowLineNumbers
     );
-    const editorPreferences = useUserSettingsStore((state) => state.editor);
-    const presentational = useUserSettingsStore(
+    const editorPreferences = useEditorStore((state) => state.editor);
+    const presentational = useEditorStore(
       (state) => state.presentational
     );
-    const isSnippetSaved = useUserSettingsStore(
+    const isSnippetSaved = useEditorStore(
       (state) => state.isSnippetSaved
     );
-    const state = useUserSettingsStore.getState();
+    const state = useEditorStore.getState();
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
 
@@ -98,7 +104,7 @@ export const Editor = forwardRef<any, EditorProps>(
       }
 
       if (!hasUserEditedCode) {
-        useUserSettingsStore.setState(randomSnippet);
+        useEditorStore.setState(randomSnippet);
       }
     }, [presentational, hasUserEditedCode]);
 
@@ -107,7 +113,7 @@ export const Editor = forwardRef<any, EditorProps>(
         const { language: detecTedLanguage } = flourite(code, {
           noUnknown: true,
         });
-        useUserSettingsStore.setState({
+        useEditorStore.setState({
           language: detecTedLanguage.toLowerCase() || "plaintext",
         });
       }
@@ -169,7 +175,7 @@ export const Editor = forwardRef<any, EditorProps>(
         //   (old: Snippet[] | undefined) => [...(old || []), newSnippet]
         // );
 
-        useUserSettingsStore.setState({ isSnippetSaved: true });
+        useEditorStore.setState({ isSnippetSaved: true });
 
         return { previousSnippets };
       },
@@ -200,7 +206,7 @@ export const Editor = forwardRef<any, EditorProps>(
         });
       },
       onSuccess: () => {
-        useUserSettingsStore.setState({ isSnippetSaved: false });
+        useEditorStore.setState({ isSnippetSaved: false });
       },
 
       onSettled: () => {
@@ -318,10 +324,10 @@ export const Editor = forwardRef<any, EditorProps>(
                       })}
                       value={code}
                       onValueChange={(code) => {
-                        useUserSettingsStore.setState({
+                        useEditorStore.setState({
                           hasUserEditedCode: true,
                         });
-                        useUserSettingsStore.setState({ code });
+                        useEditorStore.setState({ code });
                       }}
                       disabled={presentational}
                       highlight={(code) =>

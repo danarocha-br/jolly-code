@@ -7,7 +7,7 @@ import { FontFamilySelector } from "./fontfamily-selector";
 import { FontSizeSelector } from "./fontsize-selector";
 import { PaddingSelector } from "./padding-selector";
 import { BackgroundSwitch } from "./background-switch";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { Button } from "../button";
 
 import * as S from "./styles";
@@ -15,16 +15,16 @@ import * as S from "./styles";
 export const SettingsPanel = () => {
   const router = useRouter();
 
-  const isPresentational = useUserSettingsStore(
+  const isPresentational = useEditorStore(
     (state) => state.presentational
   );
 
-  const state = useUserSettingsStore();
+  const state = useEditorStore();
 
   const sendUserToEditMode = useCallback(() => {
     router.push("/");
 
-    useUserSettingsStore.setState({
+    useEditorStore.setState({
       ...state,
       padding: 44,
       fontSize: Number(15),

@@ -9,12 +9,12 @@ import {
 
 import { themes } from "@/lib/themes-options";
 import { cn } from "@/lib/utils";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { SettingsPanelItem } from "./item";
 import { Tooltip } from '../tooltip';
 
 export const ThemeSelector = () => {
-  const backgroundTheme = useUserSettingsStore(
+  const backgroundTheme = useEditorStore(
     (state) => state.backgroundTheme
   );
 
@@ -23,7 +23,7 @@ export const ThemeSelector = () => {
       <Select
         value={backgroundTheme}
         onValueChange={(theme) => {
-          useUserSettingsStore.setState({
+          useEditorStore.setState({
             backgroundTheme: theme as typeof backgroundTheme,
           });
         }}

@@ -1,4 +1,3 @@
-import { isValidURL } from "@/lib/utils/is-valid-url";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export type Snippet = {

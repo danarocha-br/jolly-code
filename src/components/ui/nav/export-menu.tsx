@@ -13,7 +13,7 @@ import {
   DropdownMenuShortcut,
 } from "../dropdown-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
 
@@ -24,8 +24,8 @@ const copySnippet = hotKeyList.filter((item) => item.label === "Copy snippet");
 const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
 
 export const ExportMenu = () => {
-  const title = useUserSettingsStore((state) => state.title);
-  const code = useUserSettingsStore((state) => state.code);
+  const title = useEditorStore((state) => state.title);
+  const code = useEditorStore((state) => state.code);
   const editor = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
@@ -39,7 +39,6 @@ export const ExportMenu = () => {
    */
   async function copyImageToClipboard() {
     try {
-      toast.loading("Copying...");
       const imageBlob = await toBlob(editor.current!, {
         pixelRatio: 2,
       });

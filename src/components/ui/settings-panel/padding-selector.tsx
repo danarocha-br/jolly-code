@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Slider } from "../slider";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useHotkeys } from "react-hotkeys-hook";
 
@@ -9,10 +9,10 @@ const changePadding = hotKeyList.filter(
   (item) => item.label === "Change padding"
 );
 export const PaddingSelector = () => {
-  const padding = useUserSettingsStore((state) => state.padding);
+  const padding = useEditorStore((state) => state.padding);
 
   function handleChangePadding(value: number) {
-    useUserSettingsStore.setState({ padding: value });
+    useEditorStore.setState({ padding: value });
   }
 
   useHotkeys(changePadding[0].hotKey, () => {

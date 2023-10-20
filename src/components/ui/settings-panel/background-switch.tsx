@@ -1,6 +1,6 @@
 import React from "react";
 
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { Button } from "../button";
 import { SettingsPanelItem } from "./item";
 import { Tooltip } from "../tooltip";
@@ -12,10 +12,10 @@ const toggleBackground = hotKeyList.filter(
 );
 
 export const BackgroundSwitch = () => {
-  const showBackground = useUserSettingsStore((state) => state.showBackground);
+  const showBackground = useEditorStore((state) => state.showBackground);
 
   function handleToggleBackground() {
-    useUserSettingsStore.setState({ showBackground: !showBackground });
+    useEditorStore.setState({ showBackground: !showBackground });
   }
 
   useHotkeys(toggleBackground[0].hotKey, () => {

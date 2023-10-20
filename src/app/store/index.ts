@@ -5,8 +5,11 @@ import { User } from "@supabase/supabase-js";
 import { ThemeProps } from "@/lib/themes-options";
 import { FontsProps } from "@/lib/fonts-options";
 
-export type StoreState = {
+export type UserStoreState = {
   user: User | null;
+};
+
+export type EditorStoreState = {
   code: string;
   hasUserEditedCode: boolean;
   title: string;
@@ -23,13 +26,25 @@ export type StoreState = {
   isSnippetSaved: boolean;
 };
 
-export const useUserSettingsStore = create<
-  StoreState,
-  [["zustand/persist", StoreState]]
+export const useUserStore = create<
+  UserStoreState,
+  [["zustand/persist", UserStoreState]]
+>(
+  persist(
+    (set) => ({
+      user: null,
+    }),
+    { name: "user-store" }
+  )
+);
+export const useEditorStore = create<
+  EditorStoreState,
+  [["zustand/persist", EditorStoreState]]
 >(
   persist(
     (set) => ({
       code: "",
+      setCode: (newCode: string) => set({ code: newCode }),
       title: "Untitled",
       backgroundTheme: "sublime",
       showBackground: true,
@@ -43,9 +58,8 @@ export const useUserSettingsStore = create<
       editor: "default",
       editorShowLineNumbers: false,
       editorRef: null,
-      user: null,
       isSnippetSaved: false,
     }),
-    { name: "user-settings" }
+    { name: "code-store" }
   )
 );

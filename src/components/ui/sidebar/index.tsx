@@ -9,7 +9,7 @@ import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Snippets } from "./snippets";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -43,9 +43,7 @@ const useSidebarMouseEvents = () => {
 
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
-  const isPresentational = useUserSettingsStore(
-    (state) => state.presentational
-  );
+  const isPresentational = useEditorStore((state) => state.presentational);
   const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
   const memoizedTheme = useMemo(() => theme, [theme]);
   const showSidebarContent = useMemo(() => initialWidth !== width, [width]);

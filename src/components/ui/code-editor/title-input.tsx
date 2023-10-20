@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { input } from "./styles";
 import { Button } from "../button";
 
@@ -25,11 +25,11 @@ export const TitleInput = ({
   deletable = false,
   ...props
 }: TitleInputProps) => {
-  const title = useUserSettingsStore((state) => state.title);
-  const editor = useUserSettingsStore((state) => state.editor);
+  const title = useEditorStore((state) => state.title);
+  const editor = useEditorStore((state) => state.editor);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useUserSettingsStore.setState({ title: e.target.value });
+    useEditorStore.setState({ title: e.target.value });
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {

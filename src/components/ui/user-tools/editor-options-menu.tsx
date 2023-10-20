@@ -11,7 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
 } from "../../ui/dropdown-menu";
-import { useUserSettingsStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { Tooltip } from "../../ui/tooltip";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -26,19 +26,19 @@ const toggleEditorLineNumbers = hotKeyList.filter(
 );
 
 export const EditorOptionsMenu = () => {
-  const editor = useUserSettingsStore((state) => state.editor);
+  const editor = useEditorStore((state) => state.editor);
 
   const [editorPreference, setEditorPreference] =
     useState<EditorViewPreference>(editor);
 
-  const editorShowLineNumbers = useUserSettingsStore(
+  const editorShowLineNumbers = useEditorStore(
     (state) => state.editorShowLineNumbers
   );
 
   function changeEditorViewPreference(value: EditorViewPreference) {
-    const userSettings = useUserSettingsStore.getState();
+    const userSettings = useEditorStore.getState();
     const updatedSettings = { ...userSettings, editor: value };
-    useUserSettingsStore.setState(updatedSettings);
+    useEditorStore.setState(updatedSettings);
   }
 
   function handleEditorViewPreferences(value: EditorViewPreference) {
@@ -46,7 +46,7 @@ export const EditorOptionsMenu = () => {
     changeEditorViewPreference(value);
   }
   function handleShowLineNumbers(checked: boolean) {
-    useUserSettingsStore.setState({ editorShowLineNumbers: checked });
+    useEditorStore.setState({ editorShowLineNumbers: checked });
   }
 
   useHotkeys(toggleEditorPreferences[0].hotKey, () => {

@@ -5,13 +5,12 @@ import { useQuery } from "react-query";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import ReactMarkdown from "react-markdown";
+import Link from "next/link";
 
-import * as S from "./styles";
 import { Separator } from "../separator";
 import { Badge } from "../badge";
-import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
-import { CtaButton } from "../cta-button";
+import * as S from "./styles";
 
 type ChangeLog = {
   id: string;

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import * as S from "./styles";
 import { Card, CardContent } from "../../ui/card";
 import { Avatar } from "../../ui/avatar";
-import { useUserSettingsStore } from "@/app/store";
+import { useUserStore } from "@/app/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,7 +99,7 @@ const LoginButton = () => {
 export const UserTools = () => {
   const supabase = createClientComponentClient();
   const router = useRouter();
-  const { user } = useUserSettingsStore();
+  const { user } = useUserStore();
 
   const username = useMemo(() => user?.user_metadata?.full_name, [user]);
   const imageUrl = useMemo(() => user?.user_metadata?.avatar_url, [user]);
@@ -107,7 +107,7 @@ export const UserTools = () => {
   const handleSignOut = useMutation(
     async () => {
       await supabase.auth.signOut();
-      useUserSettingsStore.setState({ user: null });
+      useUserStore.setState({ user: null });
     },
     {
       onSuccess: () => {
