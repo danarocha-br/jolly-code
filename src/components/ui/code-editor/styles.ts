@@ -4,11 +4,11 @@ export const header = cva(["flex", "gap-3", "items-center", "px-4", "py-2"], {
   variants: {
     editorPreferences: {
       default: ["bg-background/80", "dark:bg-background/20"],
-      minimal: [],
+      minimal: ["bg-transparent"],
     },
   },
   defaultVariants: {
-    editorPreferences: "minimal",
+    editorPreferences: "default",
   },
 });
 
@@ -43,7 +43,7 @@ export const editorContainer = cva(
     "shadow-high",
     "brightness-100",
     "overflow-hidden",
-    "relative"
+    "relative",
   ],
   {
     variants: {
@@ -110,6 +110,8 @@ export const title = cva(
   [
     "flex",
     "items-center",
+    "justify-center",
+    "w-[calc(100%-130px)]",
 
     "overflow-x-auto",
     "scrollbar-thin",
@@ -120,7 +122,7 @@ export const title = cva(
   {
     variants: {
       editorPreferences: {
-        default: ["justify-center", "w-[calc(100%-130px)]"],
+        default: [],
         minimal: [],
       },
     },
@@ -155,5 +157,4 @@ export const resizableButton = cva([
 
   "hover:text-foreground",
   "hover:scale-110",
-
 ]);

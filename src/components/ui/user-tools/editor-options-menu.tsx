@@ -26,14 +26,24 @@ const toggleEditorLineNumbers = hotKeyList.filter(
 );
 
 export const EditorOptionsMenu = () => {
+  const currentState = useEditorStore((state) => state.currentEditorState);
   const editor = useEditorStore((state) => state.editor);
 
   const [editorPreference, setEditorPreference] =
     useState<EditorViewPreference>(editor);
 
-  const editorShowLineNumbers = useEditorStore(
-    (state) => state.editorShowLineNumbers
-  );
+  const { editorShowLineNumbers } = useEditorStore((state) => {
+    const editor = state.editors.find(
+      (editor) => editor.id === currentState?.id
+    );
+    return editor
+      ? {
+          editorShowLineNumbers: editor.editorShowLineNumbers,
+        }
+      : {
+          editorShowLineNumbers: false,
+        };
+  });
 
   function changeEditorViewPreference(value: EditorViewPreference) {
     const userSettings = useEditorStore.getState();
@@ -46,7 +56,17 @@ export const EditorOptionsMenu = () => {
     changeEditorViewPreference(value);
   }
   function handleShowLineNumbers(checked: boolean) {
-    useEditorStore.setState({ editorShowLineNumbers: checked });
+    useEditorStore.setState({
+      editors: useEditorStore.getState().editors.map((editor) => {
+        if (editor.id === currentState?.id) {
+          return {
+            ...editor,
+            editorShowLineNumbers: checked,
+          };
+        }
+        return editor;
+      }),
+    });
   }
 
   useHotkeys(toggleEditorPreferences[0].hotKey, () => {

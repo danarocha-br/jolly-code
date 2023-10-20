@@ -302,17 +302,42 @@ export const Editor = forwardRef<any, EditorProps>(
           <div className={S.editorContainer({ isDarkTheme })}>
             <Tabs defaultValue="initial">
               <header className={S.header({ editorPreferences })}>
-                {editorPreferences === "default" && (
-                  <div className="flex gap-1.5">
-                    <div className="rounded-full h-3 w-3 bg-red-500" />
-                    <div className="rounded-full h-3 w-3 bg-yellow-500" />
-                    <div className="rounded-full h-3 w-3 bg-green-500" />
-                  </div>
-                )}
+                <div className="flex gap-1.5">
+                  <div
+                    className={cn(
+                      "rounded-full h-3 w-3",
+                      editorPreferences === "default"
+                        ? "bg-red-500"
+                        : "bg-zinc-400/30 dark:bg-zinc-700/50"
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "rounded-full h-3 w-3",
+                      editorPreferences === "default"
+                        ? "bg-yellow-500"
+                        : "bg-zinc-400/30 dark:bg-zinc-700/50"
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "rounded-full h-3 w-3",
+                      editorPreferences === "default"
+                        ? "bg-green-500"
+                        : "bg-zinc-400/30 dark:bg-zinc-700/50"
+                    )}
+                  />
+                </div>
 
                 <div className={S.title({ editorPreferences })}>
                   <TabsList>
-                    <TabsTrigger value="initial" className="relative">
+                    <TabsTrigger
+                      value="initial"
+                      className={cn(
+                        "relative",
+                        // editorPreferences === "minimal" && "!bg-transparent"
+                      )}
+                    >
                       <TitleInput
                         language={language}
                         disabled={presentational}
