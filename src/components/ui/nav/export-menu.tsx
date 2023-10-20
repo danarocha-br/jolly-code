@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { toBlob, toJpeg, toPng, toSvg } from "html-to-image";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -24,18 +24,40 @@ const copySnippet = hotKeyList.filter((item) => item.label === "Copy snippet");
 const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
 
 export const ExportMenu = () => {
+  const editors = React.useRef<{ [key: string]: HTMLElement | null }>({});
+
   const currentEditorState = useEditorStore(
     (state) => state.currentEditorState
   );
-
-  const title = currentEditorState?.title;
-  const code = currentEditorState?.code;
+  const { code, title } = useEditorStore((state) => {
+    const editor = state.editors.find(
+      (editor) => editor.id === currentEditorState?.id
+    );
+    return editor
+      ? {
+          code: editor.code,
+          title: editor.title,
+        }
+      : {
+          code: "",
+          title: "Untitled",
+        };
+  });
 
   const editor = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
-    editor.current = document.getElementById("editor");
-  }, []);
+    const currentId = currentEditorState?.id || "editor";
+    const editorElement = document.getElementById(currentId);
+
+    if (editorElement) {
+      editors.current[currentId] = editorElement;
+    }
+
+    return () => {
+      // Cleanup logic if needed
+    };
+  }, [currentEditorState, editors]);
 
   /**
    * Copies the image from a DOM element to the clipboard.
@@ -44,22 +66,27 @@ export const ExportMenu = () => {
    */
   async function copyImageToClipboard() {
     try {
-      const imageBlob = await toBlob(editor.current!, {
+      const currentId = currentEditorState?.id || "editor";
+      const freshEditor = document.getElementById(currentId);
+      if (!editor) {
+        toast.error("Something went wrong! Please try again.");
+        return;
+      }
+
+      const imageBlob = await toBlob(freshEditor!, {
         pixelRatio: 2,
       });
 
       if (!imageBlob) {
-        toast.error("Something went wrong!");
+        toast.error("Something went wrong! Please try again.");
         return;
       }
 
       const image = new ClipboardItem({ "image/png": imageBlob });
       await navigator.clipboard.write([image]);
-
       toast.success("Image copied to clipboard!");
     } catch (error) {
-      // console.error("Failed to copy image to clipboard", error);
-      toast.error("Something went wrong!");
+      toast.error("Something went wrong! Please try again.");
     }
   }
 
@@ -77,7 +104,7 @@ export const ExportMenu = () => {
         toast.error("Code was not copied! Please try again.");
       }
     } catch (err) {
-      console.log(err)
+      console.log(err);
       toast.error("Something went wrong!");
     }
   }
@@ -91,24 +118,26 @@ export const ExportMenu = () => {
    */
   async function handleSaveImage(name: string, format: ImageFormat) {
     let imageURL, fileName;
+    const currentId = currentEditorState?.id || "editor";
+    const freshEditor = document.getElementById(currentId);
 
     switch (format) {
       case "PNG":
-        imageURL = await toPng(editor.current!, {
+        imageURL = await toPng(freshEditor!, {
           pixelRatio: 2,
         });
         fileName = `${name}.png`;
         break;
 
       case "JPG":
-        imageURL = await toJpeg(editor.current!, {
+        imageURL = await toJpeg(freshEditor!, {
           pixelRatio: 2,
         });
         fileName = `${name}.jpg`;
         break;
 
       case "SVG":
-        imageURL = await toSvg(editor.current!, {
+        imageURL = await toSvg(freshEditor!, {
           pixelRatio: 2,
         });
         fileName = `${name}.svg`;
@@ -183,7 +212,11 @@ export const ExportMenu = () => {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>
-        <DropdownMenuItem className="gap-8" onClick={copyCodeToClipboard}>
+        <DropdownMenuItem
+          className="gap-8"
+          onClick={copyCodeToClipboard}
+          disabled={!code}
+        >
           <div className="flex items-center gap-2">
             <i className="ri-code-box-line text-lg" />
             Copy Code

@@ -42,6 +42,7 @@ const unfocusEditor = hotKeyList.filter(
 export const Editor = forwardRef<any, EditorProps>(
   ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
     const editorRef = useRef(null);
+
     const { theme } = useTheme();
     const isDarkTheme = theme === "dark";
     const isMobile = useMediaQuery("(max-width: 768px)");
@@ -87,7 +88,7 @@ export const Editor = forwardRef<any, EditorProps>(
             code: "",
             userHasEditedCode: false,
             isSnippetSaved: false,
-            language: "plain-text",
+            language: "plaintext",
             autoDetectLanguage: true,
             editorShowLineNumbers: false,
           };
@@ -253,7 +254,7 @@ export const Editor = forwardRef<any, EditorProps>(
           )}
           style={{ padding }}
           ref={ref}
-          id="editor"
+          id={currentState?.id || "editor"}
         >
           {!user ? (
             <LoginDialog>
