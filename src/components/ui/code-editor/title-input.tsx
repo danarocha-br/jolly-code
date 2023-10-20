@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { useEditorStore } from "@/app/store";
+import { EditorState, useEditorStore } from "@/app/store";
 import { input } from "./styles";
 import { Button } from "../button";
 
 type TitleInputProps = {
+  currentState: EditorState;
   icon: React.ReactNode;
   deletable?: boolean;
 } & React.InputHTMLAttributes<HTMLInputElement>;
@@ -21,15 +22,17 @@ type TitleInputProps = {
  * @return {React.ReactNode} The rendered TitleInput component.
  */
 export const TitleInput = ({
+  currentState,
   icon,
   deletable = false,
   ...props
 }: TitleInputProps) => {
-  const title = useEditorStore((state) => state.title);
-  const editor = useEditorStore((state) => state.editor);
+  const title = currentState.title;
+  const editor = currentState.editor;
+  const updateEditor = useEditorStore((state) => state.updateEditor);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    useEditorStore.setState({ title: e.target.value });
+    updateEditor(currentState.id, { title: e.target.value });
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
@@ -51,7 +54,7 @@ export const TitleInput = ({
           className={input()}
           type="text"
           value={title}
-          onChange={handleChange}
+          onChange={(e) => handleChange(e)}
           spellCheck={false}
           onClick={handleClick}
           {...props}

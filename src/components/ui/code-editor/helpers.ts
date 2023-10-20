@@ -1,4 +1,4 @@
-import { useEditorStore } from "@/app/store";
+import { EditorState } from "@/app/store";
 import { toast } from "sonner";
 
 const headers = { "Content-Type": "application/json" };
@@ -9,7 +9,7 @@ type CreateSnippetProps = {
   title: string;
   code: string;
   language: string;
-  state: ReturnType<typeof useEditorStore.getState>;
+  state: EditorState;
 };
 
 type RemoveSnippetProps = {
@@ -33,7 +33,7 @@ export async function createSnippet({
   language,
   state,
 }: CreateSnippetProps) {
-  function transformState(state: ReturnType<typeof useEditorStore.getState>) {
+  function transformState(state: EditorState) {
     return Object.fromEntries(
       Object.entries(state).map(([key, value]) => {
         if (key === "user" && typeof value === "object" && value !== null) {

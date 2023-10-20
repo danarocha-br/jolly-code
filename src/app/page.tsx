@@ -95,7 +95,7 @@ export default function Home() {
 
     useEditorStore.setState({
       ...state,
-      code: state.code ? atob(state.code) : "",
+      // code: state.code ? atob(state.code) : "",
       autoDetectLanguage: state.autoDetectLanguage === "true",
       padding: 28,
       fontSize: Number(15),

@@ -14,7 +14,11 @@ import { languagesLogos } from "@/lib/language-logos";
 import { LanguageProps } from "@/lib/language-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
-import { EditorStoreState, useEditorStore, useUserStore } from "@/app/store";
+import {
+  EditorState,
+  useEditorStore,
+  useUserStore,
+} from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
 import { Button } from "../button";
@@ -28,15 +32,14 @@ import {
   getSnippetByMatchingUrl,
   removeSnippet,
 } from "./helpers";
-import { StoreApi, useStore } from "zustand";
 
 type EditorProps = {
+  activeTab: string;
   padding: number;
   width: string;
   setWidth: (value: React.SetStateAction<string>) => void;
   isWidthVisible: boolean;
   isLoading: boolean;
-  store: StoreApi<EditorStoreState>;
 };
 
 const focusEditor = hotKeyList.filter(
@@ -48,48 +51,40 @@ const unfocusEditor = hotKeyList.filter(
 
 export const Editor = forwardRef<any, EditorProps>(
   (
-    { padding, width, isWidthVisible = false, setWidth, isLoading, store },
+    { activeTab, padding, width, isWidthVisible = false, setWidth, isLoading },
     ref
   ) => {
     const { theme } = useTheme();
     const editorRef = useRef(null);
     const [currentHref, setCurrentHref] = useState<string | null>(null);
+    const [userHasEditedCode, setUserHasEditedCode] = useState<boolean>(false);
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
       null
     );
     const queryClient = useQueryClient();
 
-    const user = useUserStore((state) => state.user);
     const isDarkTheme = theme === "dark";
-    const code = useEditorStore((state) => state.code);
 
-    const hasUserEditedCode = useEditorStore(
-      (state) => state.hasUserEditedCode
+    const user = useUserStore((state) => state.user);
+
+    const currentState = useEditorStore((state) =>
+      state.editors.find((editor) => editor.id === activeTab)
     );
-    const title = useEditorStore((state) => state.title);
-    const fontFamily = useEditorStore((state) => state.fontFamily);
-    const fontSize = useEditorStore((state) => state.fontSize);
-    const showBackground = useEditorStore(
-      (state) => state.showBackground
-    );
-    const backgroundTheme = useEditorStore(
-      (state) => state.backgroundTheme
-    );
-    const language = useEditorStore((state) => state.language);
-    const autoDetectLanguage = useEditorStore(
-      (state) => state.autoDetectLanguage
-    );
-    const editorShowLineNumbers = useEditorStore(
-      (state) => state.editorShowLineNumbers
-    );
-    const editorPreferences = useEditorStore((state) => state.editor);
-    const presentational = useEditorStore(
-      (state) => state.presentational
-    );
-    const isSnippetSaved = useEditorStore(
-      (state) => state.isSnippetSaved
-    );
-    const state = useEditorStore.getState();
+
+    const updateEditor = useEditorStore((state) => state.updateEditor);
+
+    const code = currentState?.code;
+    const hasUserEditedCode = currentState?.hasUserEditedCode;
+    const fontFamily = currentState?.fontFamily;
+    const fontSize = currentState?.fontSize;
+    const showBackground = currentState?.showBackground;
+    const backgroundTheme = currentState?.backgroundTheme;
+    const language = currentState?.language;
+    const autoDetectLanguage = currentState?.autoDetectLanguage;
+    const editorShowLineNumbers = currentState?.editorShowLineNumbers;
+    const editorPreferences = currentState?.editor;
+    const presentational = currentState?.presentational;
+    const isSnippetSaved = currentState?.isSnippetSaved;
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
 
@@ -103,17 +98,18 @@ export const Editor = forwardRef<any, EditorProps>(
         return;
       }
 
-      if (!hasUserEditedCode) {
-        useEditorStore.setState(randomSnippet);
-      }
-    }, [presentational, hasUserEditedCode]);
+      // if (!userHasEditedCode) {
+      //   setCode(randomSnippet.code);
+      // }
+    }, [presentational, userHasEditedCode]);
 
     useEffect(() => {
       if (autoDetectLanguage) {
-        const { language: detecTedLanguage } = flourite(code, {
+        const { language: detecTedLanguage } = flourite(code || "", {
           noUnknown: true,
         });
-        useEditorStore.setState({
+
+        updateEditor(currentState.id, {
           language: detecTedLanguage.toLowerCase() || "plaintext",
         });
       }
@@ -126,7 +122,7 @@ export const Editor = forwardRef<any, EditorProps>(
     }, []);
 
     useEffect(() => {
-      const lines = code.split("\n").length;
+      const lines = code!.split("\n").length;
       setLineNumbers(Array.from({ length: lines }, (_, i) => i + 1));
     }, [code]);
 
@@ -157,10 +153,10 @@ export const Editor = forwardRef<any, EditorProps>(
         createSnippet({
           user_id,
           currentUrl: currentUrlOrigin,
-          title,
-          code,
-          language,
-          state,
+          title: currentState?.title || "Untitled",
+          code: code!,
+          language: language!,
+          state: currentState!,
         }),
 
       onMutate: async () => {
@@ -175,7 +171,9 @@ export const Editor = forwardRef<any, EditorProps>(
         //   (old: Snippet[] | undefined) => [...(old || []), newSnippet]
         // );
 
-        useEditorStore.setState({ isSnippetSaved: true });
+        updateEditor(currentState!.id, {
+          isSnippetSaved: true,
+        });
 
         return { previousSnippets };
       },
@@ -206,7 +204,9 @@ export const Editor = forwardRef<any, EditorProps>(
         });
       },
       onSuccess: () => {
-        useEditorStore.setState({ isSnippetSaved: false });
+        updateEditor(currentState!.id, {
+          isSnippetSaved: false,
+        });
       },
 
       onSettled: () => {
@@ -223,7 +223,7 @@ export const Editor = forwardRef<any, EditorProps>(
             S.background(),
             showBackground &&
               !presentational &&
-              themes[backgroundTheme].background
+              themes[backgroundTheme!].background
           )}
           style={{ padding }}
           ref={ref}
@@ -287,6 +287,7 @@ export const Editor = forwardRef<any, EditorProps>(
                   <TabsList>
                     <TabsTrigger value="initial" className="relative">
                       <TitleInput
+                        currentState={currentState || ({} as EditorState)}
                         icon={languagesLogos[language as LanguageProps]}
                         disabled={presentational}
                         deletable={false}
@@ -308,7 +309,7 @@ export const Editor = forwardRef<any, EditorProps>(
                   {editorShowLineNumbers && !isLoading ? (
                     <div
                       className={S.lineNumbers()}
-                      style={{ lineHeight: fontSize * 1.7 + "px" }}
+                      style={{ lineHeight: (fontSize || 14) * 1.7 + "px" }}
                     >
                       {lineNumbers.map((num) => (
                         <div key={num}>{num}</div>
@@ -322,12 +323,12 @@ export const Editor = forwardRef<any, EditorProps>(
                       className={S.editor({
                         showLineNumbers: editorShowLineNumbers,
                       })}
-                      value={code}
+                      value={code || ""}
                       onValueChange={(code) => {
-                        useEditorStore.setState({
-                          hasUserEditedCode: true,
+                        setUserHasEditedCode(true);
+                        updateEditor(currentState!.id, {
+                          code,
                         });
-                        useEditorStore.setState({ code });
                       }}
                       disabled={presentational}
                       highlight={(code) =>
@@ -336,9 +337,9 @@ export const Editor = forwardRef<any, EditorProps>(
                         }).value
                       }
                       style={{
-                        fontFamily: fonts[fontFamily].name,
+                        fontFamily: fonts[fontFamily || "robotoMono"].name,
                         fontSize: fontSize,
-                        lineHeight: fontSize * 1.7 + "px",
+                        lineHeight: (fontSize || 14) * 1.7 + "px",
                       }}
                       textareaClassName="focus:outline-none"
                       onClick={(e) => {
