@@ -15,6 +15,7 @@ import { themes } from "@/lib/themes-options";
 import { EditorState, useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
+import { useMediaQuery } from "@/lib/utils/media-query";
 import { Button } from "../button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Skeleton } from "../skeleton";
@@ -51,6 +52,7 @@ export const Editor = forwardRef<any, EditorProps>(
     const editorRef = useRef(null);
     const { theme } = useTheme();
     const isDarkTheme = theme === "dark";
+    const isMobile = useMediaQuery("(max-width: 768px)");
 
     const [currentHref, setCurrentHref] = useState<string | null>(null);
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
@@ -318,9 +320,9 @@ export const Editor = forwardRef<any, EditorProps>(
                       })}
                       value={code || ""}
                       onValueChange={(code) => {
-                        setUserHasEditedCode(true);
                         updateEditor(currentState!.id, {
                           code,
+                          userHasEditedCode: true,
                         });
                       }}
                       disabled={presentational}
@@ -360,14 +362,14 @@ export const Editor = forwardRef<any, EditorProps>(
         <div
           className={cn(
             "transition-opacity w-fit mx-auto relative",
-            isWidthVisible || width === "auto"
+            isWidthVisible || width === "320px" || width === "720px"
               ? "invisible opacity-0"
               : "visible opacity-100"
           )}
         >
           <Button
             size="sm"
-            onClick={() => setWidth("auto")}
+            onClick={() => setWidth(isMobile ? "320px" : "720px")}
             variant="ghost"
             className={cn(
               S.widthButton(),

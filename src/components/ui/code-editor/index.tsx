@@ -7,22 +7,36 @@ import { Editor } from "./editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Button } from "../button";
 import { resizableButton } from "./styles";
+import { useMediaQuery } from "@/lib/utils/media-query";
 
 type CodeEditor = {
   isLoading: boolean;
 };
 
+const ResizableHandle = ({ direction }: { direction: string }) => {
+  return (
+    <div
+      className={cn(
+        resizableButton(),
+        direction === "right" ? "-right-4" : "-left-4"
+      )}
+    >
+      <i className="ri-draggable text-md"></i>
+    </div>
+  );
+};
+
 export const CodeEditor = ({ isLoading }: CodeEditor) => {
-  const [width, setWidth] = useState("auto");
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [width, setWidth] = useState(isMobile ? "320px" : "720px");
   const [isWidthVisible, setIsWidthVisible] = useState(false);
 
   const [activeTab, setActiveTab] = useState("1");
   const tabs = useEditorStore((state) => state.editors);
   const padding = useEditorStore((state) => state.padding);
-  const currentEditorTab = useEditorStore((state) => state.currentEditorTab);
-  console.log(currentEditorTab);
+  const removeEditor = useEditorStore((state) => state.removeEditor);
 
-  const handleAddTabs = () => {
+  function handleAddTabs() {
     const newTabId = `editor${tabs.length + 1}`;
 
     useEditorStore.setState((oldState) => {
@@ -41,20 +55,16 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
     });
 
     setActiveTab(newTabId);
-  };
+  }
 
-  const ResizableHandle = ({ direction }: { direction: string }) => {
-    return (
-      <div
-        className={cn(
-          resizableButton(),
-          direction === "right" ? "-right-4" : "-left-4"
-        )}
-      >
-        <i className="ri-draggable text-md"></i>
-      </div>
-    );
-  };
+  function handleRemoveTab() {
+    const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
+    removeEditor(activeTab);
+
+    const newActiveTab =
+      activeTabIndex === 0 ? tabs[1].id : tabs[activeTabIndex - 1].id;
+    setActiveTab(newActiveTab);
+  }
 
   return (
     <Tabs
@@ -72,9 +82,19 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
           <TabsTrigger
             key={tab.id}
             value={tab.id}
-            className="relative capitalize"
+            className="relative capitalize group/tab"
           >
             {tab.title}
+            {tabs.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-mr-2.5 ml-px transition-opacity opacity-0 group-hover/tab:opacity-100 !w-4 !h-4"
+                onClick={handleRemoveTab}
+              >
+                <i className="ri-close-line" />
+              </Button>
+            )}
           </TabsTrigger>
         ))}
         <Button

@@ -23,6 +23,7 @@ export type EditorState = {
 export type EditorStoreState = {
   editors: EditorState[];
   updateEditor: (tabId: string, changes: Partial<EditorState>) => void;
+  removeEditor: (tabId: string) => void;
   currentEditorTab: string;
   backgroundTheme: ThemeProps;
   showBackground: boolean;
@@ -79,6 +80,12 @@ export const useEditorStore = create<
           editors: state.editors.map((editor) =>
             editor.id === currentId ? { ...editor, ...changes } : editor
           ),
+        })),
+
+      removeEditor: (tabId) =>
+        set((state) => ({
+          ...state,
+          editors: state.editors.filter((editor) => editor.id !== tabId),
         })),
     }),
     { name: "code-store" }
