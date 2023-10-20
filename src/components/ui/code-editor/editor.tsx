@@ -10,15 +10,9 @@ import { useHotkeys } from "react-hotkeys-hook";
 
 import { cn } from "@/lib/utils";
 import { codeSnippets } from "@/lib/code-snippets-options";
-import { languagesLogos } from "@/lib/language-logos";
-import { LanguageProps } from "@/lib/language-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
-import {
-  EditorState,
-  useEditorStore,
-  useUserStore,
-} from "@/app/store";
+import { EditorState, useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
 import { Button } from "../button";
@@ -54,36 +48,34 @@ export const Editor = forwardRef<any, EditorProps>(
     { activeTab, padding, width, isWidthVisible = false, setWidth, isLoading },
     ref
   ) => {
-    const { theme } = useTheme();
     const editorRef = useRef(null);
+    const { theme } = useTheme();
+    const isDarkTheme = theme === "dark";
+
     const [currentHref, setCurrentHref] = useState<string | null>(null);
-    const [userHasEditedCode, setUserHasEditedCode] = useState<boolean>(false);
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
       null
     );
     const queryClient = useQueryClient();
-
-    const isDarkTheme = theme === "dark";
 
     const user = useUserStore((state) => state.user);
 
     const currentState = useEditorStore((state) =>
       state.editors.find((editor) => editor.id === activeTab)
     );
+    const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
+    const showBackground = useEditorStore((state) => state.showBackground);
+    const fontFamily = useEditorStore((state) => state.fontFamily);
+    const fontSize = useEditorStore((state) => state.fontSize);
+    const editorPreferences = useEditorStore((state) => state.editor);
+    const presentational = useEditorStore((state) => state.presentational);
 
     const updateEditor = useEditorStore((state) => state.updateEditor);
-
     const code = currentState?.code;
-    const hasUserEditedCode = currentState?.hasUserEditedCode;
-    const fontFamily = currentState?.fontFamily;
-    const fontSize = currentState?.fontSize;
-    const showBackground = currentState?.showBackground;
-    const backgroundTheme = currentState?.backgroundTheme;
+    const userHasEditedCode = currentState?.userHasEditedCode;
     const language = currentState?.language;
     const autoDetectLanguage = currentState?.autoDetectLanguage;
     const editorShowLineNumbers = currentState?.editorShowLineNumbers;
-    const editorPreferences = currentState?.editor;
-    const presentational = currentState?.presentational;
     const isSnippetSaved = currentState?.isSnippetSaved;
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
@@ -98,9 +90,12 @@ export const Editor = forwardRef<any, EditorProps>(
         return;
       }
 
-      // if (!userHasEditedCode) {
-      //   setCode(randomSnippet.code);
-      // }
+      if (!userHasEditedCode && currentState) {
+        updateEditor(currentState.id, {
+          code: randomSnippet.code,
+          language: randomSnippet.language,
+        });
+      }
     }, [presentational, userHasEditedCode]);
 
     useEffect(() => {
@@ -288,9 +283,7 @@ export const Editor = forwardRef<any, EditorProps>(
                     <TabsTrigger value="initial" className="relative">
                       <TitleInput
                         currentState={currentState || ({} as EditorState)}
-                        icon={languagesLogos[language as LanguageProps]}
                         disabled={presentational}
-                        deletable={false}
                       />
                     </TabsTrigger>
                   </TabsList>
@@ -357,7 +350,7 @@ export const Editor = forwardRef<any, EditorProps>(
                 </section>
               </TabsContent>
 
-              <TabsContent value="new-tab"></TabsContent>
+              {/* <TabsContent value="new-tab"></TabsContent> */}
             </Tabs>
           </div>
 

@@ -3,32 +3,28 @@
 import React, { useCallback } from "react";
 import { EditorState, useEditorStore } from "@/app/store";
 import { input } from "./styles";
-import { Button } from "../button";
+import { languagesLogos } from '@/lib/language-logos';
 
 type TitleInputProps = {
   currentState: EditorState;
-  icon: React.ReactNode;
-  deletable?: boolean;
+  // deletable?: boolean;
 } & React.InputHTMLAttributes<HTMLInputElement>;
 
+
 /**
- * Renders a TitleInput component.
+ * Renders a title input component.
  *
- * @param {React.ReactNode} icon - The icon to display.
- * @param {boolean} deletable - Whether the input is deletable or not. Default is false.
- * @param {string} defaultValue - The default value for the input.
- * @param {string} placeholder - The placeholder text for the input.
- * @param {Function} onChange - The function to call when the input value changes.
- * @return {React.ReactNode} The rendered TitleInput component.
+ * @param {TitleInputProps} currentState - the current state of the component
+ * @return {JSX.Element} - the rendered title input component
  */
 export const TitleInput = ({
   currentState,
-  icon,
-  deletable = false,
   ...props
 }: TitleInputProps) => {
   const title = currentState.title;
-  const editor = currentState.editor;
+  const language = currentState.language;
+  const editorPreferences = useEditorStore((state) => state.editor);
+
   const updateEditor = useEditorStore((state) => state.updateEditor);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,9 +40,9 @@ export const TitleInput = ({
   return (
     <div className="flex gap-2 items-center justify-center w-full group/tab">
       <div className="flex items-center justify-center gap-2 pl-1 rounded-md !w-auto">
-        {editor === "default" && (
+        {editorPreferences === "default" && (
           <span className="scale-90 flex items-end justify-center -ml-1">
-            {icon}
+            {languagesLogos[language as keyof typeof languagesLogos]}
           </span>
         )}
 
@@ -60,7 +56,7 @@ export const TitleInput = ({
           {...props}
         />
 
-        {deletable && (
+        {/* {deletable && (
           <Button
             variant="ghost"
             size="icon"
@@ -68,7 +64,7 @@ export const TitleInput = ({
           >
             <i className="ri-close-line" />
           </Button>
-        )}
+        )} */}
       </div>
     </div>
   );

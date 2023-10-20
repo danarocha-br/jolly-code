@@ -13,22 +13,31 @@ import { CommandEmpty } from "cmdk";
 import { SettingsPanelItem } from "./item";
 
 export const LanguageSelector = () => {
-  const language = useEditorStore((state) => state.language);
-  const autoDetectLanguage = useEditorStore(
-    (state) => state.autoDetectLanguage
+  const activeEditorTab = useEditorStore((state) => state.currentEditorTab);
+  const currentState = useEditorStore((state) =>
+    state.editors.find((editor) => editor.id === activeEditorTab)
   );
+  const language = currentState?.language;
+  const autoDetectLanguage = currentState?.autoDetectLanguage;
+  const updateEditor = useEditorStore((state) => state.updateEditor);
+
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState(language);
 
   function handleChange(language: string) {
-    if (language === "auto-detect") {
-      useEditorStore.setState({
-        autoDetectLanguage: true,
-        language: "plaintext",
-      });
-    } else {
-      useEditorStore.setState({ autoDetectLanguage: false, language });
-      setValue(language);
+    if (currentState) {
+      if (language === "auto-detect") {
+        updateEditor(currentState.id, {
+          autoDetectLanguage: true,
+          language: "plaintext",
+        });
+      } else {
+        updateEditor(currentState.id, {
+          autoDetectLanguage: false,
+          language,
+        });
+        setValue(language);
+      }
     }
   }
 
@@ -40,7 +49,7 @@ export const LanguageSelector = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
-        <SettingsPanelItem value={language}>
+        <SettingsPanelItem value={language || "plaintext"}>
           <Tooltip content="Choose a language">
             <Button
               asChild
