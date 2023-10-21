@@ -11,7 +11,20 @@ import { useUserStore, useEditorStore } from "@/app/store";
 
 export const CopyURLToClipboard = () => {
   const user = useUserStore((state) => state.user);
+  const currentState = useEditorStore((state) => state.currentEditorState);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const { code } = useEditorStore((state) => {
+    const editor = state.editors.find(
+      (editor) => editor.id === currentState?.id
+    );
+    return editor
+      ? {
+          code: editor.code,
+        }
+      : {
+          code: "",
+        };
+  });
 
   useEffect(() => {
     const urlObj = new URL(window.location.href);
@@ -52,7 +65,7 @@ export const CopyURLToClipboard = () => {
 
     const queryParams = new URLSearchParams({
       ...stringifiedState,
-      code: btoa(state.code),
+      code: btoa(code),
     }).toString();
 
     const url = `${currentUrl}?${queryParams}&shared=true`;
@@ -60,7 +73,7 @@ export const CopyURLToClipboard = () => {
     await postLinkDataToDatabase.mutate(url);
 
     toast.success("Link copied to clipboard.");
-  }, [postLinkDataToDatabase, currentUrl]);
+  }, [postLinkDataToDatabase, currentUrl, code]);
 
   const copyLink = useMemo(
     () => hotKeyList.filter((item) => item.label === "Copy link"),

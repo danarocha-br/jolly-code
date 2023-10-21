@@ -1,27 +1,57 @@
 import { cva } from "class-variance-authority";
 
-export const emptyContainer = cva(
-  [
-    "bg-background",
-    "rounded-lg",
-    "flex",
-    "flex-col",
-    "items-center",
-    "justify-center",
-    "px-4",
-    "py-4",
-    "gap-5",
-    "transition-all",
-  ],
-  {
-    variants: {
-      show: {
-        true: ["opacity-80"],
-        false: ["opacity-0"],
-      },
-    },
-  }
-);
+export const snippet = cva([
+  "text-sm",
+  "text-left",
+  "text-foreground",
+  "capitalize",
+  "bg-muted/60",
+  "dark:bg-muted/20",
+  "border",
+  "border-border/50",
+  "rounded-md",
+  "outline-none",
+  "flex",
+  "items-center",
+  "pl-3",
+  "gap-1",
+  "w-full",
+  "transition-all",
+
+  "hover:bg-indigo-400/10",
+  "hover:border-primary/50",
+]);
+
+export const addButton = cva([
+  "bg-muted/50",
+  "dark:bg-muted/20",
+  "flex",
+  "items-center",
+  "gap-3",
+  "w-full",
+  "text-left",
+  "text-sm",
+  "p-2",
+  "mb-2",
+  "rounded-md",
+  "transition-colors",
+  "hover:text-primary-foreground",
+  "hover:bg-primary",
+]);
+
+export const emptyContainer = cva([
+  "bg-background",
+  "rounded-lg",
+  "flex",
+  "flex-col",
+  "items-center",
+  "justify-center",
+  "w-full",
+  "!px-4",
+  "py-4",
+  "gap-5",
+  "opacity-80",
+]);
 
 export const emptyTitle = cva(
   ["text-foreground/90", "w-[250px]", "text-center", "transition-opacity"],

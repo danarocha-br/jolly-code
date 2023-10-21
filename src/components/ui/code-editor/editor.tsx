@@ -44,7 +44,8 @@ export const Editor = forwardRef<any, EditorProps>(
     const editorRef = useRef(null);
 
     const { theme } = useTheme();
-    const isDarkTheme = theme === "dark";
+    const memoizedTheme = useMemo(() => theme, [theme]);
+    const isDarkTheme = memoizedTheme === "dark";
     const isMobile = useMediaQuery("(max-width: 768px)");
 
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
@@ -104,7 +105,7 @@ export const Editor = forwardRef<any, EditorProps>(
       const randomSnippet =
         codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
-      if (currentState && editors.length === 1) {
+      if (currentState && editors.length === 1 && !userHasEditedCode) {
         useEditorStore.setState({
           editors: editors.map((editor) => {
             if (editor.id === currentState?.id) {
@@ -138,7 +139,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }),
         });
       }
-    }, [autoDetectLanguage, code]);
+    }, [autoDetectLanguage, code, currentState?.id, editors]);
 
     useEffect(() => {
       const urlObj = new URL(window.location.href);
@@ -271,7 +272,7 @@ export const Editor = forwardRef<any, EditorProps>(
             </LoginDialog>
           ) : (
             <div>
-              {!isSnippetSaved ? (
+              {!isSnippetSaved && code !== "" ? (
                 <Button
                   size="icon"
                   variant="ghost"
@@ -284,17 +285,19 @@ export const Editor = forwardRef<any, EditorProps>(
                   <i className="ri-bookmark-line" />
                 </Button>
               ) : (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => handleRemoveSnippet()}
-                  className={cn(
-                    S.bookmarkButton(),
-                    padding > 44 ? "top-2 right-2" : "top-1 right-1"
-                  )}
-                >
-                  <i className="ri-bookmark-fill" />
-                </Button>
+                code !== "" && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleRemoveSnippet()}
+                    className={cn(
+                      S.bookmarkButton(),
+                      padding > 44 ? "top-2 right-2" : "top-1 right-1"
+                    )}
+                  >
+                    <i className="ri-bookmark-fill" />
+                  </Button>
+                )
               )}
             </div>
           )}
@@ -334,7 +337,7 @@ export const Editor = forwardRef<any, EditorProps>(
                     <TabsTrigger
                       value="initial"
                       className={cn(
-                        "relative",
+                        "relative"
                         // editorPreferences === "minimal" && "!bg-transparent"
                       )}
                     >

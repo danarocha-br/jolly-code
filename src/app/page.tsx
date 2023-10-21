@@ -96,10 +96,10 @@ export default function Home() {
     useEditorStore.setState({
       ...state,
       // code: state.code ? atob(state.code) : "",
-      autoDetectLanguage: state.autoDetectLanguage === "true",
+      // autoDetectLanguage: state.autoDetectLanguage === "true",
+      // editorShowLineNumbers: false,
       padding: 28,
       fontSize: Number(15),
-      editorShowLineNumbers: false,
     });
   }, []);
 

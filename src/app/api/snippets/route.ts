@@ -3,29 +3,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
 import {
   deleteSnippet,
-  getSnippetByMatchingUrl,
+  getUsersSnippetsList,
   insertSnippet,
 } from "@/lib/services/database";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { isValidURL } from "@/lib/utils/is-valid-url";
 
-/**
- * Retrieves data from the server based on the provided URL and user authentication.
- *
- * @param {NextRequest} request - The request object containing information about the HTTP request.
- * @return {Promise<NextResponse>} A promise that resolves to the response object containing the retrieved data.
- */
-export async function GET(request: NextRequest) {
+export async function GET() {
   const cookieStore = cookies();
   const supabase = createRouteHandlerClient<Database>({
     cookies: () => cookieStore,
   });
 
   try {
-    const current_url = new URL(request.url);
-    const url = current_url.searchParams.get("url")!;
-    const currentUser = await supabase.auth.getUser();
+    let currentUser;
+    try {
+      currentUser = await supabase.auth.getUser();
+    } catch (error) {
+      console.error("Error getting user:", error);
+      return NextResponse.json(
+        {
+          error:
+            "An error occurred while getting user. Please try again later.",
+        },
+        { status: 500 }
+      );
+    }
     const user_id = currentUser.data.user?.id;
 
     if (!user_id) {
@@ -35,25 +38,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!url) {
-      return NextResponse.json(
-        { error: "No URL was provided." },
-        { status: 400 }
-      );
-    }
-
-    if (!isValidURL(url)) {
-      return NextResponse.json({ error: "Invalid url." }, { status: 400 });
-    }
-
-    const data = await getSnippetByMatchingUrl({
-      current_url: url,
+    const data = await getUsersSnippetsList({
       user_id,
       supabase,
     });
 
     if (!data) {
-      return NextResponse.json({ error: "No snippet found." }, { status: 500 });
+      return NextResponse.json(
+        { error: "No snippets found. Please create a snippet first." },
+        { status: 200 }
+      );
     }
 
     return NextResponse.json({

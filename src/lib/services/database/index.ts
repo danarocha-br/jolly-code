@@ -169,3 +169,29 @@ export async function getSnippetById({
     );
   }
 }
+
+export async function getUsersSnippetsList({
+  user_id,
+  supabase,
+}: {
+  user_id: string;
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<Snippet[]> {
+  try {
+    const { data } = await supabase
+      .from("snippet")
+      .select("*")
+      .eq("user_id", user_id);
+
+    if (data) {
+      return data;
+    } else {
+      throw new Error("No snippets found.");
+    }
+  } catch (error) {
+    console.error(error);
+    return Promise.reject(
+      new Error("An error occurred. Please try again later.")
+    );
+  }
+}

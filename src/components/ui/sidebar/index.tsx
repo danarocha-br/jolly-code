@@ -10,6 +10,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Snippets } from "./snippets";
 import { useEditorStore } from "@/app/store";
+import { Tooltip } from '../tooltip';
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -30,7 +31,7 @@ const useSidebarMouseEvents = () => {
   const [width, setWidth] = useState(initialWidth);
 
   const handleMouseMove = useCallback(() => {
-    const newWidth = 280;
+    const newWidth = 300;
     setWidth(newWidth);
   }, []);
 
@@ -43,8 +44,8 @@ const useSidebarMouseEvents = () => {
 
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
-  const isPresentational = useEditorStore((state) => state.presentational);
   const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
+  const isPresentational = useEditorStore((state) => state.presentational);
   const memoizedTheme = useMemo(() => theme, [theme]);
   const showSidebarContent = useMemo(() => initialWidth !== width, [width]);
 
@@ -78,7 +79,24 @@ export const Sidebar = () => {
 
         <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
 
-        <Snippets show={showSidebarContent} />
+        {/* <Tooltip content="Add folder">
+          <div>
+            <Button size="icon" variant="secondary">
+              <i className="ri-add-line" />
+            </Button>
+          </div>
+        </Tooltip> */}
+
+        <motion.div
+          initial={{ opacity: 0, width: 320 }}
+          animate={{ opacity: showSidebarContent ? 1 : 0 }}
+          transition={{
+            delay: showSidebarContent ? 0.1 : 0,
+            duration: showSidebarContent ? 0.2 : 0.1,
+          }}
+        >
+          <Snippets />
+        </motion.div>
 
         <div className="absolute bottom-3 left-2">
           <HoverCard openDelay={0}>

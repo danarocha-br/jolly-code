@@ -35,7 +35,6 @@ export const Changelog = ({ children }: ChangelogProps) => {
 
       return data;
     } catch (error) {
-      console.error("Network error:", error);
       toast.error("An error occurred.");
     }
   }

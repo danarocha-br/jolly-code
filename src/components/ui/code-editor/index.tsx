@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Resizable } from "re-resizable";
 
 import { cn } from "@/lib/utils";
@@ -35,9 +35,13 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
   const [activeTab, setActiveTab] = useState(
     editors.length > 0 ? editors[0].id : ""
   );
-  const tabs = Array.isArray(useEditorStore((state) => state.editors))
-    ? useEditorStore((state) => state.editors)
-    : [];
+
+  const editorStore = useEditorStore((state) => state.editors);
+
+  const tabs = useMemo(() => {
+    return Array.isArray(editorStore) ? editorStore : [];
+  }, [editorStore]);
+
   const padding = useEditorStore((state) => state.padding);
 
   const { createNewTab, removeEditor } = useEditorStore();
@@ -49,7 +53,7 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
         currentEditorState: currentTabContent,
       });
     }
-  }, [activeTab]);
+  }, [activeTab, tabs]);
 
   function handleAddTabs() {
     const newTabId = createNewTab();

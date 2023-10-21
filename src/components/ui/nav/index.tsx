@@ -26,6 +26,8 @@ export const Nav = () => {
   const supabase = createClientComponentClient();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const memoizedTheme = useMemo(() => theme, [theme]);
+
   const isPresentational = useEditorStore(
     (state) => state.presentational
   );
@@ -39,7 +41,7 @@ export const Nav = () => {
    * @return {void} No return value.
    */
   function handleToggleTheme() {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(memoizedTheme === "dark" ? "light" : "dark");
   }
 
   const handleSignOut = useMutation(
