@@ -7,16 +7,60 @@ type CreateSnippetProps = {
   id: string;
   user_id: string | undefined;
   currentUrl: string | undefined | null;
-  title: string;
+  title?: string;
   code: string;
   language: string;
   state: EditorState;
+};
+
+type UpdateSnippetProps = {
+  id: string;
+  user_id: string | undefined;
+  currentUrl?: string | undefined | null;
+  title?: string;
+  code?: string;
+  language?: string;
+  state?: EditorState;
 };
 
 type RemoveSnippetProps = {
   user_id: string | undefined;
   snippet_id: string | undefined;
 };
+
+function createUrl(
+  currentUrl: string | null | undefined,
+  code: string,
+  state: EditorState,
+  user_id: string | undefined
+) {
+  const queryParams = new URLSearchParams();
+
+  const stringifiedState = transformState(state);
+
+  queryParams.append("code", encodeURIComponent(code));
+  queryParams.append("user_id", user_id ?? "");
+
+  Object.entries(stringifiedState).forEach(([key, value]) => {
+    queryParams.append(key, value);
+  });
+
+  queryParams.delete("shared");
+
+  return `${currentUrl}?${queryParams.toString()}`;
+}
+
+function transformState(state: EditorState) {
+  return Object.fromEntries(
+    Object.entries(state).map(([key, value]) => {
+      if (typeof value === "object" && value !== null) {
+        return [key, JSON.stringify(value)];
+      } else {
+        return [key, String(value)];
+      }
+    })
+  );
+}
 
 /**
  * Create a code snippet and save it to the database.
@@ -31,30 +75,8 @@ export async function createSnippet({
   language,
   state,
 }: CreateSnippetProps) {
-  function transformState(state: EditorState) {
-    return Object.fromEntries(
-      Object.entries(state).map(([key, value]) => {
-        if (typeof value === "object" && value !== null) {
-          return [key, JSON.stringify(value)];
-        } else {
-          return [key, String(value)];
-        }
-      })
-    );
-  }
-
   try {
-    const stringifiedState = transformState(state);
-
-    const queryParams = new URLSearchParams({
-      ...stringifiedState,
-      code: encodeURIComponent(code),
-      user_id: user_id ?? "",
-    });
-
-    queryParams.delete("shared");
-
-    const url = `${currentUrl}?${queryParams.toString()}`;
+    const url = createUrl(currentUrl, code, state, user_id);
 
     const response = await fetch("/api/snippets", {
       method: "POST",
@@ -70,7 +92,6 @@ export async function createSnippet({
     });
 
     if (!response.ok) {
-      // const errorMessage = await response.text();
       toast.error(`Failed to save the snippet.`);
     } else {
       toast.success("Your code snippet is saved.", {
@@ -123,31 +144,50 @@ export async function removeSnippet({
   }
 }
 
-/**
- * Retrieves a snippet by matching the current URL.
- *
- * @param {GetSnippetByMatchingURLProps} currentUrl - The current URL to match against.
- * @return {Promise<{ data: any }>} An object containing the retrieved data.
- */
-// export async function getSnippetByMatchingUrl({
-//   currentUrl,
-// }: GetSnippetByMatchingURLProps) {
-//   try {
-//     const queryParams = new URLSearchParams({
-//       url: currentUrl || "",
-//     });
-//     const url = `/api/snippets?${queryParams.toString()}`;
+export async function updateSnippet({
+  id,
+  currentUrl,
+  user_id,
+  title,
+  code,
+  language,
+  state,
+}: UpdateSnippetProps) {
+  let url = currentUrl;
 
-//     const response = await fetch(url, { method: "GET", headers });
+  if (code && state) {
+    url = createUrl(currentUrl, code, state, user_id);
+  }
 
-//     if (!response.ok) {
-//       toast.error(`Something went wrong, please try again.`);
-//     }
+  try {
+    const response = await fetch("/api/snippets", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        id,
+        user_id,
+        title,
+        code,
+        language,
+        url,
+      }),
+    });
 
-//     const { data } = await response.json();
+    if (!response.ok) {
+      console.log(response);
+      toast.error(`Failed to save the snippet.`);
+    } else {
+      toast.success("Your code snippet is saved.", {
+        action: {
+          label: "Choose folder",
+          onClick: () => console.log("Action!"),
+        },
+      });
+    }
+    const { data } = await response.json();
 
-//     return { data };
-//   } catch (error) {
-//     toast.error(`Something went wrong, please try again.`);
-//   }
-// }
+    return { data };
+  } catch (error) {
+    toast.error(`Failed to save the snippet.`);
+  }
+}

@@ -2,10 +2,8 @@ import React from "react";
 import { toast } from "sonner";
 import { useQuery } from "react-query";
 
-import { Button } from "../../button";
-import * as S from "./styles";
-import { Separator } from "../../separator";
 import { languagesLogos } from "@/lib/language-logos";
+import { Button } from "../../button";
 import { ScrollArea } from "../../scroll-area";
 import {
   Accordion,
@@ -13,6 +11,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../../accordion";
+import { Skeleton } from "../../skeleton";
+import * as S from "./styles";
 
 type Snippet = {
   id: string;
@@ -26,7 +26,7 @@ type Snippet = {
 
 export const EmptyState = () => {
   return (
-    <div className="w-full px-4 mt-12">
+    <div className="w-full pr-5 mt-12">
       <div className={S.emptyContainer()}>
         <div className={S.emptyCard()}>
           <div className={S.emptyIcon()}>
@@ -55,11 +55,11 @@ export const EmptyState = () => {
 
 export const SnippetsList = ({ data }: { data: Snippet[] }) => {
   return (
-    <div className="flex flex-col items-center justify-center px-3">
-      <button className={S.addButton()}>
+    <div className="flex flex-col items-center justify-center pr-3">
+      {/* <button className={S.addButton()}>
         <i className="ri-add-line text-lg" />
         Create folder
-      </button>
+      </button> */}
 
       <Accordion type="multiple" defaultValue={["home"]} className="w-full">
         <AccordionItem value="home">
@@ -85,7 +85,7 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
                         </span>
                       </div>
 
-                      <p className="flex-2">{snippet.title}</p>
+                      <p className="flex-2 truncate">{snippet.title}</p>
                     </button>
                   </li>
                 ))}
@@ -122,10 +122,12 @@ export const Snippets = () => {
   return (
     <section className="w-full pl-4">
       {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          {/* <Spinner /> */}
+        <div className="w-[calc(100%-16px)] flex flex-col p-8 justify-center items-center gap-3">
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
         </div>
-      ) : !data ? (
+      ) : !data || data.data.length === 0 ? (
         <EmptyState />
       ) : (
         <ScrollArea className="h-[calc(100vh-200px)] w-[calc(100%-16px)] mt-8 flex flex-col justify-center">

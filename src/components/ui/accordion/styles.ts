@@ -13,11 +13,12 @@ export const trigger = cva([
   "transition-all",
   "hover:bg-muted/50",
   "dark:hover:bg-muted/20",
-  "[&[data-state=open]>svg]:rotate-180",
+  "[&[data-state=open]>svg]:rotate-90",
 ]);
 
 export const content = cva([
   "mt-2",
+  "ml-7",
   "overflow-hidden",
   "text-sm",
   "data-[state=closed]:animate-accordion-up",
@@ -27,6 +28,7 @@ export const content = cva([
 export const icon = cva([
   "h-4",
   "w-4",
+  "mr-2",
   "shrink-0",
   "text-muted-foreground",
   "transition-transform",

@@ -10,7 +10,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Snippets } from "./snippets";
 import { useEditorStore } from "@/app/store";
-import { Tooltip } from '../tooltip';
+import { Tooltip } from "../tooltip";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -79,13 +79,15 @@ export const Sidebar = () => {
 
         <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
 
-        {/* <Tooltip content="Add folder">
-          <div>
-            <Button size="icon" variant="secondary">
-              <i className="ri-add-line" />
-            </Button>
-          </div>
-        </Tooltip> */}
+        {showSidebarContent && (
+          <Tooltip content="Add folder">
+            <div className="absolute right-2 top-3">
+              <Button size="icon" variant="secondary" className="rounded-full">
+                <i className="ri-add-line" />
+              </Button>
+            </div>
+          </Tooltip>
+        )}
 
         <motion.div
           initial={{ opacity: 0, width: 320 }}

@@ -88,10 +88,13 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
           <TabsTrigger
             key={tab.id}
             value={tab.id}
-            className="relative capitalize group/tab"
+            className="relative capitalize group/tab max-w-[180px]"
           >
-            {tab.isSnippetSaved && <i className="ri-bookmark-fill mr-2" />}
-            {tab.title}
+            <div className="truncate">
+              {tab.isSnippetSaved && <i className="ri-bookmark-fill mr-2" />}
+              {tab.title}
+            </div>
+
             {tabs.length > 1 && (
               <Button
                 variant="ghost"

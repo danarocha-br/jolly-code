@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { codeSnippets } from "@/lib/code-snippets-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
-import { useEditorStore, useUserStore } from "@/app/store";
+import { EditorState, useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { LoginDialog } from "@/app/auth/login";
 import { useMediaQuery } from "@/lib/utils/media-query";
@@ -22,7 +22,8 @@ import { Skeleton } from "../skeleton";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import * as S from "./styles";
-import { createSnippet, removeSnippet } from "./helpers";
+import { createSnippet, removeSnippet, updateSnippet } from "./helpers";
+import { debounce } from "@/lib/utils/debounce";
 
 type EditorProps = {
   padding: number;
@@ -30,6 +31,15 @@ type EditorProps = {
   setWidth: (value: React.SetStateAction<string>) => void;
   isWidthVisible: boolean;
   isLoading: boolean;
+};
+
+export type SnippetData = {
+  id: string;
+  title?: string;
+  code?: string;
+  state?: EditorState;
+  language?: string;
+  currentUrl?: string | null;
 };
 
 const focusEditor = hotKeyList.filter(
@@ -67,6 +77,7 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const {
       code,
+      title,
       userHasEditedCode,
       isSnippetSaved,
       language,
@@ -79,6 +90,7 @@ export const Editor = forwardRef<any, EditorProps>(
       return editor
         ? {
             code: editor.code,
+            title: editor.title,
             userHasEditedCode: editor.userHasEditedCode,
             isSnippetSaved: editor.isSnippetSaved,
             language: editor.language,
@@ -87,6 +99,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }
         : {
             code: "",
+            title: "Untitled",
             userHasEditedCode: false,
             isSnippetSaved: false,
             language: "plaintext",
@@ -94,8 +107,6 @@ export const Editor = forwardRef<any, EditorProps>(
             editorShowLineNumbers: false,
           };
     });
-
-    const { updateEditor } = useEditorStore((state) => state);
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
 
@@ -187,16 +198,9 @@ export const Editor = forwardRef<any, EditorProps>(
         }),
 
       onMutate: async () => {
-        // (Cancel any outgoing refetches so they don't overwrite our optimistic update)
         await queryClient.cancelQueries({ queryKey: ["snippets"] });
 
         const previousSnippets = queryClient.getQueryData(["snippets"]);
-
-        // Optimistically update to the new value
-        // queryClient.setQueryData<Snippet[]>(
-        //   ["snippets"],
-        //   (old: Snippet[] | undefined) => [...(old || []), newSnippet]
-        // );
 
         useEditorStore.setState({
           editors: editors.map((editor) => {
@@ -232,8 +236,16 @@ export const Editor = forwardRef<any, EditorProps>(
         });
       },
       onSuccess: () => {
-        updateEditor(currentState!.id, {
-          isSnippetSaved: false,
+        useEditorStore.setState({
+          editors: editors.map((editor) => {
+            if (editor.id === currentState?.id) {
+              return {
+                ...editor,
+                isSnippetSaved: false,
+              };
+            }
+            return editor;
+          }),
         });
       },
 
@@ -241,6 +253,82 @@ export const Editor = forwardRef<any, EditorProps>(
         queryClient.invalidateQueries({ queryKey: ["snippets"] });
       },
     });
+
+    queryClient.setMutationDefaults(["updateSnippet"], {
+      mutationFn: async ({
+        id,
+        title,
+        code,
+        language,
+        state,
+        currentUrl,
+      }: SnippetData) => {
+        return updateSnippet({
+          user_id: user?.id,
+          id,
+          title,
+          code,
+          language,
+          currentUrl,
+          state,
+        });
+      },
+      onMutate: async (newSnippet) => {
+        await queryClient.cancelQueries({ queryKey: ["snippets"] });
+
+        const previousSnippet = queryClient.getQueryData([
+          "snippets",
+          newSnippet.id,
+        ]);
+
+        queryClient.setQueryData(["snippets", newSnippet.id], newSnippet);
+
+        return { previousSnippet, newSnippet };
+      },
+
+      onError: (err, newTodo, context) => {
+        queryClient.setQueryData(["snippets"], context.previousSnippets);
+      },
+
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ["snippets"] });
+      },
+      retry: 3,
+    });
+
+    const handleUpdateSnippet = useMutation<
+      SnippetData,
+      unknown,
+      SnippetData,
+      unknown
+    >({
+      mutationKey: ["updateSnippet"],
+    });
+
+    const debouncedUpdateSnippet = useMemo(
+      () =>
+        debounce(
+          (
+            id: string,
+            code: string,
+            language: string,
+            state: EditorState,
+            currentUrl: string | null
+          ) => {
+            if (id) {
+              handleUpdateSnippet.mutate({
+                id,
+                code,
+                language,
+                state,
+                currentUrl,
+              });
+            }
+          },
+          1000
+        ),
+      []
+    );
 
     //TODO: adding tabs and open new clean editor view
 
@@ -342,6 +430,7 @@ export const Editor = forwardRef<any, EditorProps>(
                       )}
                     >
                       <TitleInput
+                        onUpdateTitle={handleUpdateSnippet}
                         language={language}
                         disabled={presentational}
                       />
@@ -390,13 +479,16 @@ export const Editor = forwardRef<any, EditorProps>(
                             return editor;
                           }),
                         });
-
-                        // if (currentState) {
-                        //   updateEditor(currentState.id, {
-                        //     code: code,
-                        //     userHasEditedCode: true,
-                        //   });
-                        // }
+                        {
+                          isSnippetSaved &&
+                            debouncedUpdateSnippet(
+                              currentState?.id!,
+                              code,
+                              language,
+                              currentState!,
+                              currentUrlOrigin
+                            );
+                        }
                       }}
                       disabled={presentational}
                       highlight={(code) =>

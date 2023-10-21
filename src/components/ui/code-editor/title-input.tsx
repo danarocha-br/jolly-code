@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useEditorStore } from "@/app/store";
 import { input } from "./styles";
 import { languagesLogos } from "@/lib/language-logos";
+import { UseMutationResult } from "react-query";
+import { SnippetData } from "./editor";
+import { debounce } from "@/lib/utils/debounce";
 
 type TitleInputProps = {
   language: string;
-  // deletable?: boolean;
+  onUpdateTitle: UseMutationResult<SnippetData, unknown, SnippetData, unknown>;
 } & React.InputHTMLAttributes<HTMLInputElement>;
 
 /**
@@ -17,7 +20,11 @@ type TitleInputProps = {
  * @param {TitleInputProps} currentState - the current state of the component
  * @return {JSX.Element} - the rendered title input component
  */
-export const TitleInput = ({ language, ...props }: TitleInputProps) => {
+export const TitleInput = ({
+  language,
+  onUpdateTitle,
+  ...props
+}: TitleInputProps) => {
   const currentState = useEditorStore((state) => state.currentEditorState);
   const [localTitle, setLocalTitle] = useState(
     currentState?.title || "Untitled"
@@ -31,10 +38,25 @@ export const TitleInput = ({ language, ...props }: TitleInputProps) => {
     setLocalTitle(currentState?.title || "Untitled");
   }, [currentState]);
 
+  const debouncedUpdateSnippet = useMemo(
+    () =>
+      debounce((id: string, title: string) => {
+        if (id) {
+          onUpdateTitle.mutate({
+            id,
+            title,
+          });
+        }
+      }, 1000),
+    []
+  );
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalTitle(e.target.value);
     if (currentState) {
       updateEditor(currentState.id, { title: e.target.value });
+      currentState.isSnippetSaved &&
+        debouncedUpdateSnippet(currentState.id, e.target.value);
     }
   };
 
@@ -62,16 +84,6 @@ export const TitleInput = ({ language, ...props }: TitleInputProps) => {
           onClick={handleClick}
           {...props}
         />
-
-        {/* {deletable && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="-mr-2 transition-opacity opacity-0 group-hover/tab:opacity-100 !w-4 !h-4"
-          >
-            <i className="ri-close-line" />
-          </Button>
-        )} */}
       </div>
     </div>
   );

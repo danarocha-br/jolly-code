@@ -170,6 +170,13 @@ export async function getSnippetById({
   }
 }
 
+/**
+ * Retrieves a list of snippets for a specific user.
+ *
+ * @param {string} user_id - The ID of the user.
+ * @param {SupabaseClient<Database, "public", any>} supabase - The Supabase client.
+ * @return {Promise<Snippet[]>} - A promise that resolves to an array of snippets.
+ */
 export async function getUsersSnippetsList({
   user_id,
   supabase,
@@ -193,5 +200,49 @@ export async function getUsersSnippetsList({
     return Promise.reject(
       new Error("An error occurred. Please try again later.")
     );
+  }
+}
+
+export async function updateSnippet({
+  id,
+  user_id,
+  title,
+  code,
+  language,
+  url,
+  supabase,
+}: Snippet): Promise<any> {
+  let sanitizedTitle = null;
+
+  if (title === "" || title === undefined) {
+    sanitizedTitle = "Untitled";
+  } else {
+    sanitizedTitle = title;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("snippet")
+      .update([
+        {
+          user_id,
+          title: sanitizedTitle,
+          code,
+          language,
+          url,
+        },
+      ])
+      .eq("id", id)
+      .eq("user_id", user_id)
+      .select();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw new Error("An error occurred. Please try again later.");
   }
 }
