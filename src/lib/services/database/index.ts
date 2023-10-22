@@ -266,6 +266,12 @@ export async function updateSnippet({
   }
 }
 
+/**
+ * Inserts a new collection into the database.
+ *
+ * @param {Collection} collection - The collection object containing the user ID, title, snippets, and Supabase instance.
+ * @return {Promise<any>} - A promise that resolves to the inserted data or throws an error.
+ */
 export async function insertCollection({
   user_id,
   title,
@@ -296,7 +302,51 @@ export async function insertCollection({
   }
 }
 
+/**
+ * Updates a collection in the database.
+ *
+ * @param {Collection} collection - The collection object containing the following properties:
+ * @return {Promise<any>} A promise that resolves with the updated collection data.
+ */
+export async function updateCollection({
+  id,
+  user_id,
+  title,
+  snippets,
+  supabase,
+}: Collection): Promise<any> {
+  try {
+    const { data, error } = await supabase
+      .from("snippet")
+      .update([
+        {
+          user_id,
+          title,
+          snippets,
+          updated_at: new Date(),
+        },
+      ])
+      .eq("id", id)
+      .eq("user_id", user_id)
+      .select();
 
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw new Error("An error occurred. Please try again later.");
+  }
+}
+
+/**
+ * Retrieves a list of user collections from the database.
+ *
+ * @param {Object} params - The parameters for retrieving the collection list.
+ * @return {Promise<Snippet[]>} A promise that resolves to an array of Snippet objects representing the user's collections.
+ */
 export async function getUsersCollectionList({
   user_id,
   supabase,

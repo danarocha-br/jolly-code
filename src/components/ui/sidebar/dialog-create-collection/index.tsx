@@ -44,10 +44,10 @@ export const DialogCreateCollection = ({
 
       const previousCollection = queryClient.getQueryData(["collections"]);
 
-      queryClient.setQueryData(
-        ["collections"],
-        (old: Collection[] | undefined) => [...(old || []), newCollection]
-      );
+     queryClient.setQueryData(
+       ["collections"],
+       (old: Collection[] | undefined) => [...(old ?? []), newCollection]
+     );
 
       return { previousCollection };
     },
@@ -88,14 +88,13 @@ export const DialogCreateCollection = ({
         </div>
 
         <DialogFooter>
-          <Button
+          {/* <Button
             variant="outline"
-            onClick={() => handleCreateCollection.mutate({ title })}
           >
             Cancel
-          </Button>
-          <Button onClick={() => handleCreateCollection.mutate({ title })}>
-            Save
+          </Button> */}
+          <Button disabled={!title} onClick={() => handleCreateCollection.mutate({ title })}>
+            Save collection
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -24,6 +24,7 @@ import { WidthMeasurement } from "./width-measurement";
 import { createSnippet, removeSnippet, updateSnippet } from "./helpers";
 import { debounce } from "@/lib/utils/debounce";
 import * as S from "./styles";
+import DialogChooseCollection from './dialog-choose-collection';
 
 type EditorProps = {
   padding: number;
@@ -354,6 +355,9 @@ export const Editor = forwardRef<any, EditorProps>(
           ref={ref}
           id={currentEditor?.id || "editor"}
         >
+
+          <DialogChooseCollection><button>test</button></DialogChooseCollection>
+
           {!user ? (
             <LoginDialog>
               <Button

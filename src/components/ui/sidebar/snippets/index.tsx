@@ -16,6 +16,14 @@ import * as S from "./styles";
 import { EditorState, useEditorStore } from "@/app/store";
 import { fetchCollections, fetchSnippets } from "../helpers";
 import { Collection } from "@/lib/services/database";
+import { DialogCreateCollection } from "../dialog-create-collection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../dropdown-menu";
 
 type Snippet = {
   id: string;
@@ -27,7 +35,7 @@ type Snippet = {
   created_at?: string | undefined;
 };
 
-export const EmptyState = () => {
+export const CollectionsEmptyState = () => {
   return (
     <div className="w-full pr-5 mt-12">
       <div className={S.emptyContainer()}>
@@ -48,17 +56,18 @@ export const EmptyState = () => {
           Start by creating a folder or saving a code snippet.
         </p>
 
-        <Button variant="secondary" className="w-[220px]">
-          Create a folder
-        </Button>
+        <DialogCreateCollection>
+          <Button variant="secondary" className="w-[220px]">
+            Create a folder
+          </Button>
+        </DialogCreateCollection>
       </div>
     </div>
   );
 };
 
 export const SnippetsList = ({ data }: { data: Snippet[] }) => {
-  const { setActiveTab, editors, activeEditorTabId, addEditor } =
-    useEditorStore();
+  const { setActiveTab, editors, addEditor } = useEditorStore();
   const lastUpdateTime = useRef(0);
 
   const handleSnippetClick = (snippet: Snippet) => {
@@ -102,9 +111,9 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
             <ul className="w-full grid grid-cols-1 gap-2">
               {data &&
                 data.map((snippet: Snippet) => (
-                  <li key={snippet.id}>
+                  <li key={snippet.id} className={S.snippet()}>
                     <button
-                      className={S.snippet()}
+                      className="flex gap-1 items-center"
                       onClick={() => handleSnippetClick(snippet)}
                     >
                       <div className="flex items-center gap-2 px-3 py-1">
@@ -119,6 +128,32 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
 
                       <p className="flex-2 truncate">{snippet.title}</p>
                     </button>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="opacity-0 group-hover/snippet:opacity-100 transition-opacity"
+                        >
+                          <i className="ri-more-line text-lg" />
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <i className="ri-folder-line mr-3" /> Move to
+                          collection
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="">
+                          <div>
+                            <i className="ri-bookmark-2-line mr-3" />
+                            Remove
+                          </div>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </li>
                 ))}
             </ul>
@@ -127,7 +162,7 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
 
         {collections &&
           collections.data.map((collection: Collection) => (
-            <AccordionItem key={collection.id} value={collection.title}>
+            <AccordionItem key={collection.id} value={collection.id!}>
               <AccordionTrigger>
                 <h2 className="text-foreground text-left capitalize text-sm w-full">
                   <i className="ri-folder-line mr-3" />
@@ -179,7 +214,7 @@ export const Snippets = () => {
           <Skeleton />
         </div>
       ) : !snippets || snippets.data.length === 0 ? (
-        <EmptyState />
+        <CollectionsEmptyState />
       ) : (
         <ScrollArea className="h-[calc(100vh-200px)] w-[calc(100%-16px)] mt-8 flex flex-col justify-center">
           <SnippetsList

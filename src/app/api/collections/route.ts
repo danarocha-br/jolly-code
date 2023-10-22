@@ -2,7 +2,11 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-import { getUsersCollectionList, insertCollection } from "@/lib/services/database";
+import {
+  getUsersCollectionList,
+  insertCollection,
+  updateCollection,
+} from "@/lib/services/database";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
 
 /**
@@ -104,6 +108,64 @@ export async function POST(request: NextRequest) {
     if (!data) {
       return NextResponse.json(
         { error: "Failed to insert collection." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      status: 200,
+      data: data[0],
+    });
+  } catch (error) {
+    console.error("error", error);
+    return NextResponse.json(
+      { error: "An error occurred. Please try again later." },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handles the PUT request and updates a collection in the database.
+ *
+ * @param {NextRequest} request - The incoming request object.
+ * @return {Promise<NextResponse>} A promise that resolves to a response object.
+ */
+export async function PUT(request: NextRequest) {
+  const cookieStore = cookies();
+  const supabase = createRouteHandlerClient<Database>({
+    cookies: () => cookieStore,
+  });
+
+  try {
+    const { id, title, user_id, snippets } =
+      await validateContentType(request).json();
+
+    if (!user_id) {
+      return NextResponse.json(
+        { error: "User must be authenticated to updated a snippet." },
+        { status: 401 }
+      );
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Missing collection id in the request." },
+        { status: 400 }
+      );
+    }
+
+    const data = await updateCollection({
+      id,
+      user_id: user_id || null,
+      title,
+      snippets,
+      supabase,
+    });
+
+    if (!data) {
+      return NextResponse.json(
+        { error: "Failed to update collection." },
         { status: 500 }
       );
     }

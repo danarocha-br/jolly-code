@@ -8,7 +8,7 @@ export const content = cva([
   "rounded-md",
   "shadow-md",
   "p-1",
-  "z-50",
+  "z-[999]",
   "min-w-[8rem]",
   "overflow-hidden",
 

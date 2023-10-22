@@ -13,13 +13,17 @@ export const snippet = cva([
   "outline-none",
   "flex",
   "items-center",
+  "justify-between",
   "pl-3",
   "gap-1",
   "w-full",
   "transition-all",
+  "group/snippet",
 
-  "hover:bg-indigo-400/10",
-  "hover:border-primary/50",
+  "hover:bg-indigo-200/30",
+  "dark:hover:bg-primary/10",
+  "hover:border-indigo-300",
+  "dark:hover:border-primary/50",
 ]);
 
 export const addButton = cva([

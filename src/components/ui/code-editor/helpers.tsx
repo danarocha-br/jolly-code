@@ -1,5 +1,7 @@
 import { EditorState } from "@/app/store";
 import { toast } from "sonner";
+import DialogChooseCollection from "./dialog-choose-collection";
+import { Button } from "../button";
 
 const headers = { "Content-Type": "application/json" };
 
@@ -21,6 +23,13 @@ type UpdateSnippetProps = {
   code?: string;
   language?: string;
   state?: EditorState;
+};
+
+type UpdateCollectionProps = {
+  id: string;
+  user_id: string | undefined;
+  title?: string;
+  snippets?: EditorState[];
 };
 
 type RemoveSnippetProps = {
@@ -106,6 +115,16 @@ export async function createSnippet({
     if (!response.ok) {
       toast.error(`Failed to save the snippet.`);
     } else {
+      // toast.success(
+      //   <div className="flex justify-between items-center w-full gap-2">
+      //     <p>Your code snippet is saved.</p>
+
+      //     <DialogChooseCollection >
+      //       <Button variant="secondary">Choose folder</Button>
+      //     </DialogChooseCollection>
+      //   </div>
+      // );
+
       toast.success("Your code snippet is saved.", {
         action: {
           label: "Choose folder",
@@ -196,6 +215,36 @@ export async function updateSnippet({
       return;
     } else {
       toast.success("Snippet updated.");
+    }
+    const { data } = await response.json();
+
+    return { data };
+  } catch (error) {}
+}
+
+export async function updateCollection({
+  id,
+  user_id,
+  title,
+  snippets,
+}: UpdateCollectionProps) {
+  try {
+    const response = await fetch("/api/collections", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        id,
+        user_id,
+        title,
+        snippets,
+      }),
+    });
+
+    if (!response.ok) {
+      console.log(response);
+      return;
+    } else {
+      toast.success("Collection updated.");
     }
     const { data } = await response.json();
 

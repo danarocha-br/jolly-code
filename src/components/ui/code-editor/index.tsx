@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Button } from "../button";
 import { resizableButton } from "./styles";
 import { useMediaQuery } from "@/lib/utils/media-query";
+import { ScrollArea, ScrollBar } from "../scroll-area";
 
 type CodeEditor = {
   isLoading: boolean;
@@ -81,39 +82,54 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
       value={activeEditorTabId}
       onValueChange={(tab) => setActiveTab(tab)}
     >
-      <TabsList>
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.id}
-            value={tab.id}
-            className="relative capitalize group/tab max-w-[180px]"
-          >
-            <div className="truncate">
-              {tab.isSnippetSaved && <i className="ri-bookmark-fill mr-2" />}
-              {tab.title}
-            </div>
-
-            {tabs.length > 1 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="-mr-2.5 ml-px transition-opacity opacity-0 group-hover/tab:opacity-100 !w-4 !h-4"
-                onClick={handleRemoveTab}
+      <Resizable
+        className="overflow-hidden"
+        minWidth={padding * 2 + 320}
+        maxWidth="90vw"
+        size={{ width, height: "auto" }}
+      >
+        <ScrollArea className="overflow-hidden">
+          <TabsList>
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="relative capitalize group/tab max-w-[180px]"
               >
-                <i className="ri-close-line" />
-              </Button>
-            )}
-          </TabsTrigger>
-        ))}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="ml-2 bg-foreground/[0.02]"
-          onClick={handleAddTabs}
-        >
-          <i className="ri-add-line text-lg" />
-        </Button>
-      </TabsList>
+                <div className="truncate">
+                  {tab.isSnippetSaved && (
+                    <i className="ri-bookmark-fill mr-2" />
+                  )}
+                  {tab.title}
+                </div>
+
+                {tabs.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="-mr-2.5 ml-px transition-opacity opacity-0 group-hover/tab:opacity-100 !w-4 !h-4"
+                    onClick={handleRemoveTab}
+                  >
+                    <i className="ri-close-line" />
+                  </Button>
+                )}
+              </TabsTrigger>
+            ))}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="ml-2 bg-foreground/[0.02]"
+              onClick={handleAddTabs}
+            >
+              <i className="ri-add-line text-lg" />
+            </Button>
+          </TabsList>
+          <ScrollBar
+            orientation="horizontal"
+            className="[.scroll-thumb]:bg-transparent"
+          />
+        </ScrollArea>
+      </Resizable>
 
       {tabs.map((tab) => (
         <TabsContent key={tab.id} value={tab.id} className="mt-2">

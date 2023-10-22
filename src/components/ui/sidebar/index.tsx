@@ -3,15 +3,15 @@ import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-import * as S from "./styles";
 import { Button } from "../button";
 import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Snippets } from "./snippets";
 import { Tooltip } from "../tooltip";
-import { DialogCreateCollection } from "./DialogCreateCollection";
+import { DialogCreateCollection } from "./dialog-create-collection";
 import { useEditorStore } from "@/app/store";
+import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -59,7 +59,7 @@ export const Sidebar = () => {
         animate={{ width }}
         transition={{ ease: "easeOut", duration: 0.3 }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        // onMouseLeave={handleMouseLeave}
       >
         <Button
           size="icon"
@@ -152,11 +152,13 @@ export const Sidebar = () => {
           <Logo />
         </div>
 
-        <div className="absolute bottom-6 right-2">
-          <Button size="icon" variant="ghost">
-            <i className="ri-layout-right-2-line text-xl" />
-          </Button>
-        </div>
+        <Tooltip content="Close sidebar">
+          <div className="absolute bottom-6 right-2">
+            <Button size="icon" variant="ghost" onClick={handleMouseLeave}>
+              <i className="ri-layout-right-2-line text-xl" />
+            </Button>
+          </div>
+        </Tooltip>
       </motion.div>
     </aside>
   );
