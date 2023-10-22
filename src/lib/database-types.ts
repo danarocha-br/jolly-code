@@ -14,6 +14,7 @@ export interface Database {
           created_at: string
           id: string
           snippets: Json[] | null
+          title: string | null
           updated_at: string | null
           user_id: string
         }
@@ -21,6 +22,7 @@ export interface Database {
           created_at?: string
           id?: string
           snippets?: Json[] | null
+          title?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -28,6 +30,7 @@ export interface Database {
           created_at?: string
           id?: string
           snippets?: Json[] | null
+          title?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -125,7 +128,7 @@ export interface Database {
         Insert: {
           code: string
           created_at?: string
-          id?: string
+          id: string
           language: string
           title: string
           updated_at?: string | null

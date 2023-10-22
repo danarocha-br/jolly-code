@@ -8,6 +8,17 @@ export type Snippet = {
   title: string;
   url?: string | null;
   created_at?: string;
+  updated_at?: string;
+  supabase: SupabaseClient<Database, "public", any>;
+};
+
+export type Collection = {
+  id?: string;
+  user_id: string;
+  title: string;
+  snippets?: Snippet[];
+  created_at?: string;
+  updated_at?: string;
   supabase: SupabaseClient<Database, "public", any>;
 };
 
@@ -46,6 +57,7 @@ export async function insertSnippet({
           code,
           language,
           url,
+          updated_at: new Date(),
         },
       ])
       .select();
@@ -203,6 +215,12 @@ export async function getUsersSnippetsList({
   }
 }
 
+/**
+ * Updates a snippet in the database.
+ *
+ * @param {Snippet} snippet - The snippet object containing the snippet information.
+ * @return {Promise<any>} - A promise that resolves to the updated snippet data.
+ */
 export async function updateSnippet({
   id,
   user_id,
@@ -230,6 +248,7 @@ export async function updateSnippet({
           code,
           language,
           url,
+          updated_at: new Date(),
         },
       ])
       .eq("id", id)
@@ -244,5 +263,62 @@ export async function updateSnippet({
   } catch (error) {
     console.error(error);
     throw new Error("An error occurred. Please try again later.");
+  }
+}
+
+export async function insertCollection({
+  user_id,
+  title,
+  snippets,
+  supabase,
+}: Collection): Promise<any> {
+  try {
+    const { data, error } = await supabase
+      .from("collection")
+      .insert([
+        {
+          user_id,
+          title,
+          snippets,
+          updated_at: new Date(),
+        },
+      ])
+      .select();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw new Error("An error occurred. Please try again later.");
+  }
+}
+
+
+export async function getUsersCollectionList({
+  user_id,
+  supabase,
+}: {
+  user_id: string;
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<Snippet[]> {
+  try {
+    const { data } = await supabase
+      .from("collection")
+      .select("*")
+      .eq("user_id", user_id);
+
+    if (data) {
+      return data;
+    } else {
+      throw new Error("No collections found.");
+    }
+  } catch (error) {
+    console.error(error);
+    return Promise.reject(
+      new Error("An error occurred. Please try again later.")
+    );
   }
 }

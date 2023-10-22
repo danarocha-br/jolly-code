@@ -14,6 +14,8 @@ import {
 import { Skeleton } from "../../skeleton";
 import * as S from "./styles";
 import { EditorState, useEditorStore } from "@/app/store";
+import { fetchCollections, fetchSnippets } from "../helpers";
+import { Collection } from "@/lib/services/database";
 
 type Snippet = {
   id: string;
@@ -84,13 +86,10 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
     }
   };
 
+  const { data: collections } = useQuery("collections", fetchCollections);
+
   return (
     <div className="flex flex-col items-center justify-center pr-3">
-      {/* <button className={S.addButton()}>
-        <i className="ri-add-line text-lg" />
-        Create folder
-      </button> */}
-
       <Accordion type="multiple" defaultValue={["home"]} className="w-full">
         <AccordionItem value="home">
           <AccordionTrigger>
@@ -125,32 +124,51 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
             </ul>
           </AccordionContent>
         </AccordionItem>
+
+        {collections &&
+          collections.data.map((collection: Collection) => (
+            <AccordionItem key={collection.id} value={collection.title}>
+              <AccordionTrigger>
+                <h2 className="text-foreground text-left capitalize text-sm w-full">
+                  <i className="ri-folder-line mr-3" />
+                  {collection.title}
+                </h2>
+              </AccordionTrigger>
+
+              <AccordionContent>
+                <ul className="w-full grid grid-cols-1 gap-2">
+                  {collection.snippets?.length &&
+                    collection.snippets.map((snippet: Snippet) => (
+                      <li key={snippet.id}>
+                        <button
+                          className={S.snippet()}
+                          onClick={() => handleSnippetClick(snippet)}
+                        >
+                          <div className="flex items-center gap-2 px-3 py-1">
+                            <span className="scale-75 -ml-3">
+                              {
+                                languagesLogos[
+                                  snippet.language as keyof typeof languagesLogos
+                                ]
+                              }
+                            </span>
+                          </div>
+
+                          <p className="flex-2 truncate">{snippet.title}</p>
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
       </Accordion>
     </div>
   );
 };
 
 export const Snippets = () => {
-  async function fetchSnippets() {
-    try {
-      const response = await fetch("/api/snippets", { method: "GET" });
-      if (!response.ok) {
-        toast.error("An error occurred. Please try again.");
-      }
-      const data = await response.json();
-
-      if (!data) {
-        toast.error("An error occurred. Please try again.");
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Network error:", error);
-      toast.error("An error occurred. Please try again.");
-    }
-  }
-
-  const { isLoading, data } = useQuery("snippets", fetchSnippets);
+  const { isLoading, data: snippets } = useQuery("snippets", fetchSnippets);
 
   return (
     <section className="w-full pl-4">
@@ -160,11 +178,13 @@ export const Snippets = () => {
           <Skeleton />
           <Skeleton />
         </div>
-      ) : !data || data.data.length === 0 ? (
+      ) : !snippets || snippets.data.length === 0 ? (
         <EmptyState />
       ) : (
         <ScrollArea className="h-[calc(100vh-200px)] w-[calc(100%-16px)] mt-8 flex flex-col justify-center">
-          <SnippetsList data={Array.isArray(data?.data) ? data.data : []} />
+          <SnippetsList
+            data={Array.isArray(snippets?.data) ? snippets.data : []}
+          />
         </ScrollArea>
       )}
     </section>

@@ -36,7 +36,7 @@ type EditorProps = {
 };
 
 export type SnippetData = {
-  id?: string;
+  id: string;
   title?: string;
   code?: string;
   state?: EditorState;
@@ -272,7 +272,7 @@ export const Editor = forwardRef<any, EditorProps>(
         state,
         currentUrl,
       }: SnippetData) => {
-        return updateSnippet({
+        return await updateSnippet({
           user_id: user?.id,
           id,
           title,
@@ -295,7 +295,7 @@ export const Editor = forwardRef<any, EditorProps>(
         return { previousSnippet, newSnippet };
       },
 
-      onError: (err, newTodo, context) => {
+      onError: (err, newSnippet, context) => {
         queryClient.setQueryData(["snippets"], context.previousSnippets);
       },
 

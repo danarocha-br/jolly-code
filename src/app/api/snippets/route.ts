@@ -10,6 +10,11 @@ import {
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
+/**
+ * Retrieves a list of snippets for the authenticated user.
+ *
+ * @return {Promise<object>} A JSON response containing the list of snippets.
+ */
 export async function GET() {
   const cookieStore = cookies();
   const supabase = createRouteHandlerClient<Database>({
@@ -47,7 +52,7 @@ export async function GET() {
     if (!data) {
       return NextResponse.json(
         { error: "No snippets found. Please create a snippet first." },
-        { status: 200 }
+        { status: 404 }
       );
     }
 

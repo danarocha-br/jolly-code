@@ -28,6 +28,11 @@ type RemoveSnippetProps = {
   snippet_id: string | undefined;
 };
 
+/**
+ * Generates a URL with query parameters based on the current URL, code, state, and user ID.
+ *
+ * @return {string} The generated URL with query parameters.
+ */
 function createUrl(
   currentUrl: string | null | undefined,
   code: string,
@@ -50,6 +55,13 @@ function createUrl(
   return `${currentUrl}?${queryParams.toString()}`;
 }
 
+/**
+ * Transforms the given EditorState object into a new object by converting all
+ * nested objects into string representations.
+ *
+ * @param {EditorState} state - The EditorState object to transform.
+ * @return {Object} The transformed object.
+ */
 function transformState(state: EditorState) {
   return Object.fromEntries(
     Object.entries(state).map(([key, value]) => {
@@ -144,6 +156,12 @@ export async function removeSnippet({
   }
 }
 
+/**
+ * Updates a snippet with the given properties.
+ *
+ * @param {object} props - The properties of the snippet to be updated.
+ * @return {object} The updated snippet data.
+ */
 export async function updateSnippet({
   id,
   currentUrl,

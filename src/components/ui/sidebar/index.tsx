@@ -9,8 +9,9 @@ import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Snippets } from "./snippets";
-import { useEditorStore } from "@/app/store";
 import { Tooltip } from "../tooltip";
+import { DialogCreateCollection } from "./DialogCreateCollection";
+import { useEditorStore } from "@/app/store";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -82,9 +83,15 @@ export const Sidebar = () => {
         {showSidebarContent && (
           <Tooltip content="Add folder">
             <div className="absolute right-2 top-3">
-              <Button size="icon" variant="secondary" className="rounded-full">
-                <i className="ri-add-line" />
-              </Button>
+              <DialogCreateCollection>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="rounded-full"
+                >
+                  <i className="ri-add-line" />
+                </Button>
+              </DialogCreateCollection>
             </div>
           </Tooltip>
         )}
