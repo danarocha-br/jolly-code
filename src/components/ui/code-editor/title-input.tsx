@@ -51,8 +51,10 @@ export const TitleInput = ({
     []
   );
 
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalTitle(e.target.value);
+
     if (currentState) {
       updateEditor(currentState.id, { title: e.target.value });
       currentState.isSnippetSaved &&

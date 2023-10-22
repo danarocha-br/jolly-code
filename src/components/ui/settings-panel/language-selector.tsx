@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 
 import { useEditorStore } from "@/app/store";
@@ -11,6 +11,9 @@ import { Command, CommandGroup, CommandInput, CommandItem } from "../command";
 import { Tooltip } from "../tooltip";
 import { CommandEmpty } from "cmdk";
 import { SettingsPanelItem } from "./item";
+import { debounce } from "@/lib/utils/debounce";
+import { useMutation } from "react-query";
+import { SnippetData } from "../code-editor/editor";
 
 export const LanguageSelector = () => {
   const currentState = useEditorStore((state) => state.currentEditorState);
@@ -32,6 +35,28 @@ export const LanguageSelector = () => {
 
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState(language);
+
+  const handleUpdateSnippet = useMutation<
+    SnippetData,
+    unknown,
+    SnippetData,
+    unknown
+  >({
+    mutationKey: ["updateSnippet"],
+  });
+
+  const debouncedUpdateSnippet = useMemo(
+    () =>
+      debounce((id: string, language: string) => {
+        if (id) {
+          handleUpdateSnippet.mutate({
+            id,
+            language,
+          });
+        }
+      }, 1000),
+    []
+  );
 
   function handleChange(language: string) {
     if (currentState) {
@@ -62,6 +87,7 @@ export const LanguageSelector = () => {
           }),
         });
         setValue(language);
+        debouncedUpdateSnippet(currentState.id, language);
       }
     }
   }

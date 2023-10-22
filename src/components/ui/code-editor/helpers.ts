@@ -174,6 +174,7 @@ export async function updateSnippet({
     });
 
     if (!response.ok) {
+      console.log(response);
       return;
     } else {
       toast.success("Snippet updated.");

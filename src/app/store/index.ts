@@ -26,7 +26,7 @@ export type EditorStoreState = {
   updateEditor: (tabId: string, changes: Partial<EditorState>) => void;
   removeEditor: (tabId: string) => void;
   createNewTab: () => string;
-  setActiveTab: (tabId: string) => string;
+  setActiveTab: (tabId: string) => void;
   addEditor: (editor: EditorState) => void;
   currentEditorState: EditorState | null;
   activeEditorTabId: string;

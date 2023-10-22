@@ -36,7 +36,7 @@ type EditorProps = {
 };
 
 export type SnippetData = {
-  id: string;
+  id?: string;
   title?: string;
   code?: string;
   state?: EditorState;
