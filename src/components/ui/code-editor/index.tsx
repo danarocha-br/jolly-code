@@ -31,29 +31,18 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
   const [width, setWidth] = useState(isMobile ? "320px" : "720px");
   const [isWidthVisible, setIsWidthVisible] = useState(false);
 
-  const editors = useEditorStore((state) => state.editors);
-  const [activeTab, setActiveTab] = useState(
-    editors.length > 0 ? editors[0].id : ""
-  );
-
   const editorStore = useEditorStore((state) => state.editors);
+  const activeEditorTabId = useEditorStore((state) => state.activeEditorTabId);
+  const padding = useEditorStore((state) => state.padding);
+  const { createNewTab, removeEditor, setActiveTab } = useEditorStore();
 
   const tabs = useMemo(() => {
     return Array.isArray(editorStore) ? editorStore : [];
   }, [editorStore]);
 
-  const padding = useEditorStore((state) => state.padding);
-
-  const { createNewTab, removeEditor } = useEditorStore();
-
-  useEffect(() => {
-    const currentTabContent = tabs.find((t) => t.id === activeTab);
-    if (currentTabContent) {
-      useEditorStore.setState({
-        currentEditorState: currentTabContent,
-      });
-    }
-  }, [activeTab, tabs]);
+  const currentActiveEditor = useMemo(() => {
+    return tabs.find((t) => t.id === activeEditorTabId) || null;
+  }, [activeEditorTabId, tabs]);
 
   function handleAddTabs() {
     const newTabId = createNewTab();
@@ -61,27 +50,36 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
   }
 
   function handleRemoveTab() {
-    const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
-    removeEditor(activeTab);
+    const currentEditors = useEditorStore.getState().editors;
+    const activeEditorTabId = useEditorStore.getState().activeEditorTabId;
 
-    const newActiveTab =
-      activeTabIndex === 0 ? tabs[1].id : tabs[activeTabIndex - 1].id;
-    setActiveTab(newActiveTab);
-  }
+    // Find the index of the current active tab
+    const activeTabIndex = currentEditors.findIndex(
+      (editor) => editor.id === activeEditorTabId
+    );
 
-  function handleTabValueChange(tab: string) {
-    const currentTabContent = tabs.find((t) => t.id === tab);
-    useEditorStore.setState({
-      currentEditorState: currentTabContent,
-    });
-    setActiveTab(tab);
+    removeEditor(activeEditorTabId);
+
+    // If there are still tabs left after removing one
+    if (currentEditors.length > 1) {
+      // If the active tab was the first one, set the new active tab to the first one in the updated list
+      if (activeTabIndex === 0) {
+        const newActiveTabId = currentEditors[1].id;
+        setActiveTab(newActiveTabId);
+      }
+      // Otherwise, set the new active tab to the one before the removed tab
+      else {
+        const newActiveTabId = currentEditors[activeTabIndex - 1].id;
+        setActiveTab(newActiveTabId);
+      }
+    }
   }
 
   return (
     <Tabs
-      defaultValue={editors.length > 0 ? editors[0].id : ""}
-      value={activeTab}
-      onValueChange={(tab) => handleTabValueChange(tab)}
+      defaultValue={editorStore.length > 0 ? editorStore[0].id : ""}
+      value={activeEditorTabId}
+      onValueChange={(tab) => setActiveTab(tab)}
     >
       <TabsList>
         {tabs.map((tab) => (
@@ -134,6 +132,8 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
             className={cn("group/editor relative")}
           >
             <Editor
+              editors={tabs}
+              currentEditor={currentActiveEditor}
               padding={padding}
               width={width}
               setWidth={setWidth}

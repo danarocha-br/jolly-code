@@ -26,7 +26,10 @@ export type EditorStoreState = {
   updateEditor: (tabId: string, changes: Partial<EditorState>) => void;
   removeEditor: (tabId: string) => void;
   createNewTab: () => string;
+  setActiveTab: (tabId: string) => string;
+  addEditor: (editor: EditorState) => void;
   currentEditorState: EditorState | null;
+  activeEditorTabId: string;
   backgroundTheme: ThemeProps;
   showBackground: boolean;
   fontSize: number;
@@ -78,6 +81,7 @@ export const useEditorStore = create<
         presentational: false,
         editor: "default",
         currentEditorState: initialEditor,
+        activeEditorTabId: initialEditor.id,
 
         updateEditor: (tabId: string, changes: Partial<EditorState>) => {
           set((state) => {
@@ -117,6 +121,22 @@ export const useEditorStore = create<
           set((state) => ({ ...state, editors: [...state.editors, newTab] }));
           return newTabId;
         },
+
+        setActiveTab: (tabId: string) => {
+          const { activeEditorTabId, editors } = get();
+          if (tabId !== activeEditorTabId) {
+            const currentEditor = editors.find((editor) => editor.id === tabId);
+            if (currentEditor) {
+              set(() => ({
+                currentEditorState: currentEditor,
+                activeEditorTabId: tabId,
+              }));
+            }
+          }
+        },
+
+        addEditor: (editor: EditorState) =>
+          set((state) => ({ editors: [...state.editors, editor] })),
       };
     },
     { name: "code-store" }

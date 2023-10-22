@@ -174,20 +174,12 @@ export async function updateSnippet({
     });
 
     if (!response.ok) {
-      console.log(response);
-      toast.error(`Failed to save the snippet.`);
+      return;
     } else {
-      toast.success("Your code snippet is saved.", {
-        action: {
-          label: "Choose folder",
-          onClick: () => console.log("Action!"),
-        },
-      });
+      toast.success("Snippet updated.");
     }
     const { data } = await response.json();
 
     return { data };
-  } catch (error) {
-    toast.error(`Failed to save the snippet.`);
-  }
+  } catch (error) {}
 }

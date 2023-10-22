@@ -21,15 +21,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Skeleton } from "../skeleton";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
-import * as S from "./styles";
 import { createSnippet, removeSnippet, updateSnippet } from "./helpers";
 import { debounce } from "@/lib/utils/debounce";
+import * as S from "./styles";
 
 type EditorProps = {
   padding: number;
   width: string;
   setWidth: (value: React.SetStateAction<string>) => void;
   isWidthVisible: boolean;
+  currentEditor: EditorState | null;
+  editors: EditorState[] | [];
   isLoading: boolean;
 };
 
@@ -50,7 +52,18 @@ const unfocusEditor = hotKeyList.filter(
 );
 
 export const Editor = forwardRef<any, EditorProps>(
-  ({ padding, width, isWidthVisible = false, setWidth, isLoading }, ref) => {
+  (
+    {
+      padding,
+      width,
+      isWidthVisible = false,
+      setWidth,
+      isLoading,
+      currentEditor,
+      editors,
+    },
+    ref
+  ) => {
     const editorRef = useRef(null);
 
     const { theme } = useTheme();
@@ -65,9 +78,6 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const user = useUserStore((state) => state.user);
 
-    const currentState = useEditorStore((state) => state.currentEditorState);
-    const editors = useEditorStore((state) => state.editors);
-
     const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
     const showBackground = useEditorStore((state) => state.showBackground);
     const fontFamily = useEditorStore((state) => state.fontFamily);
@@ -77,7 +87,6 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const {
       code,
-      title,
       userHasEditedCode,
       isSnippetSaved,
       language,
@@ -85,7 +94,7 @@ export const Editor = forwardRef<any, EditorProps>(
       editorShowLineNumbers,
     } = useEditorStore((state) => {
       const editor = state.editors.find(
-        (editor) => editor.id === currentState?.id
+        (editor) => editor.id === currentEditor?.id
       );
       return editor
         ? {
@@ -116,10 +125,10 @@ export const Editor = forwardRef<any, EditorProps>(
       const randomSnippet =
         codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
-      if (currentState && editors.length === 1 && !userHasEditedCode) {
+      if (currentEditor && editors.length === 1 && !userHasEditedCode) {
         useEditorStore.setState({
           editors: editors.map((editor) => {
-            if (editor.id === currentState?.id) {
+            if (editor.id === currentEditor?.id) {
               return {
                 ...editor,
                 code: randomSnippet.code,
@@ -140,7 +149,7 @@ export const Editor = forwardRef<any, EditorProps>(
 
         useEditorStore.setState({
           editors: editors.map((editor) => {
-            if (editor.id === currentState?.id) {
+            if (editor.id === currentEditor?.id) {
               return {
                 ...editor,
                 language: detecTedLanguage.toLowerCase() || "plaintext",
@@ -150,7 +159,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }),
         });
       }
-    }, [autoDetectLanguage, code, currentState?.id, editors]);
+    }, [autoDetectLanguage, code, currentEditor?.id]);
 
     useEffect(() => {
       const urlObj = new URL(window.location.href);
@@ -188,13 +197,13 @@ export const Editor = forwardRef<any, EditorProps>(
     const { mutate: handleCreateSnippet } = useMutation({
       mutationFn: () =>
         createSnippet({
-          id: currentState?.id!,
+          id: currentEditor?.id!,
           user_id,
           currentUrl: currentUrlOrigin,
-          title: currentState?.title || "Untitled",
+          title: currentEditor?.title || "Untitled",
           code: code,
           language: language,
-          state: currentState!,
+          state: currentEditor!,
         }),
 
       onMutate: async () => {
@@ -204,7 +213,7 @@ export const Editor = forwardRef<any, EditorProps>(
 
         useEditorStore.setState({
           editors: editors.map((editor) => {
-            if (editor.id === currentState?.id) {
+            if (editor.id === currentEditor?.id) {
               return {
                 ...editor,
                 isSnippetSaved: true,
@@ -232,13 +241,13 @@ export const Editor = forwardRef<any, EditorProps>(
       mutationFn: async () => {
         return removeSnippet({
           user_id: user?.id,
-          snippet_id: currentState?.id,
+          snippet_id: currentEditor?.id,
         });
       },
       onSuccess: () => {
         useEditorStore.setState({
           editors: editors.map((editor) => {
-            if (editor.id === currentState?.id) {
+            if (editor.id === currentEditor?.id) {
               return {
                 ...editor,
                 isSnippetSaved: false,
@@ -343,7 +352,7 @@ export const Editor = forwardRef<any, EditorProps>(
           )}
           style={{ padding }}
           ref={ref}
-          id={currentState?.id || "editor"}
+          id={currentEditor?.id || "editor"}
         >
           {!user ? (
             <LoginDialog>
@@ -469,7 +478,7 @@ export const Editor = forwardRef<any, EditorProps>(
                       onValueChange={(code) => {
                         useEditorStore.setState({
                           editors: editors.map((editor) => {
-                            if (editor.id === currentState?.id) {
+                            if (editor.id === currentEditor?.id) {
                               return {
                                 ...editor,
                                 code: code,
@@ -482,10 +491,10 @@ export const Editor = forwardRef<any, EditorProps>(
                         {
                           isSnippetSaved &&
                             debouncedUpdateSnippet(
-                              currentState?.id!,
+                              currentEditor?.id!,
                               code,
                               language,
-                              currentState!,
+                              currentEditor!,
                               currentUrlOrigin
                             );
                         }

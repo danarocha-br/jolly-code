@@ -1,6 +1,6 @@
 import { cva } from "class-variance-authority";
 
-export const header = cva(["flex", "gap-3", "items-center", "px-4", "py-2"], {
+export const header = cva(["flex", "gap-3", "items-center", "px-4", "py-1"], {
   variants: {
     editorPreferences: {
       default: ["bg-background/80", "dark:bg-background/20"],

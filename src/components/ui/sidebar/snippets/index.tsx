@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { toast } from "sonner";
 import { useQuery } from "react-query";
 
@@ -13,6 +13,7 @@ import {
 } from "../../accordion";
 import { Skeleton } from "../../skeleton";
 import * as S from "./styles";
+import { EditorState, useEditorStore } from "@/app/store";
 
 type Snippet = {
   id: string;
@@ -54,6 +55,35 @@ export const EmptyState = () => {
 };
 
 export const SnippetsList = ({ data }: { data: Snippet[] }) => {
+  const { setActiveTab, editors, activeEditorTabId, addEditor } =
+    useEditorStore();
+  const lastUpdateTime = useRef(0);
+
+  const handleSnippetClick = (snippet: Snippet) => {
+    const currentTime = Date.now();
+
+    if (currentTime - lastUpdateTime.current > 500) {
+      lastUpdateTime.current = currentTime;
+
+      const isSnippetAlreadyInEditors = editors.some(
+        (editor) => editor.id === snippet.id
+      );
+
+      if (!isSnippetAlreadyInEditors) {
+        const newEditor: EditorState = {
+          ...snippet,
+          userHasEditedCode: true,
+          autoDetectLanguage: true,
+          editorShowLineNumbers: false,
+          isSnippetSaved: true,
+        };
+        addEditor(newEditor);
+      }
+
+      setActiveTab(snippet.id);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center pr-3">
       {/* <button className={S.addButton()}>
@@ -74,7 +104,10 @@ export const SnippetsList = ({ data }: { data: Snippet[] }) => {
               {data &&
                 data.map((snippet: Snippet) => (
                   <li key={snippet.id}>
-                    <button className={S.snippet()}>
+                    <button
+                      className={S.snippet()}
+                      onClick={() => handleSnippetClick(snippet)}
+                    >
                       <div className="flex items-center gap-2 px-3 py-1">
                         <span className="scale-75 -ml-3">
                           {
