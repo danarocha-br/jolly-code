@@ -7,10 +7,11 @@ import { Button } from "../button";
 import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
-import { Snippets } from "./snippets";
 import { Tooltip } from "../tooltip";
-import { DialogCreateCollection } from "./dialog-create-collection";
-import { useEditorStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
+import { LoginDialog } from "@/app/auth/login";
+import { CreateCollectionDialog } from '@/feature-snippets/create-collection-dialog';
+import { Snippets } from '@/feature-snippets';
 import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
@@ -30,6 +31,7 @@ const initialWidth = 50;
  */
 const useSidebarMouseEvents = () => {
   const [width, setWidth] = useState(initialWidth);
+  const user = useUserStore((state) => state.user);
 
   const handleMouseMove = useCallback(() => {
     const newWidth = 300;
@@ -46,6 +48,8 @@ const useSidebarMouseEvents = () => {
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
+
+  const user = useUserStore((state) => state.user);
   const isPresentational = useEditorStore((state) => state.presentational);
   const memoizedTheme = useMemo(() => theme, [theme]);
   const showSidebarContent = useMemo(() => initialWidth !== width, [width]);
@@ -83,15 +87,27 @@ export const Sidebar = () => {
         {showSidebarContent && (
           <Tooltip content="Add folder">
             <div className="absolute right-2 top-3">
-              <DialogCreateCollection>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="rounded-full"
-                >
-                  <i className="ri-add-line" />
-                </Button>
-              </DialogCreateCollection>
+              {user ? (
+                <CreateCollectionDialog>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="rounded-full"
+                  >
+                    <i className="ri-add-line" />
+                  </Button>
+                </CreateCollectionDialog>
+              ) : (
+                <LoginDialog>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="rounded-full"
+                  >
+                    <i className="ri-add-line" />
+                  </Button>
+                </LoginDialog>
+              )}
             </div>
           </Tooltip>
         )}

@@ -1,12 +1,13 @@
 import { toast } from "sonner";
-import { SnippetData } from "../code-editor/editor";
+
+import { Snippet } from './dtos';
 
 const headers = { "Content-Type": "application/json" };
 
 type Collection = {
   user_id: string;
   title: string;
-  snippets?: SnippetData[];
+  snippets?: Snippet[];
 };
 
 /**
@@ -66,13 +67,35 @@ export async function createCollection({
 export async function fetchCollections() {
   try {
     const response = await fetch("/api/collections", { method: "GET" });
+    console.log(response);
     if (!response.ok) {
-      toast.error("Cannot fetch collections. Please try again.");
+      return;
     }
+
     const data = await response.json();
 
     if (!data) {
-      toast.error("Cannot fetch collections. Please try again.");
+      return;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Network error:", error);
+    toast.error("Cannot fetch collections. Please try again.");
+  }
+}
+
+export async function fetchCollectionById(id: string) {
+  try {
+    const response = await fetch(`/api/collection?id=${id}`, { method: "GET" });
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!data) {
+      return;
     }
 
     return data;

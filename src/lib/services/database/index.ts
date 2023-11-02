@@ -317,7 +317,7 @@ export async function updateCollection({
 }: Collection): Promise<any> {
   try {
     const { data, error } = await supabase
-      .from("snippet")
+      .from("collection")
       .update([
         {
           user_id,
@@ -372,3 +372,42 @@ export async function getUsersCollectionList({
     );
   }
 }
+
+/**
+ * Retrieves a user collection by ID from the Supabase database.
+ *
+ * @param {object} params - The parameters for retrieving the user collection.
+ * @param {SupabaseClient<Database, "public", any>} params.supabase - The Supabase client.
+ * @returns {Promise<Collection>} The retrieved user collection.
+ * @throws {Error} If an error occurs during retrieval.
+ */
+export async function getUserCollectionById({
+  id,
+  user_id,
+  supabase,
+}: {
+  id: string;
+  user_id: string;
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<Collection> {
+  try {
+    const { data } = await supabase
+      .from("collection")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("id", id);
+
+    if (data && data.length > 0) {
+      return data[0] as Collection;
+    } else {
+      throw new Error("No collection found.");
+    }
+  } catch (error) {
+    console.error(error);
+    return Promise.reject(
+      new Error("An error occurred. Please try again later.")
+    );
+  }
+}
+
+

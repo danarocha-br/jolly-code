@@ -22,7 +22,7 @@ import { Separator } from "../ui/../separator";
 import { EditorOptionsMenu } from "./editor-options-menu";
 import { Tooltip } from "../ui/../tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Changelog } from "../changelog";
 import { HotKeysPopover } from "./hotkeys";
 import { CodeAnnotationMenu } from "./code-annotation-menu";
@@ -104,21 +104,19 @@ export const UserTools = () => {
   const username = useMemo(() => user?.user_metadata?.full_name, [user]);
   const imageUrl = useMemo(() => user?.user_metadata?.avatar_url, [user]);
 
-  const handleSignOut = useMutation(
-    async () => {
+  const handleSignOut = useMutation({
+    mutationFn: async () => {
       await supabase.auth.signOut();
       useUserStore.setState({ user: null });
     },
-    {
-      onSuccess: () => {
-        toast.message("👋 See you soon!");
-        router.refresh();
-      },
-      onError: () => {
-        toast.error("Sorry, something went wrong.");
-      },
-    }
-  );
+    onSuccess: () => {
+      toast.message("👋 See you soon!");
+      router.refresh();
+    },
+    onError: () => {
+      toast.error("Sorry, something went wrong.");
+    },
+  });
 
   return (
     <Card className={S.container()}>

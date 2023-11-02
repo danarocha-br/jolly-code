@@ -3,7 +3,7 @@ import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import { Button } from "../button";
@@ -28,9 +28,7 @@ export const Nav = () => {
   const { theme, setTheme } = useTheme();
   const memoizedTheme = useMemo(() => theme, [theme]);
 
-  const isPresentational = useEditorStore(
-    (state) => state.presentational
-  );
+  const isPresentational = useEditorStore((state) => state.presentational);
   const { user } = useUserStore();
   const username = useMemo(() => user?.user_metadata?.full_name, [user]);
   const imageUrl = useMemo(() => user?.user_metadata?.avatar_url, [user]);
@@ -44,21 +42,19 @@ export const Nav = () => {
     setTheme(memoizedTheme === "dark" ? "light" : "dark");
   }
 
-  const handleSignOut = useMutation(
-    async () => {
+  const handleSignOut = useMutation({
+    mutationFn: async () => {
       await supabase.auth.signOut();
       useUserStore.setState({ user: null });
     },
-    {
-      onSuccess: () => {
-        toast.message("👋 See you soon!");
-        router.refresh();
-      },
-      onError: () => {
-        toast.error("Sorry, something went wrong.");
-      },
-    }
-  );
+    onSuccess: () => {
+      toast.message("👋 See you soon!");
+      router.refresh();
+    },
+    onError: () => {
+      toast.error("Sorry, something went wrong.");
+    },
+  });
 
   const toggleTheme = useMemo(
     () => hotKeyList.filter((item) => item.label === "Toggle theme"),

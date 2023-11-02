@@ -1,7 +1,7 @@
 import { EditorState } from "@/app/store";
+import { Snippet } from '@/lib/services/database';
 import { toast } from "sonner";
-import DialogChooseCollection from "./dialog-choose-collection";
-import { Button } from "../button";
+import { createCollection } from '../sidebar/helpers';
 
 const headers = { "Content-Type": "application/json" };
 
@@ -29,7 +29,7 @@ type UpdateCollectionProps = {
   id: string;
   user_id: string | undefined;
   title?: string;
-  snippets?: EditorState[];
+  snippets?: Snippet[];
 };
 
 type RemoveSnippetProps = {
@@ -115,6 +115,8 @@ export async function createSnippet({
     if (!response.ok) {
       toast.error(`Failed to save the snippet.`);
     } else {
+
+
       // toast.success(
       //   <div className="flex justify-between items-center w-full gap-2">
       //     <p>Your code snippet is saved.</p>
@@ -222,32 +224,47 @@ export async function updateSnippet({
   } catch (error) {}
 }
 
-export async function updateCollection({
+export const updateCollection = async ({
   id,
   user_id,
   title,
-  snippets,
-}: UpdateCollectionProps) {
+  snippet,
+}: Omit<UpdateCollectionProps, "snippets"> & { snippet: Snippet }) => {
   try {
-    const response = await fetch("/api/collections", {
+    const collectionResponse = await fetch(`/api/collection?id=${id}`);
+    const { data: currentCollection } = await collectionResponse.json();
+
+    // Check for null or if it's an array
+    const currentSnippets =
+      currentCollection?.snippets !== null &&
+      Array.isArray(currentCollection?.snippets)
+        ? currentCollection.snippets
+        : [];
+
+    const updatedSnippets = [...currentSnippets, snippet];
+
+    //check if the snippet is already part of the array and if so, don't do anything
+
+    const updateResponse = await fetch("/api/collections", {
       method: "PUT",
       headers,
       body: JSON.stringify({
         id,
         user_id,
         title,
-        snippets,
+        snippets: updatedSnippets,
       }),
     });
 
-    if (!response.ok) {
-      console.log(response);
+    if (!updateResponse.ok) {
       return;
     } else {
       toast.success("Collection updated.");
     }
-    const { data } = await response.json();
+    const { data } = await updateResponse.json();
 
     return { data };
-  } catch (error) {}
-}
+  } catch (error) {
+    console.error(error);
+  }
+};

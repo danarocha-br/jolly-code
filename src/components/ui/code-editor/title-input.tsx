@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useEditorStore } from "@/app/store";
 import { input } from "./styles";
 import { languagesLogos } from "@/lib/language-logos";
-import { UseMutationResult } from "react-query";
+import { UseMutationResult } from "@tanstack/react-query";
 import { SnippetData } from "./editor";
 import { debounce } from "@/lib/utils/debounce";
 

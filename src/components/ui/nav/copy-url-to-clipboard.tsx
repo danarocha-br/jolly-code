@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import React, { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import { Tooltip } from "../tooltip";
 import { Button } from "../button";

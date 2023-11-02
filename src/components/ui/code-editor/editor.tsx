@@ -5,7 +5,7 @@ import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
 import flourite from "flourite";
 import { useTheme } from "next-themes";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import { cn } from "@/lib/utils";
@@ -24,7 +24,6 @@ import { WidthMeasurement } from "./width-measurement";
 import { createSnippet, removeSnippet, updateSnippet } from "./helpers";
 import { debounce } from "@/lib/utils/debounce";
 import * as S from "./styles";
-import DialogChooseCollection from './dialog-choose-collection';
 
 type EditorProps = {
   padding: number;
@@ -355,9 +354,6 @@ export const Editor = forwardRef<any, EditorProps>(
           ref={ref}
           id={currentEditor?.id || "editor"}
         >
-
-          <DialogChooseCollection><button>test</button></DialogChooseCollection>
-
           {!user ? (
             <LoginDialog>
               <Button

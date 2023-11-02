@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound, redirect } from "next/navigation";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { Logo } from "@/components/ui/logo";
 

@@ -2,8 +2,8 @@
 
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
-import { QueryClient, QueryClientProvider } from "react-query";
 import Script from "next/script";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 
 export function Providers({ children }: { children: React.ReactNode }) {

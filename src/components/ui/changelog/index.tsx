@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import ReactMarkdown from "react-markdown";
@@ -39,7 +39,10 @@ export const Changelog = ({ children }: ChangelogProps) => {
     }
   }
 
-  const { isLoading, data } = useQuery("changelogs", fetchData);
+  const { isLoading, data } = useQuery({
+    queryKey: ["changelogs"],
+    queryFn: fetchData,
+  });
 
   return (
     <Popover>

@@ -12,7 +12,7 @@ import { Tooltip } from "../tooltip";
 import { CommandEmpty } from "cmdk";
 import { SettingsPanelItem } from "./item";
 import { debounce } from "@/lib/utils/debounce";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { SnippetData } from "../code-editor/editor";
 
 export const LanguageSelector = () => {
