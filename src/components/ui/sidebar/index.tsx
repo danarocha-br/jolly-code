@@ -113,7 +113,7 @@ export const Sidebar = () => {
         )}
 
         <motion.div
-          initial={{ opacity: 0, width: 320 }}
+          initial={{ opacity: 0, width: 320, padding: 24 }}
           animate={{ opacity: showSidebarContent ? 1 : 0 }}
           transition={{
             delay: showSidebarContent ? 0.1 : 0,

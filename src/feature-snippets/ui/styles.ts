@@ -5,20 +5,19 @@ export const snippet = cva([
   "text-left",
   "text-foreground",
   "capitalize",
-  "bg-muted/60",
+  "bg-background",
   "dark:bg-muted/20",
   "border",
-  "border-border/50",
+  "border-border",
+  "dark:border-border/30",
   "rounded-md",
   "outline-none",
   "flex",
-  "items-center",
-  "justify-between",
-  "pl-3",
-  "gap-1",
+  "gap-2",
+  "px-3",
   "w-full",
   "transition-all",
-  "group/snippet",
+  "group",
 
   "hover:bg-indigo-200/30",
   "dark:hover:bg-primary/10",
@@ -49,13 +48,14 @@ export const emptyContainer = cva([
   "rounded-lg",
   "flex",
   "flex-col",
+  "space-y-2",
   "items-center",
   "justify-center",
   "w-full",
-  "!px-4",
+  "px-4",
   "py-4",
-  "gap-5",
   "opacity-80",
+  'relative',
 ]);
 
 export const emptyTitle = cva(
@@ -75,10 +75,11 @@ export const emptyDescription = cva(
     "text-center",
     "text-sm",
     "text-foreground/60",
-    "w-[250px]",
     "transition-opacity",
     "delay-700",
     "px-4",
+    "pb-3",
+    "relative", "-top-3"
   ],
   {
     variants: {
@@ -94,20 +95,22 @@ export const emptyCard = cva([
   "bg-gradient-to-tr",
   "from-muted/80",
   "to-accent/40",
+  "to-accent/40",
   "dark:from-muted/20",
-  "dark:to-accent/10",
   "border",
-  "border-subdued/80",
-  "dark:border-muted/20",
+  "dark:border-border/40",
   "w-full",
   "rounded-md",
   "px-4",
-  "pb-4",
+  'pb-4',
   "flex",
   "flex-col",
   "items-center",
   "justify-center",
   "relative",
+  '-top-8',
+  "z-0",
+  "h-[84px]"
 ]);
 
 export const emptyIcon = cva([
@@ -118,8 +121,7 @@ export const emptyIcon = cva([
   "flex",
   "items-center",
   "justify-center",
-  "absolute",
-  "-top-6",
+  "z-10"
 ]);
 
 export const emptyLines = cva([

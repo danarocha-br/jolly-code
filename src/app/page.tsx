@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Hotjar from "@hotjar/browser";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
@@ -17,6 +17,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { UserTools } from "@/components/ui/user-tools";
 import { cn } from "@/lib/utils";
 import { Room } from "./room";
+import { CollectionsEmptyState } from "@/feature-snippets/ui/snippet-empty-state";
 
 export default function Home() {
   const supabase = createClientComponentClient<Database>();
@@ -27,18 +28,20 @@ export default function Home() {
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const isPresentational = useEditorStore((state) => state.presentational);
 
+  const { isLoading } = useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
 
-  const {isPending} = useMutation({
-    mutationFn: async () => await supabase.auth.getSession(),
-    onSuccess: (data) => {
-      if (data?.data.session) {
-        useUserStore.setState({
-          user: data.data.session.user,
-        });
+        if (data?.session) {
+          useUserStore.setState({
+            user: data.session.user,
+          });
+        }
+      } catch (error) {
+        toast.error("Sorry, something went wrong.");
       }
-    },
-    onError: () => {
-      toast.error("Sorry, something went wrong.");
     },
   });
 
@@ -130,7 +133,7 @@ export default function Home() {
 
         <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
           <main className="relative flex items-center justify-center lg:-ml-16">
-            <CodeEditor isLoading={isPending} />
+            <CodeEditor isLoading={isLoading} />
 
             <SettingsPanel />
 

@@ -8,7 +8,7 @@ type CollectionCardProps = {
   id?: string;
   title: string;
   snippets?: SnippetData[];
-  onSelect?: () => void;
+  onSelect: () => void;
 } & React.HTMLAttributes<HTMLButtonElement>;
 
 export const CollectionCard = ({
@@ -19,7 +19,12 @@ export const CollectionCard = ({
   ...props
 }: CollectionCardProps) => {
   return (
-    <button key={id} className={S.button()} onClick={onSelect} {...props}>
+    <button
+      key={id}
+      className={S.button()}
+      onClick={() => onSelect()}
+      {...props}
+    >
       <div className={S.editorContainer()}>
         <div className={S.editorContent()}>
           <div className={S.editorHeader()}>
@@ -40,6 +45,7 @@ export const CollectionCard = ({
       </div>
 
       <Separator />
+
       <div className="w-full flex items-center justify-between gap-2 px-4 py-2">
         <h2 className="capitalize truncate">{title}</h2>
         <p className="text-sm">

@@ -4,13 +4,15 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { CollectionCard } from "@/components/ui/collection-card";
 import { useUserStore } from "@/app/store";
-import { Collection } from "@/lib/services/database";
-import { Snippet } from "../dtos";
+import { fetchCollections, updateCollection } from "../db-helpers";
+import { Collection, Snippet } from "../dtos";
+import { CollectionsEmptyState } from "../ui/snippet-empty-state";
 
 export type DialogChooseCollectionHandlesProps = {
   openDialog: () => void;
@@ -24,22 +26,68 @@ type DialogChooseCollectionProps = {
 
 type CollectionUpdateData = {
   id: string;
-  user_id: string | undefined;
+  user_id: string;
   snippet?: Snippet;
 };
 
 export const DialogChooseCollection = forwardRef(
   ({ snippet, collection_id }: DialogChooseCollectionProps, ref) => {
     const [isVisible, setVisible] = useState(false);
+    const user = useUserStore((state) => state.user);
 
-    // const { data } = useQuery("collections", () =>
-    //   fetchCollections(snippet.id)
-    // );
+    const { data: collections } = useQuery({
+      queryKey: ["collections"],
+      queryFn: () => fetchCollections(),
+    });
 
-    // console.log(data);
+    const queryClient = useQueryClient();
 
-    // const collections = data && data.data;
-    const collections = [];
+    const handleUpdateCollection = useMutation({
+      mutationFn: async ({ id, user_id, snippet }: CollectionUpdateData) => {
+        console.log("hey");
+        if (!snippet || typeof snippet !== "object") {
+          toast.error("Invalid snippet. Please try again.");
+          return;
+        }
+
+
+        return await updateCollection({
+          id: id || "",
+          user_id,
+          snippet,
+        });
+      },
+      // onMutate: async (newCollection) => {
+      //   await queryClient.cancelQueries({ queryKey: ["collections"] });
+
+      //   const optimisticCollection = { newCollection };
+
+      //   queryClient.setQueryData(["collections"], (old: Collection[]) => [
+      //     ...old,
+      //     optimisticCollection,
+      //   ]);
+
+      //   return { optimisticCollection };
+      // },
+      // onSuccess: (result, variables, context) => {
+      //   queryClient.setQueryData(["collections"], (old: Collection[]) =>
+      //     old.map((collection) =>
+      //       collection.id === context?.optimisticCollection.newCollection.id
+      //         ? result
+      //         : collection
+      //     )
+      //   );
+      // },
+      // onError: (err, newCollection, context) => {
+      //   queryClient.setQueryData(
+      //     ["collections"],
+      //     context?.optimisticCollection
+      //   );
+      // },
+      // onSettled: () => {
+      //   queryClient.invalidateQueries({ queryKey: ["collections"] });
+      // },
+    });
 
     const openDialog = useCallback(() => {
       setVisible(true);
@@ -54,75 +102,6 @@ export const DialogChooseCollection = forwardRef(
       closeDialog,
     }));
 
-    const queryClient = useQueryClient();
-
-    const user = useUserStore((state) => state.user);
-
-    queryClient.setMutationDefaults(["updateCollection"], {
-      mutationFn: async ({ id, user_id, snippet }: CollectionUpdateData) => {
-        if (!snippet || typeof snippet !== "object") {
-          toast.error("Invalid snippet. Please try again.");
-          return;
-        }
-
-        return await updateCollection({
-          id: id || "",
-          user_id,
-          //@ts-ignore
-          snippet,
-        });
-      },
-      onMutate: async (newCollection) => {
-        await queryClient.cancelQueries(["collections"]);
-
-        const previousCollections =
-          queryClient.getQueryData<Collection[]>("collections");
-
-        // queryClient.setQueryData<Collection[]>(
-        //   "collections",
-        //   (oldCollections) => {
-        //     if (!Array.isArray(oldCollections)) {
-        //       return [];
-        //     }
-        //     console.log(oldCollections);
-
-        //     return oldCollections.map((collection) => {
-        //       if (collection.id === newCollection.id) {
-        //         return {
-        //           ...collection,
-        //           snippets: [
-        //             ...(collection.snippets || []),
-        //             newCollection.snippet,
-        //           ],
-        //           snippetCount: (collection.snippets?.length || 0) + 1,
-        //         };
-        //       }
-        //       return collection;
-        //     });
-        //   }
-        // );
-
-        return { previousCollections };
-      },
-
-      onError: (err, newCollection, context) => {
-        queryClient.setQueryData(["collections"], context.previousCollections);
-      },
-
-      onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ["collections"] });
-      },
-    });
-
-    const handleUpdateCollection = useMutation<
-      CollectionUpdateData,
-      unknown,
-      CollectionUpdateData,
-      unknown
-    >({
-      mutationKey: ["updateCollection"],
-    });
-
     return (
       <Dialog open={isVisible}>
         <DialogContent
@@ -133,7 +112,7 @@ export const DialogChooseCollection = forwardRef(
           <DialogHeader>Choose a collection</DialogHeader>
 
           <div className="w-full">
-            {collections && collections.length === 0 && (
+            {collections && collections.data.length === 0 && (
               <div className="flex justify-center px-24">
                 <CollectionsEmptyState />
               </div>
@@ -141,8 +120,8 @@ export const DialogChooseCollection = forwardRef(
 
             <div className="grid grid-cols-3 gap-3 my-4 w-full">
               {collections &&
-                collections.length > 0 &&
-                collections
+                collections.data.length >= 1 &&
+                collections.data
                   ?.sort((a: Collection, b: Collection) =>
                     a.title.localeCompare(b.title)
                   )
@@ -168,3 +147,5 @@ export const DialogChooseCollection = forwardRef(
     );
   }
 );
+
+DialogChooseCollection.displayName = "DialogChooseCollection";

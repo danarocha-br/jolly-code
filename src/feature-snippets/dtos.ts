@@ -16,3 +16,4 @@ export interface Collection {
   created_at?: string;
   updated_at?: string;
 }
+

@@ -13,7 +13,7 @@ type CollectionItemProps = {
   title: string;
   language: string;
   onSnippetClick: () => void;
-  onMoveToFolder?: () => void;
+  onMoveToFolder: () => void;
 };
 
 export function CollectionItem({
@@ -24,12 +24,13 @@ export function CollectionItem({
 }: CollectionItemProps) {
   return (
     <li className={S.snippet()}>
-      <button className="flex gap-1 items-center" onClick={onSnippetClick}>
-        <div className="flex items-center gap-2 px-3 py-1">
-          <span className="scale-75 -ml-3">
-            {languagesLogos[language as keyof typeof languagesLogos]}
-          </span>
-        </div>
+      <button
+        className="flex items-center gap-2 w-full"
+        onClick={() => onSnippetClick()}
+      >
+        <span className="scale-75">
+          {languagesLogos[language as keyof typeof languagesLogos]}
+        </span>
 
         <p className="flex-2 truncate">{title}</p>
       </button>
@@ -39,18 +40,18 @@ export function CollectionItem({
           <Button
             size="icon"
             variant="ghost"
-            className="opacity-0 group-hover/snippet:opacity-100 transition-opacity"
+            className="opacity-0 group-hover:opacity-100 transition-opacity !-mr-3"
           >
             <i className="ri-more-line text-lg" />
           </Button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onMoveToFolder}>
+          <DropdownMenuItem onClick={() => onMoveToFolder()}>
             <i className="ri-folder-line mr-3" /> Move to collection
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="">
+          <DropdownMenuItem>
             <div>
               <i className="ri-bookmark-2-line mr-3" />
               Remove

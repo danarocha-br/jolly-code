@@ -1,14 +1,14 @@
-'use client';
+"use client";
 import { useQuery } from "@tanstack/react-query";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/app/store";
 import { CollectionsEmptyState } from "./ui/snippet-empty-state";
+import { SnippetCallout } from "./ui/snippet-callout";
 import { SnippetsList } from "./snippet-list";
 import { fetchSnippets } from "./db-helpers";
 import { Snippet } from "./dtos";
-import { SnippetCallout } from './ui/snippet-callout';
 
 type SnippetsListProps = {
   isLoading: boolean;
@@ -17,11 +17,11 @@ type SnippetsListProps = {
   };
 };
 
-function ShowSnippets({ isLoading, snippets }: SnippetsListProps) {
+function SnippetsCollection({ isLoading, snippets }: SnippetsListProps) {
   return (
     <>
       {isLoading ? (
-        <div className="w-[calc(100%-16px)] flex flex-col p-8 justify-center items-center gap-3">
+        <div className="flex flex-col p-4 justify-center items-center gap-4">
           <Skeleton />
           <Skeleton />
           <Skeleton />
@@ -29,7 +29,7 @@ function ShowSnippets({ isLoading, snippets }: SnippetsListProps) {
       ) : !snippets ? (
         <CollectionsEmptyState />
       ) : (
-        <ScrollArea className="h-[calc(100vh-200px)] w-[calc(100%-16px)] mt-8 flex flex-col justify-center">
+        <ScrollArea className="h-[calc(100vh-200px)] flex flex-col pr-2">
           <SnippetsList
             data={Array.isArray(snippets?.data ?? []) ? snippets.data : []}
           />
@@ -49,9 +49,9 @@ export function Snippets() {
   });
 
   return (
-    <section className="w-full pl-4">
+    <section>
       {!!user ? (
-        <ShowSnippets
+        <SnippetsCollection
           isLoading={isLoading}
           snippets={snippets || { data: [] }}
         />

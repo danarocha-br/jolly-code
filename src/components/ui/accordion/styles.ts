@@ -4,7 +4,6 @@ export const trigger = cva([
   "flex",
   "flex-1",
   "items-center",
-  "justify-between",
   "py-2",
   "px-2",
   "text-sm",

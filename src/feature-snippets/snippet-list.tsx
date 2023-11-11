@@ -7,12 +7,16 @@ import {
   Accordion,
   AccordionItem,
   AccordionContent,
-  AccordionTrigger,
 } from "@/components/ui/accordion";
-import { DialogChooseCollectionHandlesProps } from "./choose-collection-dialog";
+
+import {
+  DialogChooseCollectionHandlesProps,
+  DialogChooseCollection,
+} from "./choose-collection-dialog";
 import { fetchCollections } from "./db-helpers";
 import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
+import { CollectionTrigger } from "./ui/collection-trigger";
 
 export function SnippetsList({ data }: { data: Snippet[] }) {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
@@ -57,20 +61,22 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
     }
   };
 
-  const { data: collections } = useQuery(["collections"], fetchCollections);
-  // console.log(collections)
+  const { data: collections } = useQuery({
+    queryKey: ["collections"],
+    queryFn: fetchCollections,
+  });
 
   return (
     <>
-      <div className="flex flex-col items-center justify-center pr-3">
+      <div className="flex flex-col items-center justify-center ">
         <Accordion type="multiple" defaultValue={["home"]} className="w-full">
           <AccordionItem value="home">
-            <AccordionTrigger>
-              <h2 className="text-foreground text-left text-sm w-full">
+            <CollectionTrigger>
+              <>
                 <i className="ri-folder-line mr-3" />
                 Home
-              </h2>
-            </AccordionTrigger>
+              </>
+            </CollectionTrigger>
 
             <AccordionContent>
               <ul className="w-full grid grid-cols-1 gap-2">
@@ -81,6 +87,9 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
                       title={snippet.title}
                       language={snippet.language}
                       onSnippetClick={() => handleSnippetClick(snippet)}
+                      onMoveToFolder={() =>
+                        handleOpenMoveToFolderDialog(snippet, "")
+                      }
                     />
                   ))}
               </ul>
@@ -90,12 +99,12 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
           {collections &&
             collections.data.map((collection: Collection) => (
               <AccordionItem key={collection.id} value={collection.id!}>
-                <AccordionTrigger>
-                  <h2 className="text-foreground text-left capitalize text-sm w-full">
+                <CollectionTrigger>
+                  <>
                     <i className="ri-folder-line mr-3" />
                     {collection.title}
-                  </h2>
-                </AccordionTrigger>
+                  </>
+                </CollectionTrigger>
 
                 <AccordionContent>
                   <ul className="w-full grid grid-cols-1 gap-2">
@@ -109,7 +118,7 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
                           onMoveToFolder={() =>
                             handleOpenMoveToFolderDialog(
                               snippet,
-                              collection.id!
+                              collection.id || ""
                             )
                           }
                         />
@@ -121,11 +130,13 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
         </Accordion>
       </div>
 
-      {/* <DialogChooseCollection
-        ref={moveToFolderDialog}
-        snippet={selectedSnippet || defaultSnippet}
-        collection_id={selectedCollectionId}
-      /> */}
+      {selectedSnippet && (
+        <DialogChooseCollection
+          ref={moveToFolderDialog}
+          snippet={selectedSnippet}
+          collection_id={selectedCollectionId}
+        />
+      )}
     </>
   );
 }
