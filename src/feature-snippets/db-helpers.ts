@@ -38,7 +38,7 @@ export async function createCollection({
   title,
   user_id,
   snippets,
-}: Collection) {
+}: Omit<Collection, "id">) {
   try {
     let sanitizedTitle = null;
 

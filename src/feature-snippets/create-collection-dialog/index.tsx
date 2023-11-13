@@ -14,10 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createCollection } from "../db-helpers";
-
-type Collection = {
-  title: string;
-};
+import { Collection } from "../dtos";
 
 export function CreateCollectionDialog({
   children,
@@ -25,7 +22,9 @@ export function CreateCollectionDialog({
   children: React.ReactNode;
 }) {
   const [title, setTitle] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const user = useUserStore((state) => state.user);
+
   const queryClient = useQueryClient();
   const queryKey = ["collections"];
 
@@ -33,46 +32,21 @@ export function CreateCollectionDialog({
     setTitle(e.target.value);
   }
 
-  // const createCollectionMutation = useMutation(
-  //   async (title: string) =>
-  //     await createCollection({
-  //       user_id: user?.id!,
-  //       title,
-  //     }),
-  //   {
-  //     onMutate: async (updatedCollection) => {
-  //       await queryClient.cancelQueries(queryKey);
+  const { mutate: handleCreateCollection } = useMutation({
+    mutationFn: createCollection,
+    onError: (err, variables, context) => {
+      const { previousState } = context as { previousState: Collection[] };
 
-  //       const previousState = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, previousState);
+    },
 
-  //       const newCollection: Collection = {
-  //         title,
-  //       };
-
-  //       queryClient.setQueryData<Collection[] | undefined>(
-  //         queryKey,
-  //         (oldState) => {
-  //           return [...(oldState ?? []), newCollection];
-  //         }
-  //       );
-
-  //       return { previousState };
-  //     },
-
-  //     onError: (err, variables, context) => {
-  //       const { previousState } = context as { previousState: Collection[] };
-
-  //       queryClient.setQueryData(queryKey, previousState);
-  //     },
-
-  //     onSettled: () => {
-  //       queryClient.invalidateQueries(queryKey);
-  //     },
-  //   }
-  // );
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKey });
+    },
+  });
 
   return (
-    <Dialog>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>Use collections to organize your snippets.</DialogHeader>
@@ -89,14 +63,12 @@ export function CreateCollectionDialog({
         </div>
 
         <DialogFooter>
-          {/* <Button
-            variant="outline"
-          >
-            Cancel
-          </Button> */}
           <Button
             disabled={!title}
-            // onClick={() => createCollectionMutation.mutate(title)}
+            onClick={() => {
+              handleCreateCollection({ title: title, user_id: user?.id ?? "" });
+              setIsDialogOpen(false);
+            }}
           >
             Save collection
           </Button>

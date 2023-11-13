@@ -42,21 +42,9 @@ export const DialogChooseCollection = forwardRef(
 
     const queryClient = useQueryClient();
 
-    const handleUpdateCollection = useMutation({
-      mutationFn: async ({ id, user_id, snippet }: CollectionUpdateData) => {
-        console.log("hey");
-        if (!snippet || typeof snippet !== "object") {
-          toast.error("Invalid snippet. Please try again.");
-          return;
-        }
+    const handleUpdateCollection = useMutation(updateCollection, {
 
 
-        return await updateCollection({
-          id: id || "",
-          user_id,
-          snippet,
-        });
-      },
       // onMutate: async (newCollection) => {
       //   await queryClient.cancelQueries({ queryKey: ["collections"] });
 
@@ -83,7 +71,7 @@ export const DialogChooseCollection = forwardRef(
       //     ["collections"],
       //     context?.optimisticCollection
       //   );
-      // },
+      // },§
       // onSettled: () => {
       //   queryClient.invalidateQueries({ queryKey: ["collections"] });
       // },

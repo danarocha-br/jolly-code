@@ -9,7 +9,7 @@ export interface Snippet {
 }
 
 export interface Collection {
-  id?: string;
+  id: string;
   user_id: string;
   title: string;
   snippets?: Snippet[];
