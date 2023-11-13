@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { EditorState, useEditorStore } from "@/app/store";
 import {
@@ -13,7 +13,11 @@ import {
   DialogChooseCollectionHandlesProps,
   DialogChooseCollection,
 } from "./choose-collection-dialog";
-import { fetchCollections } from "./db-helpers";
+import {
+  fetchCollections,
+  removeCollection,
+  updateCollectionTitle,
+} from "./db-helpers";
 import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
@@ -21,10 +25,17 @@ import { CollectionTrigger } from "./ui/collection-trigger";
 export function SnippetsList({ data }: { data: Snippet[] }) {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
+  const [collectionTitleEditable, setIsCollectionTitleEditable] =
+    useState(false);
+  const [collectionTitle, setCollectionTitle] = useState("");
+
+  const collectionTitleInputRef = useRef<HTMLInputElement>(null);
   const lastUpdateTime = useRef(0);
   const moveToFolderDialog = useRef<DialogChooseCollectionHandlesProps>(null);
 
   const { setActiveTab, editors, addEditor } = useEditorStore();
+
+  const queryClient = useQueryClient();
 
   const handleOpenMoveToFolderDialog = useCallback(
     (snippet: Snippet, collection_id: string) => {
@@ -60,6 +71,32 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
       setActiveTab(snippet.id);
     }
   };
+
+  const { mutate: handleDeleteCollection } = useMutation({
+    mutationFn: removeCollection,
+    onError: (err, variables, context) => {
+      const { previousState } = context as { previousState: Collection[] };
+
+      queryClient.setQueryData(["collections"], previousState);
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
+    },
+  });
+
+  const { mutate: handleUpdateCollection } = useMutation({
+    mutationFn: updateCollectionTitle,
+    onError: (err, variables, context) => {
+      const { previousState } = context as { previousState: Collection[] };
+
+      queryClient.setQueryData(["collections"], previousState);
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
+    },
+  });
 
   const { data: collections } = useQuery({
     queryKey: ["collections"],
@@ -99,10 +136,47 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
           {collections &&
             collections.data.map((collection: Collection) => (
               <AccordionItem key={collection.id} value={collection.id!}>
-                <CollectionTrigger>
+                <CollectionTrigger
+                  onRemove={() =>
+                    handleDeleteCollection({
+                      collection_id: collection.id,
+                      user_id: collection.user_id,
+                    })
+                  }
+                  onUpdate={() => {
+                    collectionTitleInputRef.current?.focus();
+                    setCollectionTitle(collection.title);
+                    setIsCollectionTitleEditable(true);
+                  }}
+                >
                   <>
-                    <i className="ri-folder-line mr-3" />
-                    {collection.title}
+                    <i className="ri-folder-line mr-3 " />
+                    {collectionTitleEditable ? (
+                      <input
+                        ref={collectionTitleInputRef}
+                        id="collection_title"
+                        type="text"
+                        onBlur={() => {
+                          setIsCollectionTitleEditable(false);
+                          handleUpdateCollection({
+                            id: collection.id,
+                            user_id: collection.user_id,
+                            title: collectionTitle,
+                          });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            collectionTitleInputRef.current?.blur();
+                          }
+                        }}
+                        onChange={(e) => setCollectionTitle(e.target.value)}
+                        value={collectionTitle}
+                        className="bg-transparent border-2 outline-none focus:border-primary rounded-sm p-px px-2 w-[80%]"
+                      />
+                    ) : (
+                      collection.title
+                    )}
                   </>
                 </CollectionTrigger>
 

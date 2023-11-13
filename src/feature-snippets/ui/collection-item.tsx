@@ -32,7 +32,7 @@ export function CollectionItem({
           {languagesLogos[language as keyof typeof languagesLogos]}
         </span>
 
-        <p className="flex-2 truncate">{title}</p>
+        <p className="flex-2 truncate capitalize">{title}</p>
       </button>
 
       <DropdownMenu>

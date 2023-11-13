@@ -89,18 +89,6 @@ export async function deleteSnippet({
   supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
   try {
-    const { data } = await supabase
-      .from("snippet")
-      .select()
-      .eq("id", snippet_id)
-      .eq("user_id", user_id);
-
-    if (data && data.length > 0) {
-      console.log("ID matches");
-    } else {
-      throw new Error("This snippet does not exist.");
-    }
-
     const { error: deleteError } = await supabase
       .from("snippet")
       .delete()
@@ -219,7 +207,7 @@ export async function getUsersSnippetsList({
  * Updates a snippet in the database.
  *
  * @param {Snippet} snippet - The snippet object containing the snippet information.
- * @return {Promise<any>} - A promise that resolves to the updated snippet data.
+ * @return {Promise<Collection>} - A promise that resolves to the updated snippet data.
  */
 export async function updateSnippet({
   id,
@@ -229,7 +217,7 @@ export async function updateSnippet({
   language,
   url,
   supabase,
-}: Snippet): Promise<any> {
+}: Snippet): Promise<Collection> {
   let sanitizedTitle = null;
 
   if (title === "" || title === undefined) {
@@ -270,14 +258,14 @@ export async function updateSnippet({
  * Inserts a new collection into the database.
  *
  * @param {Collection} collection - The collection object containing the user ID, title, snippets, and Supabase instance.
- * @return {Promise<any>} - A promise that resolves to the inserted data or throws an error.
+ * @return {Promise<Collection>} - A promise that resolves to the inserted data or throws an error.
  */
 export async function insertCollection({
   user_id,
   title,
   snippets,
   supabase,
-}: Collection): Promise<any> {
+}: Collection): Promise<Collection[]> {
   try {
     const { data, error } = await supabase
       .from("collection")
@@ -289,6 +277,7 @@ export async function insertCollection({
           updated_at: new Date(),
         },
       ])
+      .eq("user_id", user_id)
       .select();
 
     if (error) {
@@ -337,6 +326,40 @@ export async function updateCollection({
     return data;
   } catch (error) {
     console.error(error);
+    throw new Error("An error occurred. Please try again later.");
+  }
+}
+
+/**
+ * Deletes a collection from the database.
+ * @param {string} collection_id - The ID of the collection to delete.
+ * @param {string} user_id - The ID of the user who owns the collection.
+ * @param {SupabaseClient<Database, "public", any>} supabase - The Supabase client.
+ * @throws {Error} If an error occurs while deleting the collection.
+ */
+export async function deleteCollection({
+  collection_id,
+  user_id,
+  supabase,
+}: {
+  collection_id: string;
+  user_id: string;
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<void> {
+  try {
+    const { error: deleteError } = await supabase
+      .from("collection")
+      .delete()
+      .eq("id", collection_id)
+      .eq("user_id", user_id);
+
+    if (deleteError) {
+      throw new Error(
+        deleteError.message ||
+          "An error occurred while deleting the collection."
+      );
+    }
+  } catch (error) {
     throw new Error("An error occurred. Please try again later.");
   }
 }
@@ -409,5 +432,3 @@ export async function getUserCollectionById({
     );
   }
 }
-
-

@@ -59,6 +59,16 @@ export function CreateCollectionDialog({
             id="collection"
             placeholder="Javascript ..."
             onChange={handleChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleCreateCollection({
+                  title: title,
+                  user_id: user?.id ?? "",
+                });
+                setIsDialogOpen(false);
+              }
+            }}
           />
         </div>
 

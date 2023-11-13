@@ -32,21 +32,16 @@ type RemoveSnippetProps = {
  * Creates a new collection.
  *
  * @param {Collection} collection - The collection object containing the title and user ID.
- * @return {Promise<{data: unknown}>} - A promise that resolves with the data of the created collection.
+ * @return {Promise<{data: Collection} | undefined>} - A promise that resolves with the data of the created collection.
  */
 export async function createCollection({
   title,
   user_id,
   snippets,
-}: Omit<Collection, "id">) {
+}: Omit<Collection, "id">): Promise<{ data: Collection } | undefined> {
   try {
-    let sanitizedTitle = null;
-
-    if (title === "" || title === undefined) {
-      sanitizedTitle = "Untitled";
-    } else {
-      sanitizedTitle = title;
-    }
+    const sanitizedTitle =
+      title === "" || title === undefined ? "Untitled" : title;
 
     if (!user_id) {
       toast.error(`You must be authenticated to create a collection.`);
@@ -62,12 +57,10 @@ export async function createCollection({
       }),
     });
 
-    console.log(response);
-
     if (!response.ok) {
       toast.error(`Failed to save the collection.`);
     } else {
-      toast.success(`${sanitizedTitle} is created.`);
+      toast.success(`${sanitizedTitle} was created.`);
     }
     const { data } = await response.json();
 
@@ -80,32 +73,47 @@ export async function createCollection({
 /**
  * Fetches collections from the API.
  *
- * @return {Promise<any>} The fetched data.
+ * @return {Promise<Collection[]>} The fetched collections.
  */
 export async function fetchCollections() {
   try {
     const response = await fetch("/api/collections", { method: "GET" });
-    console.log(response);
     if (!response.ok) {
-      return;
+      return [];
     }
 
     const data = await response.json();
 
     if (!data) {
-      return;
+      return [];
     }
 
     return data;
   } catch (error) {
     console.error("Network error:", error);
     toast.error("Cannot fetch collections. Please try again.");
+    return [];
   }
 }
 
-export async function fetchCollectionById(id: string) {
+/**
+ * Fetches collections from the API by given ID.
+ *
+ * @return {Promise<Collection[]>} The fetched collections.
+ */
+export async function fetchCollectionById(
+  id: string
+): Promise<Collection[] | undefined> {
+  if (!id) {
+    throw new Error("Invalid id");
+  }
+
   try {
-    const response = await fetch(`/api/collection?id=${id}`, { method: "GET" });
+    const params = new URLSearchParams();
+    params.append("id", id);
+    const url = `/api/collection?${params.toString()}`;
+
+    const response = await fetch(url, { method: "GET" });
     if (!response.ok) {
       return;
     }
@@ -122,6 +130,78 @@ export async function fetchCollectionById(id: string) {
     toast.error("Cannot fetch collections. Please try again.");
   }
 }
+
+/**
+ * Removes a collection by sending a DELETE request to the API.
+ *
+ * @param {string} params.collection_id - The ID of the collection to be removed.
+ * @param {string} params.user_id - The ID of the user making the request.
+ * @returns {Promise<void>} A Promise that resolves when the collection is successfully deleted or rejects if there was an error.
+ */
+export const removeCollection = async ({
+  collection_id,
+  user_id,
+}: {
+  collection_id: string;
+  user_id: string | undefined;
+}): Promise<void> => {
+  try {
+    const url = "/api/collections";
+    const options = {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({
+        user_id,
+        collection_id,
+      }),
+    };
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+      toast.error(`Something went wrong, please try again.`);
+    } else {
+      toast.success("Collection deleted.");
+    }
+    await response.json();
+  } catch (error) {
+    toast.error(`Failed to delete collection.`);
+  }
+};
+
+/**
+ * Updates the title of a collection.
+ * @param id - The ID of the collection to update.
+ * @param user_id - The ID of the user who owns the collection.
+ * @param title - The new title for the collection.
+ * @returns The updated collection data.
+ */
+export const updateCollectionTitle = async ({
+  id,
+  user_id,
+  title,
+}: Omit<UpdateCollectionProps, "snippets">) => {
+  try {
+    const updateResponse = await fetch("/api/collections", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        id,
+        user_id,
+        title,
+      }),
+    });
+
+    if (!updateResponse.ok) {
+      return;
+    }
+
+    const { data } = await updateResponse.json();
+
+    return { data };
+  } catch (error) {
+    toast.error("Something went wrong, please try again.");
+  }
+};
 
 export const updateCollection = async ({
   id,
@@ -164,7 +244,7 @@ export const updateCollection = async ({
 
     return { data };
   } catch (error) {
-    console.error(error);
+    toast.error("Something went wrong, please try again.");
   }
 };
 

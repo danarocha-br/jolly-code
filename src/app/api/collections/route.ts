@@ -6,8 +6,10 @@ import {
   getUsersCollectionList,
   insertCollection,
   updateCollection,
+  deleteCollection
 } from "@/lib/services/database";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
+
 
 /**
  * Retrieves a list of collections for the authenticated user.
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+
     const data = await insertCollection({
       user_id: user_id || null,
       title,
@@ -173,6 +176,53 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       status: 200,
       data: data[0],
+    });
+  } catch (error) {
+    console.error("error", error);
+    return NextResponse.json(
+      { error: "An error occurred. Please try again later." },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Deletes a collection from the database.
+ *
+ * @param {NextRequest} request - The request object.
+ * @returns {NextResponse} The response object.
+ */
+export async function DELETE(request: NextRequest) {
+  const cookieStore = cookies();
+  const supabase = createRouteHandlerClient<Database>({
+    cookies: () => cookieStore,
+  });
+
+  try {
+    const { collection_id, user_id } = await validateContentType(request).json();
+
+    if (!user_id) {
+      return NextResponse.json(
+        { error: "User must be authenticated to delete a collection." },
+        { status: 401 }
+      );
+    }
+
+    if (!collection_id) {
+      return NextResponse.json(
+        { error: "Collection id is missing." },
+        { status: 400 }
+      );
+    }
+
+    await deleteCollection({
+      collection_id,
+      user_id,
+      supabase,
+    });
+
+    return NextResponse.json({
+      status: 200,
     });
   } catch (error) {
     console.error("error", error);
