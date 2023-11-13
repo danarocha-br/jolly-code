@@ -292,15 +292,15 @@ export async function fetchSnippetById(id: string) {
 }
 
 /**
- * Removes a snippet from the server.
+ * Removes a snippet from the API.
  *
- * @param {RemoveSnippetProps} param - An object containing the user ID and the snippet ID.
- * @return {Promise<{ data: any }>} - A Promise that resolves to an object containing the response data.
+ * @param {RemoveSnippetProps} params - The parameters for removing the snippet.
+ * @returns {Promise<void>} A Promise that resolves when the snippet is successfully deleted or rejects if there was an error.
  */
 export async function removeSnippet({
-  user_id,
   snippet_id,
-}: RemoveSnippetProps) {
+  user_id,
+}: RemoveSnippetProps): Promise<void> {
   try {
     const url = "/api/snippets";
     const options = {
@@ -316,11 +316,9 @@ export async function removeSnippet({
     if (!response.ok) {
       toast.error(`Something went wrong, please try again.`);
     } else {
-      toast.success("Snippet unsaved.");
+      toast.success("Snippet was unsaved.");
     }
-    const data = await response.json();
-
-    return { data };
+    await response.json();
   } catch (error) {
     toast.error(`Failed to remove the snippet.`);
   }

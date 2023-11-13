@@ -121,6 +121,7 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
                   data.map((snippet: Snippet) => (
                     <CollectionItem
                       key={snippet.id}
+                      id={snippet.id}
                       title={snippet.title}
                       language={snippet.language}
                       onSnippetClick={() => handleSnippetClick(snippet)}
@@ -172,7 +173,7 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
                         }}
                         onChange={(e) => setCollectionTitle(e.target.value)}
                         value={collectionTitle}
-                        className="bg-transparent border-2 outline-none focus:border-primary rounded-sm p-px px-2 w-[80%]"
+                        className="bg-transparent border-2 border-secondary dark:border-border outline-none dark:focus:border-primary focus:border-indigo-200 rounded-sm p-px px-2 w-[80%]"
                       />
                     ) : (
                       collection.title
@@ -186,6 +187,7 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
                       collection.snippets.map((snippet: Snippet) => (
                         <CollectionItem
                           key={snippet.id}
+                          id={snippet.id}
                           title={snippet.title}
                           language={snippet.language}
                           onSnippetClick={() => handleSnippetClick(snippet)}

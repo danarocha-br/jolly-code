@@ -8,8 +8,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import * as S from "./styles";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { removeSnippet } from "../db-helpers";
+import { Snippet } from "../dtos";
+import { useUserStore } from "@/app/store";
 
 type CollectionItemProps = {
+  id: string;
   title: string;
   language: string;
   onSnippetClick: () => void;
@@ -17,11 +22,28 @@ type CollectionItemProps = {
 };
 
 export function CollectionItem({
+  id,
   title,
   onMoveToFolder,
   language,
   onSnippetClick,
 }: CollectionItemProps) {
+  const queryClient = useQueryClient();
+  const user = useUserStore((state) => state.user);
+
+  const { mutate: handleDeleteSnippet } = useMutation({
+    mutationFn: removeSnippet,
+    onError: (err, variables, context) => {
+      const { previousState } = context as { previousState: Snippet };
+
+      queryClient.setQueryData(["snippets"], previousState);
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["snippets"] });
+    },
+  });
+
   return (
     <li className={S.snippet()}>
       <button
@@ -51,7 +73,11 @@ export function CollectionItem({
             <i className="ri-folder-line mr-3" /> Move to collection
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              handleDeleteSnippet({ snippet_id: id, user_id: user?.id })
+            }
+          >
             <div>
               <i className="ri-bookmark-2-line mr-3" />
               Remove
