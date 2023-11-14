@@ -6,8 +6,8 @@ import { useEditorStore } from "@/app/store";
 import { input } from "./styles";
 import { languagesLogos } from "@/lib/language-logos";
 import { debounce } from "@/lib/utils/debounce";
-import { UseMutateFunction } from '@tanstack/react-query';
-import { UpdateSnippetProps } from '@/feature-snippets/db-helpers';
+import { UseMutateFunction } from "@tanstack/react-query";
+import { UpdateSnippetProps } from "@/feature-snippets/db-helpers";
 
 type TitleInputProps = {
   userId: string;
@@ -30,14 +30,22 @@ type TitleInputProps = {
  * @param {TitleInputProps} currentState - the current state of the component
  * @return {JSX.Element} - the rendered title input component
  */
+
+const LOCAL_STORAGE_KEY = "titleInputValue";
+
+
 export const TitleInput = ({
-  language,userId,
+  language,
+  userId,
   onUpdateTitle,
   ...props
 }: TitleInputProps) => {
   const currentState = useEditorStore((state) => state.currentEditorState);
   const [localTitle, setLocalTitle] = useState(
-    currentState?.title || "Untitled"
+    () =>
+      localStorage.getItem(LOCAL_STORAGE_KEY) ||
+      currentState?.title ||
+      "Untitled"
   );
 
   const editorPreferences = useEditorStore((state) => state.editor);
@@ -45,8 +53,8 @@ export const TitleInput = ({
   const updateEditor = useEditorStore((state) => state.updateEditor);
 
   useEffect(() => {
-    setLocalTitle(currentState?.title || "Untitled");
-  }, [currentState]);
+    localStorage.setItem(LOCAL_STORAGE_KEY, localTitle);
+  }, [localTitle]);
 
   const debouncedUpdateSnippet = useMemo(
     () =>
@@ -63,12 +71,13 @@ export const TitleInput = ({
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalTitle(e.target.value);
+    const newTitle = e.target.value;
+    setLocalTitle(newTitle);
 
     if (currentState) {
-      updateEditor(currentState.id, { title: e.target.value });
+      updateEditor(currentState.id, { title: newTitle });
       currentState.isSnippetSaved &&
-        debouncedUpdateSnippet(currentState.id, e.target.value);
+        debouncedUpdateSnippet(currentState.id, newTitle);
     }
   };
 
@@ -79,7 +88,10 @@ export const TitleInput = ({
   }, []);
 
   return (
-    <div className="flex gap-2 items-center justify-center w-full group/tab">
+    <div
+      key={currentState?.id}
+      className="flex gap-2 items-center justify-center w-full group/tab"
+    >
       <div className="flex items-center justify-center gap-2 pl-1 rounded-md !w-auto">
         {editorPreferences === "default" && (
           <span className="scale-90 flex items-end justify-center -ml-1">

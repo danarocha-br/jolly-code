@@ -166,18 +166,20 @@ export async function deleteSnippet({
     // Remove the snippet from each collection
     if (collections) {
       for (const collection of collections) {
-        const updatedSnippets = collection.snippets.filter(
-          (id: string) => id !== snippet_id
-        );
+        if (collection.snippets) {
+          const updatedSnippets = collection.snippets.filter(
+            (id: string) => id !== snippet_id
+          );
 
-        const { error: updateError } = await supabase
-          .from("collection")
-          .update({ snippets: updatedSnippets })
-          .eq("id", collection.id)
-          .eq("user_id", user_id);
+          const { error: updateError } = await supabase
+            .from("collection")
+            .update({ snippets: updatedSnippets })
+            .eq("id", collection.id)
+            .eq("user_id", user_id);
 
-        if (updateError) {
-          throw updateError;
+          if (updateError) {
+            throw updateError;
+          }
         }
       }
     }

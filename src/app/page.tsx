@@ -39,6 +39,8 @@ export default function Home() {
             user: data.session.user,
           });
         }
+
+        return data.session?.user;
       } catch (error) {
         toast.error("Sorry, something went wrong.");
       }

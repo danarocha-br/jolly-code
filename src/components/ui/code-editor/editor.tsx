@@ -238,7 +238,7 @@ export const Editor = forwardRef<any, EditorProps>(
     const { mutate: handleRemoveSnippet } = useMutation({
       mutationFn: removeSnippet,
       onMutate: async () => {
-        await queryClient.cancelQueries({ queryKey });
+        await queryClient.cancelQueries({ queryKey: queryKey });
 
         const previousSnippets = queryClient.getQueryData(queryKey);
         useEditorStore.setState({
@@ -262,7 +262,7 @@ export const Editor = forwardRef<any, EditorProps>(
       },
 
       onSettled: () => {
-        queryClient.invalidateQueries({ queryKey });
+        queryClient.invalidateQueries({ queryKey: queryKey });
       },
     });
 
