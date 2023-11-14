@@ -14,7 +14,7 @@ import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
 import { EditorState, useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { LoginDialog } from "@/app/auth/login";
+import { LoginDialog } from "@/feature-login";
 import { useMediaQuery } from "@/lib/utils/media-query";
 import { Button } from "../button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";

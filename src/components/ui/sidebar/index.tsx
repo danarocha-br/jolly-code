@@ -9,7 +9,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Tooltip } from "../tooltip";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { LoginDialog } from "@/app/auth/login";
+import { LoginDialog } from "@/feature-login";
 import { CreateCollectionDialog } from '@/feature-snippets/create-collection-dialog';
 import { Snippets } from '@/feature-snippets';
 import * as S from "./styles";

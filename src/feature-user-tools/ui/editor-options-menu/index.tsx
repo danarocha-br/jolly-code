@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
-import { Button } from "../../ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenuSeparator,
   DropdownMenu,
@@ -10,11 +11,10 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
-} from "../../ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { useEditorStore } from "@/app/store";
-import { Tooltip } from "../../ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useHotkeys } from "react-hotkeys-hook";
 
 type EditorViewPreference = "default" | "minimal";
 

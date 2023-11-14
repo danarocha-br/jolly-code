@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu";
 import { Avatar } from "../avatar";
-import { LoginDialog } from "@/app/auth/login";
+import { LoginDialog } from "@/feature-login";
 
 export const Nav = () => {
   const supabase = createClientComponentClient();

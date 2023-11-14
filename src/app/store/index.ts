@@ -28,6 +28,8 @@ export type EditorStoreState = {
   createNewTab: () => string;
   setActiveTab: (tabId: string) => void;
   addEditor: (editor: EditorState) => void;
+  resetEditors: () => void;
+  resetIsSnippetSaved: () => void;
   currentEditorState: EditorState | null;
   activeEditorTabId: string;
   backgroundTheme: ThemeProps;
@@ -133,6 +135,25 @@ export const useEditorStore = create<
               }));
             }
           }
+        },
+
+        resetIsSnippetSaved: () => {
+          set((state) => {
+            const updatedEditors = state.editors.map((editor) => ({
+              ...editor,
+              isSnippetSaved: false,
+            }));
+            return { ...state, editors: updatedEditors };
+          });
+        },
+
+        resetEditors: () => {
+          const initialEditor = createNewTab(1);
+          set(() => ({
+            editors: [initialEditor],
+            currentEditorState: initialEditor,
+            activeEditorTabId: initialEditor.id,
+          }));
         },
 
         addEditor: (editor: EditorState) =>

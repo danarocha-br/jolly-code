@@ -1,15 +1,15 @@
 import React from "react";
+import Link from "next/link";
 
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "../../hover-card";
-import { Button } from "../../button";
-import { Badge } from "../../badge";
+} from "@/components/ui/hover-card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 import * as S from "./styles";
-import Link from "next/link";
 
 export const CodeAnnotationMenu = () => {
   return (

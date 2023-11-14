@@ -14,7 +14,7 @@ import { fonts } from "@/lib/fonts-options";
 import { SettingsPanel } from "@/components/ui/settings-panel";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
-import { UserTools } from "@/components/ui/user-tools";
+import { UserTools } from "@/feature-user-tools";
 import { cn } from "@/lib/utils";
 import { Room } from "./room";
 import { CollectionsEmptyState } from "@/feature-snippets/ui/snippet-empty-state";
