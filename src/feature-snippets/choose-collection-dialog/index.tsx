@@ -7,12 +7,11 @@ import React, {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
-import { CollectionCard } from "@/components/ui/collection-card";
 import { useUserStore } from "@/app/store";
 import { fetchCollections, updateCollection } from "../db-helpers";
 import { Collection, Snippet } from "../dtos";
 import { CollectionsEmptyState } from "../ui/snippet-empty-state";
-import { SnippetData } from "@/components/ui/code-editor/editor";
+import { CollectionCard } from '../ui/collection-card';
 
 export type DialogChooseCollectionHandlesProps = {
   openDialog: () => void;

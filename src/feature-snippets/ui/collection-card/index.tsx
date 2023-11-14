@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Separator } from "../separator";
+import { Separator } from '@/components/ui/separator';
 import * as S from "./styles";
 
 type CollectionCardProps = {
@@ -33,9 +33,7 @@ export const CollectionCard = ({
               <span className={S.editorButtons()} />
             </div>
 
-            <span className="text-xs text-center text-foreground/10 w-full truncate -ml-4">
-              {title}
-            </span>
+            <span className={S.editorTitle()}>{title}</span>
 
             <div />
             <div />

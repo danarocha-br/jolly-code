@@ -236,6 +236,15 @@ export async function deleteSnippet({
 //     );
 //   }
 // }
+
+/**
+ * Retrieves a snippet by its ID from the database.
+ * @param user_id - The ID of the user who owns the snippet.
+ * @param snippet_id - The ID of the snippet.
+ * @param supabase - The Supabase client instance.
+ * @returns A promise that resolves to an array of snippets.
+ * @throws If the snippet is not found or an error occurs.
+ */
 export async function getSnippetById({
   user_id,
   snippet_id,
@@ -479,7 +488,14 @@ export async function getUsersCollectionList({
       .eq("user_id", user_id);
 
     if (data) {
-      return data;
+      // Sort the data to ensure the collection titled "Home" is always first
+      const sortedData = data.sort((a, b) => {
+        if (a.title === "Home") return -1;
+        if (b.title === "Home") return 1;
+        return 0;
+      });
+
+      return sortedData;
     } else {
       throw new Error("No collections found.");
     }

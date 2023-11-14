@@ -22,6 +22,7 @@ import {
 import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
+import { Badge } from "@/components/ui/badge";
 
 type SnippetsListProps = {
   collections: Collection[] | [];
@@ -31,9 +32,11 @@ type SnippetsListProps = {
 export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [previousCollectionId, setPreviousCollectionId] = useState<string>("");
-  const [collectionTitleEditable, setIsCollectionTitleEditable] =
-    useState(false);
   const [collectionTitle, setCollectionTitle] = useState("");
+  const [editableCollectionId, setEditableCollectionId] = useState<
+    string | null
+  >(null);
+
 
   const collectionTitleInputRef = useRef<HTMLInputElement>(null);
   const lastUpdateTime = useRef(0);
@@ -144,18 +147,18 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                     onUpdate={() => {
                       collectionTitleInputRef.current?.focus();
                       setCollectionTitle(collection.title);
-                      setIsCollectionTitleEditable(true);
+                      setEditableCollectionId(collection.id);
                     }}
                   >
                     <>
                       <i className="ri-folder-line mr-3 " />
-                      {collectionTitleEditable ? (
+                      {editableCollectionId === collection.id ? (
                         <input
                           ref={collectionTitleInputRef}
-                          id="collection_title"
+                          id={collection.id}
                           type="text"
                           onBlur={() => {
-                            setIsCollectionTitleEditable(false);
+                            setEditableCollectionId(null);
                             handleUpdateCollection({
                               id: collection.id,
                               user_id: collection.user_id,
@@ -179,6 +182,16 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                       ) : (
                         collection.title
                       )}
+
+                      {collection.snippets &&
+                        collection.snippets?.length > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="absolute right-0 rounded-full px-2 w-6 h-6 group-hover:opacity-0 scale-90"
+                          >
+                            {collection.snippets?.length}
+                          </Badge>
+                        )}
                     </>
                   </CollectionTrigger>
 

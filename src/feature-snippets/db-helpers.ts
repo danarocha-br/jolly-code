@@ -69,7 +69,8 @@ export async function createCollection({
     if (!response.ok) {
       toast.error(`Failed to save the collection.`);
     } else {
-      toast.success(`${sanitizedTitle} was created.`);
+      return;
+      // toast.success(`${sanitizedTitle} was created.`);
     }
     const { data } = await response.json();
 
@@ -169,7 +170,7 @@ export const removeCollection = async ({
     if (!response.ok) {
       toast.error(`Something went wrong, please try again.`);
     } else {
-      toast.success("Collection deleted.");
+      return;
     }
     await response.json();
   } catch (error) {

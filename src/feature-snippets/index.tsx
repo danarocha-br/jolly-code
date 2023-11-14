@@ -56,20 +56,11 @@ export function Snippets() {
     enabled: !!user,
   });
 
-  const sortedCollections = useMemo(() => {
-    if (collections) {
-      return collections.data.sort((a, b) =>
-        a.title === "Home" ? -1 : b.title === "Home" ? 1 : 0
-      );
-    }
-    return [];
-  }, [collections]);
-
   return (
     <section>
       {!!user && !isLoading ? (
         <SnippetsCollection
-          collections={sortedCollections || []}
+          collections={collections?.data || []}
           isRefetching={isRefetching}
         />
       ) : isLoading ? (

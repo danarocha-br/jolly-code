@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUserStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { fetchSnippetById, RemoveSnippetProps } from "../db-helpers";
 import { Snippet } from "../dtos";
 import * as S from "./styles";
@@ -41,6 +41,8 @@ export function CollectionItem({
     queryFn: () => fetchSnippetById(id),
     enabled: !!user,
   });
+
+  const editors = useEditorStore((state) => state.editors);
 
   return isLoading ? (
     <Skeleton />
@@ -82,7 +84,20 @@ export function CollectionItem({
             <DropdownMenuSeparator />
 
             <DropdownMenuItem
-              onClick={() => onDelete({ snippet_id: id, user_id: user?.id })}
+              onClick={() => {
+                useEditorStore.setState({
+                  editors: editors.map((editor) => {
+                    if (editor.id === id) {
+                      return {
+                        ...editor,
+                        isSnippetSaved: false,
+                      };
+                    }
+                    return editor;
+                  }),
+                });
+                onDelete({ snippet_id: id, user_id: user?.id });
+              }}
             >
               <div>
                 <i className="ri-bookmark-2-line mr-3" />
