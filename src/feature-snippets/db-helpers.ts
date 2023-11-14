@@ -188,7 +188,9 @@ export const updateCollectionTitle = async ({
   id,
   user_id,
   title,
-}: Omit<UpdateCollectionProps, "snippets">) => {
+}: Omit<UpdateCollectionProps, "snippets">): Promise<
+  { data: Collection } | undefined
+> => {
   try {
     const updateResponse = await fetch("/api/collections", {
       method: "PUT",
@@ -212,12 +214,23 @@ export const updateCollectionTitle = async ({
   }
 };
 
+/**
+ * Updates a collection with a new snippet.
+ *
+ * @param id - The ID of the collection to update.
+ * @param user_id - The ID of the user who owns the collection.
+ * @param title - The new title of the collection.
+ * @param snippet - The new snippet to add to the collection.
+ * @returns The updated collection data.
+ */
 export const updateCollection = async ({
   id,
   user_id,
   title,
   snippet,
-}: Omit<UpdateCollectionProps, "snippets"> & { snippet: Snippet }) => {
+}: Omit<UpdateCollectionProps, "snippets"> & { snippet: Snippet }): Promise<
+  Collection | undefined
+> => {
   try {
     const collectionResponse = await fetch(`/api/collection?id=${id}`);
     const { data: currentCollection } = await collectionResponse.json();
@@ -304,8 +317,10 @@ export function transformState(state: EditorState) {
 }
 
 /**
- * Create a code snippet and save it to the database.
- * @return {Promise<{ data }>} The response object with the saved snippet data.
+ * Create a new snippet.
+ *
+ * @param {CreateSnippetProps} snippetProps - The snippet properties.
+ * @returns {Promise<{ data: Snippet }| undefined>} - The created snippet data or undefined.
  */
 export async function createSnippet({
   id,
@@ -315,7 +330,7 @@ export async function createSnippet({
   code,
   language,
   state,
-}: CreateSnippetProps) {
+}: CreateSnippetProps): Promise<{ data: Snippet } | undefined> {
   try {
     const url = createUrl(currentUrl, code, state, user_id);
 
@@ -335,8 +350,7 @@ export async function createSnippet({
     if (!response.ok) {
       toast.error(`Failed to save the snippet.`);
     } else {
-      console.log("Snippet saved successfully");
-      toast.success("Your code snippet is saved.", {
+      toast.success("Your code snippet was saved.", {
         action: {
           label: "Choose folder",
           onClick: () => console.log("Action!"),
@@ -353,11 +367,10 @@ export async function createSnippet({
 }
 
 /**
- * Fetches snippets from the server.
- *
- * @return {Promise<any>} The fetched snippets.
+ * Fetches snippets from the API.
+ * @returns A promise that resolves to an array of Snippet objects, or undefined if there was an error.
  */
-export async function fetchSnippets() {
+export async function fetchSnippets(): Promise<Snippet[] | undefined> {
   try {
     const response = await fetch("/api/snippets", { method: "GET" });
     if (!response.ok) {
@@ -366,7 +379,7 @@ export async function fetchSnippets() {
     const data = await response.json();
 
     if (!data) {
-      toast.error("Cannot fetch snippets. Please try again.");
+      return;
     }
 
     return data;
@@ -381,7 +394,9 @@ export async function fetchSnippets() {
  * @param {string} id - The ID of the snippet.
  * @returns {Promise<Snippet>} - A promise that resolves to the snippet data.
  */
-export async function fetchSnippetById(id: string) {
+export async function fetchSnippetById(
+  id: string
+): Promise<Snippet | undefined> {
   try {
     const response = await fetch(`/api/snippet?id=${id}`, { method: "GET" });
 
@@ -432,10 +447,16 @@ export async function removeSnippet({
 }
 
 /**
- * Updates a snippet with the given properties.
+ * Update a snippet in the API.
  *
- * @param {object} props - The properties of the snippet to be updated.
- * @return {object} The updated snippet data.
+ * @param id - The ID of the snippet to update.
+ * @param currentUrl - The current URL.
+ * @param user_id - The user ID.
+ * @param title - The new title of the snippet.
+ * @param code - The new code of the snippet.
+ * @param language - The new language of the snippet.
+ * @param state - The new state of the snippet.
+ * @returns A promise that resolves to an object containing the updated snippet data, or undefined if the update fails.
  */
 export async function updateSnippet({
   id,
@@ -445,7 +466,7 @@ export async function updateSnippet({
   code,
   language,
   state,
-}: UpdateSnippetProps) {
+}: UpdateSnippetProps): Promise<{ data: Snippet } | undefined> {
   let url = currentUrl;
 
   if (code && state) {
@@ -468,11 +489,12 @@ export async function updateSnippet({
 
     if (!response.ok) {
       return;
-    } else {
-      toast.success("Snippet updated.");
     }
+
     const { data } = await response.json();
 
     return { data };
-  } catch (error) {}
+  } catch (error) {
+    toast.error(`Failed to update the ${title}.`);
+  }
 }

@@ -22,6 +22,7 @@ import {
 import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function SnippetsList({ data }: { data: Collection[] }) {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
@@ -112,7 +113,7 @@ export function SnippetsList({ data }: { data: Collection[] }) {
     },
   });
 
-  const { data: collections } = useQuery({
+  const { data: collections, isRefetching } = useQuery({
     queryKey: ["collections"],
     queryFn: fetchCollections,
   });
@@ -121,7 +122,7 @@ export function SnippetsList({ data }: { data: Collection[] }) {
     <>
       <div className="flex flex-col items-center justify-center ">
         <Accordion type="multiple" defaultValue={["Home"]} className="w-full">
-          {collections &&
+          {collections && !isRefetching ? (
             collections.data.map((collection: Collection, index: number) => (
               <AccordionItem key={collection.id} value={collection.id!}>
                 <CollectionTrigger
@@ -170,19 +171,27 @@ export function SnippetsList({ data }: { data: Collection[] }) {
 
                 <AccordionContent>
                   <ul className="w-full grid grid-cols-1 gap-2">
-                    {collection.snippets?.length ?
-                      collection.snippets.map((snippet_id) => (
-                        <CollectionItem
-                          key={snippet_id}
-                          id={snippet_id}
-                          onItemSelect={handleSnippetClick}
-                          onDelete={handleDeleteSnippet}
-                        />
-                      )): null}
+                    {collection.snippets?.length
+                      ? collection.snippets.map((snippet_id) => (
+                          <CollectionItem
+                            key={snippet_id}
+                            id={snippet_id}
+                            onItemSelect={handleSnippetClick}
+                            onDelete={handleDeleteSnippet}
+                          />
+                        ))
+                      : null}
                   </ul>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            ))
+          ) : (
+            <div className="w-full flex flex-col gap-3">
+              <Skeleton />
+              <Skeleton />
+              <Skeleton />
+            </div>
+          )}
         </Accordion>
       </div>
 

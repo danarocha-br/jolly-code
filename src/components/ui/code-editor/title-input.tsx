@@ -59,7 +59,7 @@ export const TitleInput = ({
           });
         }
       }, 1000),
-    []
+    [onUpdateTitle]
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

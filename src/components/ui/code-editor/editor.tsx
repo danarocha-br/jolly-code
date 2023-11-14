@@ -80,6 +80,7 @@ export const Editor = forwardRef<any, EditorProps>(
       null
     );
     const queryClient = useQueryClient();
+    const queryKey = ["collections"];
 
     const user = useUserStore((state) => state.user);
 
@@ -164,6 +165,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }),
         });
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoDetectLanguage, code, currentEditor?.id]);
 
     useEffect(() => {
@@ -203,9 +205,9 @@ export const Editor = forwardRef<any, EditorProps>(
       mutationFn: createSnippet,
 
       onMutate: async () => {
-        await queryClient.cancelQueries({ queryKey: ["snippets"] });
+        await queryClient.cancelQueries({ queryKey });
 
-        const previousSnippets = queryClient.getQueryData(["snippets"]);
+        const previousSnippets = queryClient.getQueryData(queryKey);
 
         useEditorStore.setState({
           editors: editors.map((editor) => {
@@ -224,19 +226,21 @@ export const Editor = forwardRef<any, EditorProps>(
 
       onError: (err, newSnippet, context) => {
         if (context) {
-          queryClient.setQueryData(["snippets"], context.previousSnippets);
+          queryClient.setQueryData(queryKey, context.previousSnippets);
         }
       },
 
-      onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ["snippets"] });
+      onSettled: (data, error, variables, context) => {
+        queryClient.invalidateQueries({ queryKey });
       },
     });
 
     const { mutate: handleRemoveSnippet } = useMutation({
       mutationFn: removeSnippet,
+      onMutate: async () => {
+        await queryClient.cancelQueries({ queryKey });
 
-      onSuccess: () => {
+        const previousSnippets = queryClient.getQueryData(queryKey);
         useEditorStore.setState({
           editors: editors.map((editor) => {
             if (editor.id === currentEditor?.id) {
@@ -248,24 +252,48 @@ export const Editor = forwardRef<any, EditorProps>(
             return editor;
           }),
         });
+        return { previousSnippets };
+      },
+
+      onError: (err, variables, context) => {
+        if (context) {
+          queryClient.setQueryData(queryKey, context.previousSnippets);
+        }
       },
 
       onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ["snippets"] });
+        queryClient.invalidateQueries({ queryKey });
       },
     });
 
     const { mutate: handleUpdateSnippet } = useMutation({
       mutationFn: updateSnippet,
 
-      onError: (err, variables, context) => {
-        const { previousState } = context as { previousState: Snippet };
+      onMutate: async () => {
+        await queryClient.cancelQueries({
+          queryKey,
+        });
 
-        queryClient.setQueryData(["snippets"], previousState);
+        const previousSnippets = queryClient.getQueryData(queryKey);
+
+        return { previousSnippets };
       },
 
+      onError: (err, variables, context) => {
+        if (context) {
+          queryClient.setQueryData(queryKey, context.previousSnippets);
+        }
+      },
+
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey,
+        });
+      },
       onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: ["snippets"] });
+        queryClient.invalidateQueries({
+          queryKey,
+        });
       },
     });
 
@@ -293,10 +321,8 @@ export const Editor = forwardRef<any, EditorProps>(
           },
           1000
         ),
-      []
+      [handleUpdateSnippet]
     );
-
-    //TODO: adding tabs and open new clean editor view
 
     return (
       <>

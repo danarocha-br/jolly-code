@@ -30,7 +30,7 @@ export function CollectionItem({
   const user = useUserStore((state) => state.user);
 
   const { data: snippet, isLoading } = useQuery({
-    queryKey: ["snippets", id],
+    queryKey: ["collections", id],
     queryFn: () => fetchSnippetById(id),
     enabled: !!user,
   });
