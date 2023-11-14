@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,33 +8,34 @@ import { useUserStore } from "@/app/store";
 import { CollectionsEmptyState } from "./ui/snippet-empty-state";
 import { SnippetCallout } from "./ui/snippet-callout";
 import { SnippetsList } from "./snippet-list";
-import { fetchSnippets } from "./db-helpers";
-import { Snippet } from "./dtos";
+import { fetchCollections } from "./db-helpers";
+import { Collection, Snippet } from "./dtos";
 
 type SnippetsListProps = {
-  isLoading: boolean;
-  snippets: {
-    data: Snippet[] | [];
+  collections: {
+    data: Collection[] | [];
   };
 };
 
-function SnippetsCollection({ isLoading, snippets }: SnippetsListProps) {
+function SnippetsCollection({ collections }: SnippetsListProps) {
   return (
     <>
-      {isLoading ? (
-        <div className="flex flex-col p-4 justify-center items-center gap-4">
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
-        </div>
-      ) : !snippets ? (
+      {collections.data.length === 0 ? (
         <CollectionsEmptyState />
       ) : (
-        <ScrollArea className="h-[calc(100vh-200px)] flex flex-col pr-2">
-          <SnippetsList
-            data={Array.isArray(snippets?.data ?? []) ? snippets.data : []}
-          />
-        </ScrollArea>
+        <Suspense
+          fallback={
+            <div className="flex flex-col p-4 justify-center items-center gap-4">
+              <Skeleton />
+              <Skeleton />
+              <Skeleton />
+            </div>
+          }
+        >
+          <ScrollArea className="h-[calc(100vh-200px)] flex flex-col pr-2">
+            <SnippetsList data={collections?.data} />
+          </ScrollArea>
+        </Suspense>
       )}
     </>
   );
@@ -42,19 +44,22 @@ function SnippetsCollection({ isLoading, snippets }: SnippetsListProps) {
 export function Snippets() {
   const user = useUserStore((state) => state.user);
 
-  const { isLoading, data: snippets } = useQuery<{ data: Snippet[] }>({
-    queryKey: ["snippets"],
-    queryFn: fetchSnippets,
+  const { isLoading, data: collections } = useQuery<{ data: Snippet[] }>({
+    queryKey: ["collections"],
+    queryFn: fetchCollections,
     enabled: !!user,
   });
 
   return (
     <section>
-      {!!user ? (
-        <SnippetsCollection
-          isLoading={isLoading}
-          snippets={snippets || { data: [] }}
-        />
+      {!!user && !isLoading ? (
+        <SnippetsCollection collections={collections || { data: [] }} />
+      ) : isLoading ? (
+        <div className="flex flex-col p-4 justify-center items-center gap-4">
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
+        </div>
       ) : (
         <SnippetCallout />
       )}

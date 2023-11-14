@@ -5,7 +5,6 @@ import React, {
   useState,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { CollectionCard } from "@/components/ui/collection-card";
@@ -24,57 +23,30 @@ type DialogChooseCollectionProps = {
   collection_id: string;
 };
 
-type CollectionUpdateData = {
-  id: string;
-  user_id: string;
-  snippet?: Snippet;
-};
-
 export const DialogChooseCollection = forwardRef(
   ({ snippet, collection_id }: DialogChooseCollectionProps, ref) => {
     const [isVisible, setVisible] = useState(false);
     const user = useUserStore((state) => state.user);
+    const queryKey = ["collections"];
 
     const { data: collections } = useQuery({
-      queryKey: ["collections"],
+      queryKey,
       queryFn: () => fetchCollections(),
     });
 
     const queryClient = useQueryClient();
 
-    const handleUpdateCollection = useMutation(updateCollection, {
+    const { mutate: handleUpdateCollection } = useMutation({
+      mutationFn: updateCollection,
+      onError: (err, variables, context) => {
+        const { previousState } = context as { previousState: Collection[] };
 
+        queryClient.setQueryData(queryKey, previousState);
+      },
 
-      // onMutate: async (newCollection) => {
-      //   await queryClient.cancelQueries({ queryKey: ["collections"] });
-
-      //   const optimisticCollection = { newCollection };
-
-      //   queryClient.setQueryData(["collections"], (old: Collection[]) => [
-      //     ...old,
-      //     optimisticCollection,
-      //   ]);
-
-      //   return { optimisticCollection };
-      // },
-      // onSuccess: (result, variables, context) => {
-      //   queryClient.setQueryData(["collections"], (old: Collection[]) =>
-      //     old.map((collection) =>
-      //       collection.id === context?.optimisticCollection.newCollection.id
-      //         ? result
-      //         : collection
-      //     )
-      //   );
-      // },
-      // onError: (err, newCollection, context) => {
-      //   queryClient.setQueryData(
-      //     ["collections"],
-      //     context?.optimisticCollection
-      //   );
-      // },§
-      // onSettled: () => {
-      //   queryClient.invalidateQueries({ queryKey: ["collections"] });
-      // },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey });
+      },
     });
 
     const openDialog = useCallback(() => {
@@ -120,7 +92,7 @@ export const DialogChooseCollection = forwardRef(
                       title={collection.title}
                       snippets={collection.snippets}
                       onSelect={() =>
-                        handleUpdateCollection.mutate({
+                        handleUpdateCollection({
                           id: collection.id || "",
                           user_id: user?.id || "",
                           snippet: snippet,

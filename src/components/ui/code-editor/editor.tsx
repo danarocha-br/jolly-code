@@ -21,8 +21,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Skeleton } from "../skeleton";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
-import { createSnippet, removeSnippet, updateSnippet } from "./helpers";
 import { debounce } from "@/lib/utils/debounce";
+import {
+  createSnippet,
+  removeSnippet,
+  updateSnippet,
+} from "@/feature-snippets/db-helpers";
+import { Snippet } from "@/feature-snippets/dtos";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -195,16 +200,7 @@ export const Editor = forwardRef<any, EditorProps>(
     });
 
     const { mutate: handleCreateSnippet } = useMutation({
-      mutationFn: () =>
-        createSnippet({
-          id: currentEditor?.id!,
-          user_id,
-          currentUrl: currentUrlOrigin,
-          title: currentEditor?.title || "Untitled",
-          code: code,
-          language: language,
-          state: currentEditor!,
-        }),
+      mutationFn: createSnippet,
 
       onMutate: async () => {
         await queryClient.cancelQueries({ queryKey: ["snippets"] });
@@ -238,12 +234,8 @@ export const Editor = forwardRef<any, EditorProps>(
     });
 
     const { mutate: handleRemoveSnippet } = useMutation({
-      mutationFn: async () => {
-        return removeSnippet({
-          user_id: user?.id,
-          snippet_id: currentEditor?.id,
-        });
-      },
+      mutationFn: removeSnippet,
+
       onSuccess: () => {
         useEditorStore.setState({
           editors: editors.map((editor) => {
@@ -263,55 +255,18 @@ export const Editor = forwardRef<any, EditorProps>(
       },
     });
 
-    queryClient.setMutationDefaults(["updateSnippet"], {
-      mutationFn: async ({
-        id,
-        title,
-        code,
-        language,
-        state,
-        currentUrl,
-      }: SnippetData) => {
-        return await updateSnippet({
-          user_id: user?.id,
-          id,
-          title,
-          code,
-          language,
-          currentUrl,
-          state,
-        });
-      },
-      onMutate: async (newSnippet) => {
-        await queryClient.cancelQueries({ queryKey: ["snippets"] });
+    const { mutate: handleUpdateSnippet } = useMutation({
+      mutationFn: updateSnippet,
 
-        const previousSnippet = queryClient.getQueryData([
-          "snippets",
-          newSnippet.id,
-        ]);
+      onError: (err, variables, context) => {
+        const { previousState } = context as { previousState: Snippet };
 
-        queryClient.setQueryData(["snippets", newSnippet.id], newSnippet);
-
-        return { previousSnippet, newSnippet };
-      },
-
-      onError: (err, newSnippet, context) => {
-        queryClient.setQueryData(["snippets"], context.previousSnippets);
+        queryClient.setQueryData(["snippets"], previousState);
       },
 
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: ["snippets"] });
       },
-      retry: 3,
-    });
-
-    const handleUpdateSnippet = useMutation<
-      SnippetData,
-      unknown,
-      SnippetData,
-      unknown
-    >({
-      mutationKey: ["updateSnippet"],
     });
 
     const debouncedUpdateSnippet = useMemo(
@@ -325,12 +280,14 @@ export const Editor = forwardRef<any, EditorProps>(
             currentUrl: string | null
           ) => {
             if (id) {
-              handleUpdateSnippet.mutate({
-                id,
-                code,
-                language,
-                state,
+              handleUpdateSnippet({
+                id: currentEditor?.id!,
                 currentUrl,
+                user_id,
+                title: currentEditor?.title || "Untitled",
+                code: code,
+                language: language,
+                state,
               });
             }
           },
@@ -373,7 +330,17 @@ export const Editor = forwardRef<any, EditorProps>(
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={() => handleCreateSnippet()}
+                  onClick={() =>
+                    handleCreateSnippet({
+                      id: currentEditor?.id!,
+                      user_id,
+                      currentUrl: currentUrlOrigin,
+                      title: currentEditor?.title || "Untitled",
+                      code: code,
+                      language: language,
+                      state: currentEditor!,
+                    })
+                  }
                   className={cn(
                     S.bookmarkButton(),
                     padding > 44 ? "top-2 right-2" : "top-1 right-1"
@@ -386,7 +353,12 @@ export const Editor = forwardRef<any, EditorProps>(
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleRemoveSnippet()}
+                    onClick={() =>
+                      handleRemoveSnippet({
+                        snippet_id: currentEditor?.id!,
+                        user_id,
+                      })
+                    }
                     className={cn(
                       S.bookmarkButton(),
                       padding > 44 ? "top-2 right-2" : "top-1 right-1"
@@ -442,6 +414,7 @@ export const Editor = forwardRef<any, EditorProps>(
                         onUpdateTitle={handleUpdateSnippet}
                         language={language}
                         disabled={presentational}
+                        userId={user_id ?? ""}
                       />
                     </TabsTrigger>
                   </TabsList>

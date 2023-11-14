@@ -2,11 +2,10 @@ import { toast } from "sonner";
 
 import { Snippet, Collection } from "./dtos";
 import { EditorState } from "@/app/store";
-import { createUrl } from "@/components/ui/code-editor/helpers";
 
 const headers = { "Content-Type": "application/json" };
 
-type UpdateSnippetProps = {
+export type UpdateSnippetProps = {
   id: string;
   user_id: string | undefined;
   currentUrl?: string | undefined | null;
@@ -16,16 +15,26 @@ type UpdateSnippetProps = {
   state?: EditorState;
 };
 
-type UpdateCollectionProps = {
+export type UpdateCollectionProps = {
   id: string;
   user_id: string | undefined;
   title?: string;
   snippets?: Snippet[];
 };
 
-type RemoveSnippetProps = {
+export type RemoveSnippetProps = {
   user_id: string | undefined;
   snippet_id: string | undefined;
+};
+
+export type CreateSnippetProps = {
+  id: string;
+  user_id: string | undefined;
+  currentUrl: string | undefined | null;
+  title?: string;
+  code: string;
+  language: string;
+  state: EditorState;
 };
 
 /**
@@ -249,6 +258,101 @@ export const updateCollection = async ({
 };
 
 /**
+ * Generates a URL with query parameters based on the current URL, code, state, and user ID.
+ *
+ * @return {string} The generated URL with query parameters.
+ */
+export function createUrl(
+  currentUrl: string | null | undefined,
+  code: string,
+  state: EditorState,
+  user_id: string | undefined
+) {
+  const queryParams = new URLSearchParams();
+
+  const stringifiedState = transformState(state);
+
+  queryParams.append("code", encodeURIComponent(code));
+  queryParams.append("user_id", user_id ?? "");
+
+  Object.entries(stringifiedState).forEach(([key, value]) => {
+    queryParams.append(key, value);
+  });
+
+  queryParams.delete("shared");
+
+  return `${currentUrl}?${queryParams.toString()}`;
+}
+
+/**
+ * Transforms the given EditorState object into a new object by converting all
+ * nested objects into string representations.
+ *
+ * @param {EditorState} state - The EditorState object to transform.
+ * @return {Object} The transformed object.
+ */
+export function transformState(state: EditorState) {
+  return Object.fromEntries(
+    Object.entries(state).map(([key, value]) => {
+      if (typeof value === "object" && value !== null) {
+        return [key, JSON.stringify(value)];
+      } else {
+        return [key, String(value)];
+      }
+    })
+  );
+}
+
+/**
+ * Create a code snippet and save it to the database.
+ * @return {Promise<{ data }>} The response object with the saved snippet data.
+ */
+export async function createSnippet({
+  id,
+  currentUrl,
+  user_id,
+  title,
+  code,
+  language,
+  state,
+}: CreateSnippetProps) {
+  try {
+    const url = createUrl(currentUrl, code, state, user_id);
+
+    const response = await fetch("/api/snippets", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        id,
+        user_id,
+        title,
+        code,
+        language,
+        url,
+      }),
+    });
+
+    if (!response.ok) {
+      toast.error(`Failed to save the snippet.`);
+    } else {
+      console.log("Snippet saved successfully");
+      toast.success("Your code snippet is saved.", {
+        action: {
+          label: "Choose folder",
+          onClick: () => console.log("Action!"),
+        },
+      });
+    }
+    const { data } = await response.json();
+
+    return { data };
+  } catch (error) {
+    console.log(error);
+    toast.error(`Failed to save the snippet.`);
+  }
+}
+
+/**
  * Fetches snippets from the server.
  *
  * @return {Promise<any>} The fetched snippets.
@@ -272,16 +376,19 @@ export async function fetchSnippets() {
   }
 }
 
+/**
+ * Fetches a snippet by its ID from the API.
+ * @param {string} id - The ID of the snippet.
+ * @returns {Promise<Snippet>} - A promise that resolves to the snippet data.
+ */
 export async function fetchSnippetById(id: string) {
   try {
-    const response = await fetch(`/api/snippet/id=${id}`, { method: "GET" });
-    if (!response.ok) {
-      toast.error("Cannot fetch snippet. Please try again.");
-    }
-    const data = await response.json();
+    const response = await fetch(`/api/snippet?id=${id}`, { method: "GET" });
+
+    const { data } = await response.json();
 
     if (!data) {
-      toast.error("This snippet was not found. Please try again.");
+      return;
     }
 
     return data;
@@ -316,7 +423,7 @@ export async function removeSnippet({
     if (!response.ok) {
       toast.error(`Something went wrong, please try again.`);
     } else {
-      toast.success("Snippet was unsaved.");
+      toast.success("Snippet was removed.");
     }
     await response.json();
   } catch (error) {
@@ -360,7 +467,6 @@ export async function updateSnippet({
     });
 
     if (!response.ok) {
-      console.log(response);
       return;
     } else {
       toast.success("Snippet updated.");

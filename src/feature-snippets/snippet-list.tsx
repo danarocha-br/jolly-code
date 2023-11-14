@@ -16,13 +16,14 @@ import {
 import {
   fetchCollections,
   removeCollection,
+  removeSnippet,
   updateCollectionTitle,
 } from "./db-helpers";
 import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
 
-export function SnippetsList({ data }: { data: Snippet[] }) {
+export function SnippetsList({ data }: { data: Collection[] }) {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
   const [collectionTitleEditable, setIsCollectionTitleEditable] =
@@ -98,6 +99,19 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
     },
   });
 
+  const { mutate: handleDeleteSnippet } = useMutation({
+    mutationFn: removeSnippet,
+    onError: (err, variables, context) => {
+      const { previousState } = context as { previousState: Snippet };
+
+      queryClient.setQueryData(["collections"], previousState);
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
+    },
+  });
+
   const { data: collections } = useQuery({
     queryKey: ["collections"],
     queryFn: fetchCollections,
@@ -106,36 +120,9 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
   return (
     <>
       <div className="flex flex-col items-center justify-center ">
-        <Accordion type="multiple" defaultValue={["home"]} className="w-full">
-          <AccordionItem value="home">
-            <CollectionTrigger>
-              <>
-                <i className="ri-folder-line mr-3" />
-                Home
-              </>
-            </CollectionTrigger>
-
-            <AccordionContent>
-              <ul className="w-full grid grid-cols-1 gap-2">
-                {data &&
-                  data.map((snippet: Snippet) => (
-                    <CollectionItem
-                      key={snippet.id}
-                      id={snippet.id}
-                      title={snippet.title}
-                      language={snippet.language}
-                      onSnippetClick={() => handleSnippetClick(snippet)}
-                      onMoveToFolder={() =>
-                        handleOpenMoveToFolderDialog(snippet, "")
-                      }
-                    />
-                  ))}
-              </ul>
-            </AccordionContent>
-          </AccordionItem>
-
+        <Accordion type="multiple" defaultValue={["Home"]} className="w-full">
           {collections &&
-            collections.data.map((collection: Collection) => (
+            collections.data.map((collection: Collection, index: number) => (
               <AccordionItem key={collection.id} value={collection.id!}>
                 <CollectionTrigger
                   onRemove={() =>
@@ -183,22 +170,15 @@ export function SnippetsList({ data }: { data: Snippet[] }) {
 
                 <AccordionContent>
                   <ul className="w-full grid grid-cols-1 gap-2">
-                    {collection.snippets?.length &&
-                      collection.snippets.map((snippet: Snippet) => (
+                    {collection.snippets?.length ?
+                      collection.snippets.map((snippet_id) => (
                         <CollectionItem
-                          key={snippet.id}
-                          id={snippet.id}
-                          title={snippet.title}
-                          language={snippet.language}
-                          onSnippetClick={() => handleSnippetClick(snippet)}
-                          onMoveToFolder={() =>
-                            handleOpenMoveToFolderDialog(
-                              snippet,
-                              collection.id || ""
-                            )
-                          }
+                          key={snippet_id}
+                          id={snippet_id}
+                          onItemSelect={handleSnippetClick}
+                          onDelete={handleDeleteSnippet}
                         />
-                      ))}
+                      )): null}
                   </ul>
                 </AccordionContent>
               </AccordionItem>

@@ -5,14 +5,24 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useEditorStore } from "@/app/store";
 import { input } from "./styles";
 import { languagesLogos } from "@/lib/language-logos";
-import { UseMutationResult } from "@tanstack/react-query";
-import { SnippetData } from "./editor";
 import { debounce } from "@/lib/utils/debounce";
+import { UseMutateFunction } from '@tanstack/react-query';
+import { UpdateSnippetProps } from '@/feature-snippets/db-helpers';
 
 type TitleInputProps = {
+  userId: string;
   language: string;
-  onUpdateTitle: UseMutationResult<SnippetData, unknown, SnippetData, unknown>;
-} & React.InputHTMLAttributes<HTMLInputElement>;
+  onUpdateTitle: UseMutateFunction<
+    | {
+        data: any;
+      }
+    | undefined,
+    Error,
+    UpdateSnippetProps,
+    unknown
+  >;
+  disabled: boolean;
+};
 
 /**
  * Renders a title input component.
@@ -21,7 +31,7 @@ type TitleInputProps = {
  * @return {JSX.Element} - the rendered title input component
  */
 export const TitleInput = ({
-  language,
+  language,userId,
   onUpdateTitle,
   ...props
 }: TitleInputProps) => {
@@ -41,16 +51,16 @@ export const TitleInput = ({
   const debouncedUpdateSnippet = useMemo(
     () =>
       debounce((id: string, title: string) => {
-        if (id) {
-          onUpdateTitle.mutate({
+        if (id && userId) {
+          onUpdateTitle({
             id,
             title,
+            user_id: userId,
           });
         }
       }, 1000),
     []
   );
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalTitle(e.target.value);

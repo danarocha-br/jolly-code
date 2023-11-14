@@ -46,8 +46,10 @@ export async function insertSnippet({
     sanitizedTitle = title;
   }
 
+  // Create the snippet
+
   try {
-    const { data, error } = await supabase
+    const { data: snippet, error } = await supabase
       .from("snippet")
       .insert([
         {
@@ -62,11 +64,73 @@ export async function insertSnippet({
       ])
       .select();
 
-    if (error) {
-      throw error;
-    }
+    if (snippet) {
+      // Check if a collection named "Home" exists for the user
+      let { data: collections }: { data: any[] | null; error: any } =
+        await supabase
+          .from("collection")
+          .select("id")
+          .eq("user_id", user_id)
+          .eq("title", "Home");
 
-    return data;
+      let collectionId: string | undefined;
+
+      // If the collection does not exist, create one
+      if (!collections || collections.length === 0) {
+        const { data: newCollection }: { data: any[] | null; error: any } =
+          await supabase.from("collection").insert([
+            {
+              user_id,
+              snippets: [snippet[0].id],
+              title: "Home",
+              updated_at: new Date(),
+            },
+          ]);
+
+        //@ts-ignore
+        if (newCollection && newCollection.length > 0) {
+          //@ts-ignore
+          collectionId = newCollection[0].id;
+        }
+      } else if (collections && collections.length > 0) {
+        collectionId = collections[0].id;
+
+        // Fetch the current collection
+        const { data: currentCollection, error: currentCollectionError } =
+          await supabase
+            .from("collection")
+            .select("snippets")
+            .eq("user_id", user_id)
+            .eq("id", collectionId)
+            .single();
+
+        if (currentCollectionError) {
+          throw currentCollectionError;
+        }
+
+        // Check if the snippet id already exists in the collection
+        if (!currentCollection.snippets.includes(snippet[0].id)) {
+          // Append the new snippet to the existing snippets array
+          const updatedSnippets = [
+            ...currentCollection.snippets,
+            snippet[0].id,
+          ];
+          // Update the collection with the new snippets array
+          const { error: updateError } = await supabase
+            .from("collection")
+            .update({ snippets: updatedSnippets, updated_at: new Date() })
+            .eq("user_id", user_id)
+            .eq("id", collectionId);
+
+          if (updateError) {
+            console.log(updateError);
+            throw updateError;
+          }
+        }
+      }
+
+      return snippet;
+    }
   } catch (error) {
     console.error(error);
     throw new Error("An error occurred. Please try again later.");
@@ -89,6 +153,35 @@ export async function deleteSnippet({
   supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
   try {
+    // Find collections that contain the snippet
+    const { data: collections, error: collectionError } = await supabase
+      .from("collection")
+      .select("*")
+      .eq("user_id", user_id);
+
+    if (collectionError) {
+      throw collectionError;
+    }
+
+    // Remove the snippet from each collection
+    if (collections) {
+      for (const collection of collections) {
+        const updatedSnippets = collection.snippets.filter(
+          (id: string) => id !== snippet_id
+        );
+
+        const { error: updateError } = await supabase
+          .from("collection")
+          .update({ snippets: updatedSnippets })
+          .eq("id", collection.id)
+          .eq("user_id", user_id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
+    }
+
     const { error: deleteError } = await supabase
       .from("snippet")
       .delete()
@@ -149,16 +242,16 @@ export async function getSnippetById({
   user_id: string;
   snippet_id: string;
   supabase: SupabaseClient<Database, "public", any>;
-}): Promise<{ id: string }> {
+}): Promise<Snippet[]> {
   try {
     const { data } = await supabase
       .from("snippet")
-      .select("id")
+      .select()
       .eq("id", snippet_id)
       .eq("user_id", user_id);
 
     if (data && data.length > 0) {
-      return { id: data[0].id };
+      return data[0];
     } else {
       throw new Error("Snippet not found.");
     }
