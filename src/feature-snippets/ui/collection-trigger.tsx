@@ -12,12 +12,14 @@ import {
 
 type CollectionTriggerProps = {
   children: React.ReactNode;
+  title: string;
   onUpdate?: () => void;
   onRemove?: () => void;
 };
 
 export function CollectionTrigger({
   children,
+  title,
   onUpdate,
   onRemove,
   ...props
@@ -30,30 +32,32 @@ export function CollectionTrigger({
         </h2>
       </AccordionTrigger>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-0"
-          >
-            <i className="ri-more-line text-lg" />
-          </Button>
-        </DropdownMenuTrigger>
+      {title !== "Home" && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-0"
+            >
+              <i className="ri-more-line text-lg" />
+            </Button>
+          </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onUpdate}>
-            <i className="ri-input-method-line mr-3" /> Rename folder
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onRemove}>
-            <div>
-              <i className="ri-folder-reduce-line mr-3" />
-              Remove
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onUpdate}>
+              <i className="ri-input-method-line mr-3" /> Rename folder
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onRemove}>
+              <div>
+                <i className="ri-folder-reduce-line mr-3" />
+                Remove
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

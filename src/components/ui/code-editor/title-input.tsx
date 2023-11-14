@@ -31,8 +31,6 @@ type TitleInputProps = {
  * @return {JSX.Element} - the rendered title input component
  */
 
-const LOCAL_STORAGE_KEY = "titleInputValue";
-
 
 export const TitleInput = ({
   language,
@@ -42,10 +40,7 @@ export const TitleInput = ({
 }: TitleInputProps) => {
   const currentState = useEditorStore((state) => state.currentEditorState);
   const [localTitle, setLocalTitle] = useState(
-    () =>
-      localStorage.getItem(LOCAL_STORAGE_KEY) ||
-      currentState?.title ||
-      "Untitled"
+    currentState?.title || "Untitled"
   );
 
   const editorPreferences = useEditorStore((state) => state.editor);
@@ -53,8 +48,8 @@ export const TitleInput = ({
   const updateEditor = useEditorStore((state) => state.updateEditor);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, localTitle);
-  }, [localTitle]);
+    setLocalTitle(currentState?.title || "Untitled");
+  }, [currentState?.title]);
 
   const debouncedUpdateSnippet = useMemo(
     () =>
@@ -67,7 +62,7 @@ export const TitleInput = ({
           });
         }
       }, 1000),
-    [onUpdateTitle]
+    [onUpdateTitle, userId]
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +72,7 @@ export const TitleInput = ({
     if (currentState) {
       updateEditor(currentState.id, { title: newTitle });
       currentState.isSnippetSaved &&
+        console.log('')
         debouncedUpdateSnippet(currentState.id, newTitle);
     }
   };

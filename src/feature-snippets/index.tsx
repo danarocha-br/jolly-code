@@ -1,5 +1,5 @@
 "use client";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,15 +12,14 @@ import { fetchCollections } from "./db-helpers";
 import { Collection, Snippet } from "./dtos";
 
 type SnippetsListProps = {
-  collections: {
-    data: Collection[] | [];
-  };
+  collections: Collection[] | [];
+  isRefetching: boolean;
 };
 
-function SnippetsCollection({ collections }: SnippetsListProps) {
+function SnippetsCollection({ collections, isRefetching }: SnippetsListProps) {
   return (
     <>
-      {collections.data.length === 0 ? (
+      {collections.length === 0 ? (
         <CollectionsEmptyState />
       ) : (
         <Suspense
@@ -33,7 +32,10 @@ function SnippetsCollection({ collections }: SnippetsListProps) {
           }
         >
           <ScrollArea className="h-[calc(100vh-200px)] flex flex-col pr-2">
-            <SnippetsList data={collections?.data} />
+            <SnippetsList
+              collections={collections}
+              isRefetching={isRefetching}
+            />
           </ScrollArea>
         </Suspense>
       )}
@@ -44,16 +46,32 @@ function SnippetsCollection({ collections }: SnippetsListProps) {
 export function Snippets() {
   const user = useUserStore((state) => state.user);
 
-  const { isLoading, data: collections } = useQuery<{ data: Snippet[] }>({
+  const {
+    isLoading,
+    data: collections,
+    isRefetching,
+  } = useQuery<{ data: Snippet[] }>({
     queryKey: ["collections"],
     queryFn: fetchCollections,
     enabled: !!user,
   });
 
+  const sortedCollections = useMemo(() => {
+    if (collections) {
+      return collections.data.sort((a, b) =>
+        a.title === "Home" ? -1 : b.title === "Home" ? 1 : 0
+      );
+    }
+    return [];
+  }, [collections]);
+
   return (
     <section>
       {!!user && !isLoading ? (
-        <SnippetsCollection collections={collections || { data: [] }} />
+        <SnippetsCollection
+          collections={sortedCollections || []}
+          isRefetching={isRefetching}
+        />
       ) : isLoading ? (
         <div className="flex flex-col p-4 justify-center items-center gap-4">
           <Skeleton />

@@ -271,7 +271,7 @@ export const Editor = forwardRef<any, EditorProps>(
 
       onMutate: async () => {
         await queryClient.cancelQueries({
-          queryKey,
+          queryKey: queryKey,
         });
 
         const previousSnippets = queryClient.getQueryData(queryKey);
@@ -287,12 +287,12 @@ export const Editor = forwardRef<any, EditorProps>(
 
       onSuccess: () => {
         queryClient.invalidateQueries({
-          queryKey,
+          queryKey: queryKey,
         });
       },
       onSettled: () => {
         queryClient.invalidateQueries({
-          queryKey,
+          queryKey: queryKey,
         });
       },
     });
@@ -308,6 +308,8 @@ export const Editor = forwardRef<any, EditorProps>(
             currentUrl: string | null
           ) => {
             if (id) {
+              console.log(" hey");
+
               handleUpdateSnippet({
                 id: currentEditor?.id!,
                 currentUrl,
@@ -321,7 +323,7 @@ export const Editor = forwardRef<any, EditorProps>(
           },
           1000
         ),
-      [handleUpdateSnippet]
+      [currentEditor, handleUpdateSnippet, user_id]
     );
 
     return (

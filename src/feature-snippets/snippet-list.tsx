@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { EditorState, useEditorStore } from "@/app/store";
 import {
@@ -15,7 +15,6 @@ import {
   DialogChooseCollection,
 } from "./choose-collection-dialog";
 import {
-  fetchCollections,
   removeCollection,
   removeSnippet,
   updateCollectionTitle,
@@ -24,9 +23,14 @@ import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
 
-export function SnippetsList({ data }: { data: Collection[] }) {
+type SnippetsListProps = {
+  collections: Collection[] | [];
+  isRefetching: boolean;
+};
+
+export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
+  const [previousCollectionId, setPreviousCollectionId] = useState<string>("");
   const [collectionTitleEditable, setIsCollectionTitleEditable] =
     useState(false);
   const [collectionTitle, setCollectionTitle] = useState("");
@@ -66,9 +70,9 @@ export function SnippetsList({ data }: { data: Collection[] }) {
   };
 
   const handleOpenMoveToFolderDialog = useCallback(
-    (snippet: Snippet, collection_id: string) => {
+    (snippet: Snippet, previous_collection_id: string) => {
+      setPreviousCollectionId(previous_collection_id);
       setSelectedSnippet(snippet);
-      setSelectedCollectionId(collection_id);
 
       moveToFolderDialog && moveToFolderDialog.current?.openDialog();
     },
@@ -90,6 +94,7 @@ export function SnippetsList({ data }: { data: Collection[] }) {
 
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateCollectionTitle,
+
     onError: (err, variables, context) => {
       const { previousState } = context as { previousState: Collection[] };
 
@@ -114,11 +119,6 @@ export function SnippetsList({ data }: { data: Collection[] }) {
     },
   });
 
-  const { data: collections, isRefetching } = useQuery({
-    queryKey,
-    queryFn: fetchCollections,
-  });
-
   return (
     <>
       {collections && (
@@ -126,16 +126,15 @@ export function SnippetsList({ data }: { data: Collection[] }) {
           <Accordion
             type="multiple"
             defaultValue={
-              collections && collections.data.length > 0
-                ? [collections.data[0].id]
-                : []
+              collections && collections.length > 0 ? [collections[0].id] : []
             }
             className="w-full"
           >
             {collections && !isRefetching ? (
-              collections.data.map((collection: Collection, index: number) => (
+              collections.map((collection: Collection, index: number) => (
                 <AccordionItem key={collection.id} value={collection.id}>
                   <CollectionTrigger
+                    title={collection.title}
                     onRemove={() =>
                       handleDeleteCollection({
                         collection_id: collection.id,
@@ -190,8 +189,10 @@ export function SnippetsList({ data }: { data: Collection[] }) {
                             <CollectionItem
                               key={snippet_id}
                               id={snippet_id}
+                              collectionId={collection.id}
                               onItemSelect={handleSnippetClick}
                               onDelete={handleDeleteSnippet}
+                              onMoveToCollection={handleOpenMoveToFolderDialog}
                             />
                           ))
                         : null}
@@ -214,7 +215,7 @@ export function SnippetsList({ data }: { data: Collection[] }) {
         <DialogChooseCollection
           ref={moveToFolderDialog}
           snippet={selectedSnippet}
-          collection_id={selectedCollectionId}
+          previousCollectionId={previousCollectionId}
         />
       )}
     </>

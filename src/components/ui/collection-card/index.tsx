@@ -1,13 +1,12 @@
 import React from "react";
 
 import { Separator } from "../separator";
-import { SnippetData } from "../code-editor/editor";
 import * as S from "./styles";
 
 type CollectionCardProps = {
   id?: string;
   title: string;
-  snippets?: SnippetData[];
+  snippets?: string[];
   onSelect: () => void;
 } & React.HTMLAttributes<HTMLButtonElement>;
 

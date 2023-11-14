@@ -18,14 +18,21 @@ import * as S from "./styles";
 
 type CollectionItemProps = {
   id: string;
+  collectionId: string;
   onItemSelect: (snippet: Snippet) => void;
+  onMoveToCollection: (
+    snippet: Snippet,
+    previous_collection_id: string
+  ) => void;
   onDelete: UseMutateFunction<void, Error, RemoveSnippetProps, unknown>;
 };
 
 export function CollectionItem({
   id,
+  collectionId,
   onItemSelect,
   onDelete,
+  onMoveToCollection,
 }: CollectionItemProps) {
   const user = useUserStore((state) => state.user);
 
@@ -66,7 +73,9 @@ export function CollectionItem({
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => "hand()"}>
+            <DropdownMenuItem
+              onClick={() => onMoveToCollection({ ...snippet }, collectionId)}
+            >
               <i className="ri-folder-line mr-3" /> Move to collection
             </DropdownMenuItem>
 

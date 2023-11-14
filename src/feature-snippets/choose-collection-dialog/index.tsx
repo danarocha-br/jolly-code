@@ -12,6 +12,7 @@ import { useUserStore } from "@/app/store";
 import { fetchCollections, updateCollection } from "../db-helpers";
 import { Collection, Snippet } from "../dtos";
 import { CollectionsEmptyState } from "../ui/snippet-empty-state";
+import { SnippetData } from "@/components/ui/code-editor/editor";
 
 export type DialogChooseCollectionHandlesProps = {
   openDialog: () => void;
@@ -20,11 +21,11 @@ export type DialogChooseCollectionHandlesProps = {
 
 type DialogChooseCollectionProps = {
   snippet: Snippet;
-  collection_id: string;
+  previousCollectionId: string;
 };
 
 export const DialogChooseCollection = forwardRef(
-  ({ snippet, collection_id }: DialogChooseCollectionProps, ref) => {
+  ({ snippet, previousCollectionId }: DialogChooseCollectionProps, ref) => {
     const [isVisible, setVisible] = useState(false);
     const user = useUserStore((state) => state.user);
     const queryKey = ["collections"];
@@ -94,8 +95,9 @@ export const DialogChooseCollection = forwardRef(
                       onSelect={() =>
                         handleUpdateCollection({
                           id: collection.id || "",
+                          previous_collection_id: previousCollectionId,
                           user_id: user?.id || "",
-                          snippet: snippet,
+                          snippet_id: snippet.id,
                         })
                       }
                     />

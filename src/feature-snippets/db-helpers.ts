@@ -214,6 +214,51 @@ export const updateCollectionTitle = async ({
   }
 };
 
+export const removeSnippetFromPreviousCollection = async (
+  user_id: string | undefined,
+  snippet_id: string,
+  previous_collection_id: string
+): Promise<void> => {
+  try {
+    const collectionResponse = await fetch(
+      `/api/collection?id=${previous_collection_id}`
+    );
+    const { data: currentCollection } = await collectionResponse.json();
+
+    // Check for null or if it's an array
+    const currentSnippets =
+      currentCollection?.snippets !== null &&
+      Array.isArray(currentCollection?.snippets)
+        ? currentCollection.snippets
+        : [];
+
+    // Check if snippet_id exists in currentSnippets and remove it
+    if (currentSnippets.includes(snippet_id)) {
+      const updatedSnippets = currentSnippets.filter(
+        (id: string) => id !== snippet_id
+      );
+
+      const updateResponse = await fetch("/api/collections", {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          id: previous_collection_id,
+          snippets: updatedSnippets,
+          user_id,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        toast.error("Something went wrong, please try again.");
+      } else {
+        return;
+      }
+    }
+  } catch (error) {
+    toast.error("Something went wrong, please try again.");
+  }
+};
+
 /**
  * Updates a collection with a new snippet.
  *
@@ -225,13 +270,22 @@ export const updateCollectionTitle = async ({
  */
 export const updateCollection = async ({
   id,
+  previous_collection_id,
   user_id,
   title,
-  snippet,
-}: Omit<UpdateCollectionProps, "snippets"> & { snippet: Snippet }): Promise<
-  Collection | undefined
-> => {
+  snippet_id,
+}: Omit<UpdateCollectionProps, "snippets"> & {
+  snippet_id: string;
+  previous_collection_id: string;
+}): Promise<Collection | undefined> => {
   try {
+    // Remove snippet from the previous collection
+    await removeSnippetFromPreviousCollection(
+      user_id,
+      snippet_id,
+      previous_collection_id
+    );
+
     const collectionResponse = await fetch(`/api/collection?id=${id}`);
     const { data: currentCollection } = await collectionResponse.json();
 
@@ -242,29 +296,30 @@ export const updateCollection = async ({
         ? currentCollection.snippets
         : [];
 
-    const updatedSnippets = [...currentSnippets, snippet];
+    // Check if snippet_id already exists in currentSnippets
+    if (!currentSnippets.includes(snippet_id)) {
+      const updatedSnippets = [...currentSnippets, snippet_id];
 
-    //check if the snippet is already part of the array and if so, don't do anything
+      const updateResponse = await fetch("/api/collections", {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          id,
+          user_id,
+          title,
+          snippets: updatedSnippets,
+        }),
+      });
 
-    const updateResponse = await fetch("/api/collections", {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({
-        id,
-        user_id,
-        title,
-        snippets: updatedSnippets,
-      }),
-    });
+      if (!updateResponse.ok) {
+        return;
+      }
+      const { data } = await updateResponse.json();
 
-    if (!updateResponse.ok) {
-      return;
+      return data;
     } else {
-      toast.success("Collection updated.");
+      toast.error("This snippet already belongs to this collection.");
     }
-    const { data } = await updateResponse.json();
-
-    return { data };
   } catch (error) {
     toast.error("Something went wrong, please try again.");
   }
