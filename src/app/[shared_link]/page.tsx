@@ -20,9 +20,9 @@ type SharedLinkPageProps = {
 export default function SharedLinkPage({ params }: SharedLinkPageProps) {
   const { shared_link } = params;
 
-  const { data, isLoading, error } = useQuery(
-    ["shared_link", shared_link],
-    async () => {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["shared_link", shared_link],
+    queryFn: async () => {
       if (!shared_link) {
         throw new Error("Shared link not found");
       }
@@ -40,24 +40,21 @@ export default function SharedLinkPage({ params }: SharedLinkPageProps) {
 
       const { url, id } = await response.json();
 
+      if (id) {
+        await fetch(`/api/save-shared-url-visits`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: data?.id,
+          }),
+        });
+      }
+
       return { id, url };
     },
-    {
-      async onSuccess(data) {
-        if (data.id) {
-          await fetch(`/api/save-shared-url-visits`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              id: data?.id,
-            }),
-          });
-        }
-      },
-    }
-  );
+  });
 
   if (!shared_link || error) {
     return notFound();

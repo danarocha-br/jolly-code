@@ -28,17 +28,19 @@ export const useSignInWithGithub = () => {
   const previousRoute = location.href;
   localStorage.setItem("previousRoute", previousRoute);
 
-  const signInWithGithub = useMutation(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "github",
-    });
+  const signInWithGithub = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+      });
 
-    const previousRoute = localStorage.getItem("previousRoute");
-    router.push(previousRoute || "/");
+      const previousRoute = localStorage.getItem("previousRoute");
+      router.push(previousRoute || "/");
 
-    if (error) {
-      toast.error("Sorry, something went wrong. Please try again.");
-    }
+      if (error) {
+        toast.error("Sorry, something went wrong. Please try again.");
+      }
+    },
   });
 
   return signInWithGithub;
@@ -46,7 +48,7 @@ export const useSignInWithGithub = () => {
 
 export const LoginDialog = ({ children }: LoginProps) => {
   const signInWithGithub = useSignInWithGithub();
-  const isLoading = signInWithGithub.isLoading;
+  const isLoading = signInWithGithub.isPending;
 
   const handleSignInWithGithub = useCallback(() => {
     signInWithGithub.mutate();

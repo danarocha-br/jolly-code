@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
 import {
+  Snippet,
   deleteSnippet,
   getUsersSnippetsList,
   insertSnippet,
@@ -206,7 +207,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const data = await updateSnippet({
+    const data: Snippet[]  = await updateSnippet({
       id: snippet_id,
       user_id: user_id || null,
       title,

@@ -32,7 +32,8 @@ export const CopyURLToClipboard = () => {
     setCurrentUrl(urlObj.origin);
   }, []);
 
-  const postLinkDataToDatabase = useMutation(async (url: string) => {
+  const postLinkDataToDatabase = useMutation({
+    mutationFn: async(url: string) => {
     try {
       const response = await fetch("/api/shorten-url", {
         method: "POST",
@@ -55,7 +56,7 @@ export const CopyURLToClipboard = () => {
     } catch (error) {
       toast.error("Oh no, something went wrong. Please try again.");
     }
-  });
+  }});
 
   const handleCopyLinkToClipboard = useCallback(async () => {
     const state = useEditorStore.getState();

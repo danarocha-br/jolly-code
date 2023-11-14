@@ -311,7 +311,7 @@ export async function getUsersSnippetsList({
  * Updates a snippet in the database.
  *
  * @param {Snippet} snippet - The snippet object containing the snippet information.
- * @return {Promise<Collection>} - A promise that resolves to the updated snippet data.
+ * @return {Promise<Snippet[]>} - A promise that resolves to the updated snippet data.
  */
 export async function updateSnippet({
   id,
@@ -321,7 +321,7 @@ export async function updateSnippet({
   language,
   url,
   supabase,
-}: Snippet): Promise<Collection> {
+}: Snippet): Promise<Snippet[]> {
   let sanitizedTitle = null;
 
   if (title === "" || title === undefined) {
