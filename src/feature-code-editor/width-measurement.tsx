@@ -1,7 +1,7 @@
 import React from "react";
 
 import { cn } from "@/lib/utils";
-import { Badge } from "../badge";
+import { Badge } from "@/components/ui/badge";
 
 type WidthMeasurementProps = {
   isVisible: boolean;

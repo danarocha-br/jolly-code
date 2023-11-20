@@ -1,30 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Resizable } from "re-resizable";
 
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/app/store";
-import { Editor } from "./editor";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
-import { Button } from "../button";
-import { resizableButton } from "./styles";
 import { useMediaQuery } from "@/lib/utils/media-query";
-import { ScrollArea, ScrollBar } from "../scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Editor } from "./editor";
+import { ResizableHandle } from './resizable-handle';
 
 type CodeEditor = {
   isLoading: boolean;
-};
-
-const ResizableHandle = ({ direction }: { direction: string }) => {
-  return (
-    <div
-      className={cn(
-        resizableButton(),
-        direction === "right" ? "-right-4" : "-left-4"
-      )}
-    >
-      <i className="ri-draggable text-md"></i>
-    </div>
-  );
 };
 
 export const CodeEditor = ({ isLoading }: CodeEditor) => {
@@ -45,11 +32,17 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
     return tabs.find((t) => t.id === activeEditorTabId) || null;
   }, [activeEditorTabId, tabs]);
 
+  /**
+   * Handles the action of adding tabs.
+   */
   function handleAddTabs() {
     const newTabId = createNewTab();
     setActiveTab(newTabId);
   }
 
+  /**
+   * Removes the active tab from the editor and updates the active tab accordingly.
+   */
   function handleRemoveTab() {
     const currentEditors = useEditorStore.getState().editors;
     const activeEditorTabId = useEditorStore.getState().activeEditorTabId;
@@ -124,6 +117,7 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
               <i className="ri-add-line text-lg" />
             </Button>
           </TabsList>
+
           <ScrollBar
             orientation="horizontal"
             className="[.scroll-thumb]:bg-transparent"

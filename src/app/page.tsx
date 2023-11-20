@@ -7,8 +7,7 @@ import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import Hotjar from "@hotjar/browser";
 
-import { useEditorStore, useUserStore } from "./store";
-import { CodeEditor } from "@/components/ui/code-editor";
+import { cn } from "@/lib/utils";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
 import { Nav } from "@/components/ui/nav";
@@ -16,8 +15,9 @@ import { Sidebar } from "@/components/ui/sidebar";
 
 import { SettingsPanel } from "@/feature-settings-panel";
 import { UserTools } from "@/feature-user-tools";
+import { CodeEditor } from '@/feature-code-editor';
 
-import { cn } from "@/lib/utils";
+import { useEditorStore, useUserStore } from "./store";
 import { Room } from "./room";
 
 export default function Home() {

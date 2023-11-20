@@ -1,13 +1,12 @@
 "use client";
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { UseMutateFunction } from "@tanstack/react-query";
 
 import { useEditorStore } from "@/app/store";
-import { input } from "./styles";
 import { languagesLogos } from "@/lib/language-logos";
 import { debounce } from "@/lib/utils/debounce";
-import { UseMutateFunction } from "@tanstack/react-query";
 import { UpdateSnippetProps } from "@/feature-snippets/db-helpers";
+import { input } from "./styles";
 
 type TitleInputProps = {
   userId: string;

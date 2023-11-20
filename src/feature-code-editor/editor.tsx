@@ -1,5 +1,4 @@
 "use client";
-
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
@@ -14,20 +13,19 @@ import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
 import { EditorState, useEditorStore, useUserStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { LoginDialog } from "@/feature-login";
 import { useMediaQuery } from "@/lib/utils/media-query";
-import { Button } from "../button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
-import { Skeleton } from "../skeleton";
-import { TitleInput } from "./title-input";
-import { WidthMeasurement } from "./width-measurement";
 import { debounce } from "@/lib/utils/debounce";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LoginDialog } from "@/feature-login";
 import {
   createSnippet,
   removeSnippet,
   updateSnippet,
 } from "@/feature-snippets/db-helpers";
-import { Snippet } from "@/feature-snippets/dtos";
+import { TitleInput } from "./title-input";
+import { WidthMeasurement } from "./width-measurement";
 import * as S from "./styles";
 
 type EditorProps = {
