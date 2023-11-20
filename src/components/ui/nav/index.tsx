@@ -7,10 +7,10 @@ import { useMutation } from "@tanstack/react-query";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import { Button } from "../button";
-import { ExportMenu } from "./export-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { CopyURLToClipboard } from "./copy-url-to-clipboard";
+import { ExportMenu } from "@/feature-export/export-menu";
+import { CopyURLToClipboard } from "@/feature-export//copy-url-to-clipboard";
 import UsersPresence from "./users-presence";
 import {
   DropdownMenu,

@@ -18,9 +18,10 @@ export const BackgroundSwitch = () => {
     useEditorStore.setState({ showBackground: !showBackground });
   }
 
-  useHotkeys(toggleBackground[0].hotKey, () => {
-    handleToggleBackground();
-  });
+  const hotKey =
+    toggleBackground.length > 0 ? toggleBackground[0].hotKey : null;
+
+  useHotkeys(hotKey || "", hotKey ? handleToggleBackground : () => {});
 
   return (
     <SettingsPanelItem value={showBackground ? "On" : "Off"}>

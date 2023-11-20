@@ -3,7 +3,7 @@ import { toBlob, toJpeg, toPng, toSvg } from "html-to-image";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 
-import { Button } from "../button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -11,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
   DropdownMenuShortcut,
-} from "../dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore } from "@/app/store";
 

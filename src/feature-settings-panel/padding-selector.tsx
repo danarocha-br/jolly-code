@@ -15,8 +15,12 @@ export const PaddingSelector = () => {
     useEditorStore.setState({ padding: value });
   }
 
-  useHotkeys(changePadding[0].hotKey, () => {
-    handleChangePadding(padding + 4);
+  const hotKey = changePadding.length > 0 ? changePadding[0].hotKey : null;
+
+  useHotkeys(hotKey || "", () => {
+    if (hotKey) {
+      handleChangePadding(padding + 4);
+    }
   });
 
   return (

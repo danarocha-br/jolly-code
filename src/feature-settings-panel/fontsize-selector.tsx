@@ -17,8 +17,12 @@ export const FontSizeSelector = () => {
     useEditorStore.setState({ fontSize: value });
   }
 
-  useHotkeys(changeFontSize[0].hotKey, () => {
-    handleFontSizeChange(fontSize + 1);
+  const hotKey = changeFontSize.length > 0 ? changeFontSize[0].hotKey : null;
+
+  useHotkeys(hotKey || "", () => {
+    if (hotKey) {
+      handleFontSizeChange(fontSize + 1);
+    }
   });
 
   return (

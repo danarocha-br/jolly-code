@@ -407,10 +407,10 @@ export async function createSnippet({
       toast.error(`Failed to save the snippet.`);
     } else {
       toast.success("Your code snippet was saved.", {
-        action: {
-          label: "Choose folder",
-          onClick: () => console.log("Action!"),
-        },
+        // action: {
+        //   label: "Choose folder",
+        //   onClick: () => console.log("Action!"),
+        // },
       });
     }
     const { data } = await response.json();

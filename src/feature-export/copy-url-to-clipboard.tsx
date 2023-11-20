@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo } from "react";
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 
-import { Tooltip } from "../tooltip";
-import { Button } from "../button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserStore, useEditorStore } from "@/app/store";
 
