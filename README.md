@@ -2,7 +2,7 @@
 
 ## JollyCode
 
-Welcome to the Github repo for JollyCode. An open source aesthetically appealing code beautifier. With features tailored for developers, a tool that serves as a hub for code beautification, sharing, and collaborative learning.
+Welcome to the Github repo for JollyCode. An open-source aesthetically appealing code beautifier. With features tailored for developers, a tool that serves as a hub for code beautification, sharing, and collaborative learning.
 
 ## Featured Tools
 
@@ -14,17 +14,17 @@ We support a wide array of programming languages, including Python, JavaScript, 
 
 Fancy showing off your beautiful code? You can share captivating images of your code right from JollyCode.
 
-### 🌍 Short shared url
+### 🌍 Short shared URL
 
-Once you share your url, it get's shortened for easy sharing via services like Twitter, Facebook, LinkedIn etc.
+Once you share your URL, it gets shortened for easy sharing via services like Twitter, Facebook, LinkedIn, etc.
 
-### 🌍 Shared url visitors count
+### 👥 Shared URL visitors count
 
-If you shared a link as a logged user, you can visualize how many users have visited your link.
+On the shared link, visualize the users interacting with your code snippet.
 
 ### 💾 Code Snippets
 
-Save your code snippets for future reference directly in the tool. Group your saved snippets into categories or tag them for easy retrieval.
+Save your code snippets for future reference directly in the tool. Group your saved snippets into categories for easy retrieval.
 
 - **Saving Snippets**: Use the 'Save Snippet' button after you've added your code. Give your snippet a meaningful name so you can easily find it later.
 
