@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 
 import { useOthers, useSelf } from "../../../../liveblocks.config";
-import { Tooltip } from '../tooltip';
-import { Avatar } from '../avatar';
+import { Tooltip } from "../tooltip";
+import { Avatar } from "../avatar";
 
 const UsersPresence = () => {
   const users = useOthers();
@@ -33,13 +33,15 @@ const UsersPresence = () => {
     <div className="flex pr-3 space-x-1">
       {users.slice(0, 3).map(({ connectionId, info }: any) => {
         return (
-          <Tooltip content={info.name || "Anonymous"} key={connectionId}>
-            <Avatar
-              imageSrc={info.avatar_url || undefined}
-              username={info.name || "Anonymous"}
-              color={avatarBackgroundColorRef.current || undefined}
-              size="md"
-            />
+          <Tooltip key={connectionId} content={"Anonymous"}>
+            <div>
+              <Avatar
+                imageSrc={info.avatar_url || undefined}
+                username={info.name || "Anonymous"}
+                color={avatarBackgroundColorRef.current || undefined}
+                size="md"
+              />
+            </div>
           </Tooltip>
         );
       })}

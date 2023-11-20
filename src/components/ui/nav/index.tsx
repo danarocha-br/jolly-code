@@ -3,14 +3,13 @@ import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import { Button } from "../button";
-import { ExportMenu } from "./export-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useUserSettingsStore } from "@/app/store";
-import { CopyURLToClipboard } from "./copy-url-to-clipboard";
+import { useEditorStore, useUserStore } from "@/app/store";
+import { ExportMenu } from "@/feature-export/export-menu";
 import UsersPresence from "./users-presence";
 import {
   DropdownMenu,
@@ -20,16 +19,17 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu";
 import { Avatar } from "../avatar";
-import { LoginDialog } from "@/app/auth/login";
+import { LoginDialog } from "@/feature-login";
+import { CopyURLToClipboard } from '@/feature-share-code';
 
 export const Nav = () => {
   const supabase = createClientComponentClient();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const isPresentational = useUserSettingsStore(
-    (state) => state.presentational
-  );
-  const { user } = useUserSettingsStore();
+  const memoizedTheme = useMemo(() => theme, [theme]);
+
+  const isPresentational = useEditorStore((state) => state.presentational);
+  const { user } = useUserStore();
   const username = useMemo(() => user?.user_metadata?.full_name, [user]);
   const imageUrl = useMemo(() => user?.user_metadata?.avatar_url, [user]);
 
@@ -39,24 +39,22 @@ export const Nav = () => {
    * @return {void} No return value.
    */
   function handleToggleTheme() {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(memoizedTheme === "dark" ? "light" : "dark");
   }
 
-  const handleSignOut = useMutation(
-    async () => {
+  const handleSignOut = useMutation({
+    mutationFn: async () => {
       await supabase.auth.signOut();
-      useUserSettingsStore.setState({ user: null });
+      useUserStore.setState({ user: null });
     },
-    {
-      onSuccess: () => {
-        toast.message("👋 See you soon!");
-        router.refresh();
-      },
-      onError: () => {
-        toast.error("Sorry, something went wrong.");
-      },
-    }
-  );
+    onSuccess: () => {
+      toast.message("👋 See you soon!");
+      router.refresh();
+    },
+    onError: () => {
+      toast.error("Sorry, something went wrong.");
+    },
+  });
 
   const toggleTheme = useMemo(
     () => hotKeyList.filter((item) => item.label === "Toggle theme"),

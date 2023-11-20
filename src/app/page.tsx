@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useQuery } from "react-query";
-import Hotjar from "@hotjar/browser";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import Hotjar from "@hotjar/browser";
 
-import { useUserSettingsStore } from "./store";
-import { CodeEditor } from "@/components/ui/code-editor";
+import { cn } from "@/lib/utils";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
-import { SettingsPanel } from "@/components/ui/settings-panel";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
-import { UserTools } from "@/components/ui/user-tools";
-import { cn } from "@/lib/utils";
+
+import { SettingsPanel } from "@/feature-settings-panel";
+import { UserTools } from "@/feature-user-tools";
+import { CodeEditor } from '@/feature-code-editor';
+
+import { useEditorStore, useUserStore } from "./store";
 import { Room } from "./room";
 
 export default function Home() {
@@ -23,30 +25,28 @@ export default function Home() {
   const searchParams = useSearchParams();
   const shared = searchParams.get("shared");
 
-  const backgroundTheme = useUserSettingsStore(
-    (state) => state.backgroundTheme
-  );
-  const fontFamily = useUserSettingsStore((state) => state.fontFamily);
-  const isPresentational = useUserSettingsStore(
-    (state) => state.presentational
-  );
+  const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
+  const fontFamily = useEditorStore((state) => state.fontFamily);
+  const isPresentational = useEditorStore((state) => state.presentational);
 
-  const { isLoading, data } = useQuery(
-    "session",
-    async () => await supabase.auth.getSession(),
-    {
-      onSuccess: (data) => {
-        if (data?.data.session) {
-          useUserSettingsStore.setState({
-            user: data.data.session.user,
+  const { isLoading } = useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+
+        if (data?.session) {
+          useUserStore.setState({
+            user: data.session.user,
           });
         }
-      },
-      onError: () => {
+
+        return data.session?.user;
+      } catch (error) {
         toast.error("Sorry, something went wrong.");
-      },
-    }
-  );
+      }
+    },
+  });
 
   useEffect(() => {
     const siteId = Number(process.env.NEXT_PUBLIC_HOTJAR_SITE_ID);
@@ -56,12 +56,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const presentational = shared === "true";
-    const showBackground = shared !== "true";
-
-    useUserSettingsStore.setState({
-      presentational,
-      showBackground,
+    useEditorStore.setState({
+      presentational: shared === "true" ? true : false,
+      showBackground: shared === "true" ? false : true,
     });
   }, [shared]);
 
@@ -96,10 +93,8 @@ export default function Home() {
 
     const state = Object.fromEntries(queryParams);
 
-    useUserSettingsStore.setState({
+    useEditorStore.setState({
       ...state,
-      code: state.code ? atob(state.code) : "",
-      autoDetectLanguage: state.autoDetectLanguage === "true",
       padding: 28,
       fontSize: Number(15),
     });

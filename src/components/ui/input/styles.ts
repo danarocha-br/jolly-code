@@ -24,7 +24,7 @@ export const input = cva([
   "focus-visible:outline-none",
   "focus-visible:outline-2",
   "focus-visible:outline-offset-2",
-  "focus-visible:outline-primary/20",
+  "focus-visible:outline-muted/20",
 
   "disabled:cursor-not-allowed",
   "disabled:opacity-50",

@@ -4,6 +4,7 @@ import Error from "next/error";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 
 import { isValidURL } from "@/lib/utils/is-valid-url";
+import { validateContentType } from "@/lib/utils/validate-content-type-request";
 
 export const runtime = "edge";
 
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid request" }, { status: 415 });
     }
 
-    const { url, snippet_id, user_id } = await request.json();
+    const { url, snippet_id, user_id } =
+      await validateContentType(request).json();
 
     const longUrl = url ? url : null;
     const validURL = await isValidURL(longUrl);

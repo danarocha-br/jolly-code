@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
+import { validateContentType } from "@/lib/utils/validate-content-type-request";
 
 const supabase: SupabaseClient = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,12 +15,7 @@ const supabase: SupabaseClient = createClient<Database>(
  */
 export async function POST(request: NextRequest) {
   try {
-    const contentType = await request.headers.get("content-type");
-    if (contentType !== "application/json") {
-      return NextResponse.json({ error: "Invalid request" }, { status: 415 });
-    }
-
-    const { id } = await request.json();
+    const { id } = await await validateContentType(request).json();
 
     if (!id) {
       return NextResponse.json(

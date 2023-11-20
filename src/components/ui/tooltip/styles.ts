@@ -15,6 +15,7 @@ export const content = cva([
   "animate-in",
   "fade-in-0",
   "zoom-in-95",
+  "z-[999]",
 
   "data-[state=closed]:animate-out",
   "data-[state=closed]:fade-out-0",

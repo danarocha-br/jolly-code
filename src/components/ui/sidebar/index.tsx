@@ -1,16 +1,18 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
-import * as S from "./styles";
 import { Button } from "../button";
-import { useUserSettingsStore } from "@/app/store";
 import { Logo } from "../logo";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
-import Link from "next/link";
-import { Skeleton } from "../skeleton";
-import { Snippets } from "./snippets";
+import { Tooltip } from "../tooltip";
+import { useEditorStore, useUserStore } from "@/app/store";
+import { LoginDialog } from "@/feature-login";
+import { CreateCollectionDialog } from '@/feature-snippets/create-collection-dialog';
+import { Snippets } from '@/feature-snippets';
+import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -31,7 +33,7 @@ const useSidebarMouseEvents = () => {
   const [width, setWidth] = useState(initialWidth);
 
   const handleMouseMove = useCallback(() => {
-    const newWidth = 280;
+    const newWidth = 300;
     setWidth(newWidth);
   }, []);
 
@@ -44,10 +46,10 @@ const useSidebarMouseEvents = () => {
 
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
-  const isPresentational = useUserSettingsStore(
-    (state) => state.presentational
-  );
   const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
+
+  const user = useUserStore((state) => state.user);
+  const isPresentational = useEditorStore((state) => state.presentational);
   const memoizedTheme = useMemo(() => theme, [theme]);
   const showSidebarContent = useMemo(() => initialWidth !== width, [width]);
 
@@ -60,7 +62,7 @@ export const Sidebar = () => {
         animate={{ width }}
         transition={{ ease: "easeOut", duration: 0.3 }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        // onMouseLeave={handleMouseLeave}
       >
         <Button
           size="icon"
@@ -81,7 +83,44 @@ export const Sidebar = () => {
 
         <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
 
-        <Snippets show={showSidebarContent} />
+        {showSidebarContent && (
+          <Tooltip content="Add folder">
+            <div className="absolute right-2 top-3">
+              {user ? (
+                <CreateCollectionDialog>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="rounded-full"
+                  >
+                    <i className="ri-add-line" />
+                  </Button>
+                </CreateCollectionDialog>
+              ) : (
+                <LoginDialog>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="rounded-full"
+                  >
+                    <i className="ri-add-line" />
+                  </Button>
+                </LoginDialog>
+              )}
+            </div>
+          </Tooltip>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, width: 320, padding: 24 }}
+          animate={{ opacity: showSidebarContent ? 1 : 0 }}
+          transition={{
+            delay: showSidebarContent ? 0.1 : 0,
+            duration: showSidebarContent ? 0.2 : 0.1,
+          }}
+        >
+          <Snippets />
+        </motion.div>
 
         <div className="absolute bottom-3 left-2">
           <HoverCard openDelay={0}>
@@ -128,11 +167,13 @@ export const Sidebar = () => {
           <Logo />
         </div>
 
-        <div className="absolute bottom-6 right-2">
-          <Button size="icon" variant="ghost">
-            <i className="ri-layout-right-2-line text-xl" />
-          </Button>
-        </div>
+        <Tooltip content="Close sidebar">
+          <div className="absolute bottom-6 right-2">
+            <Button size="icon" variant="ghost" onClick={handleMouseLeave}>
+              <i className="ri-layout-right-2-line text-xl" />
+            </Button>
+          </div>
+        </Tooltip>
       </motion.div>
     </aside>
   );
