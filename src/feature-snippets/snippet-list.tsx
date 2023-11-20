@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { EditorState, useEditorStore } from "@/app/store";
@@ -122,27 +122,49 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
     },
   });
 
+  const sortedCollections = useMemo(() => {
+    return collections.sort((a, b) =>
+      a.title === "Home" ? -1 : b.title === "Home" ? 1 : 0
+    );
+  }, [collections]);
+
   return (
     <>
-      {collections && (
+      {sortedCollections && (
         <div className="flex flex-col items-center justify-center">
           <Accordion
             type="multiple"
             defaultValue={
-              collections && collections.length > 0 ? [collections[0].id] : []
+              sortedCollections && sortedCollections.length > 0 ? [sortedCollections[0].id] : []
             }
             className="w-full"
           >
-            {collections && !isRefetching ? (
-              collections.map((collection: Collection, index: number) => (
+            {sortedCollections && !isRefetching ? (
+              sortedCollections.map((collection: Collection, index: number) => (
                 <AccordionItem key={collection.id} value={collection.id}>
                   <CollectionTrigger
                     title={collection.title}
                     onRemove={() =>
+                    {
+                      useEditorStore.setState({
+                        editors: editors.map((editor) => {
+                          if (
+                            collection.snippets?.some(
+                              (snippet) => snippet === editor.id
+                            )
+                          ) {
+                            return {
+                              ...editor,
+                              isSnippetSaved: false,
+                            };
+                          }
+                          return editor;
+                        }),
+                      });
                       handleDeleteCollection({
                         collection_id: collection.id,
                         user_id: collection.user_id,
-                      })
+                      })}
                     }
                     onUpdate={() => {
                       collectionTitleInputRef.current?.focus();

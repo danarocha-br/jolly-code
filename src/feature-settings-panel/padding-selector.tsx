@@ -1,9 +1,9 @@
 import React from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
-import { Slider } from "../slider";
+import { Slider } from "@/components/ui/slider";
 import { useEditorStore } from "@/app/store";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useHotkeys } from "react-hotkeys-hook";
 
 const changePadding = hotKeyList.filter(
   (item) => item.label === "Change padding"

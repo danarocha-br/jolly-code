@@ -1,14 +1,15 @@
 import React from "react";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "../select";
+} from "@/components/ui/select";
+import { Tooltip } from '@/components/ui/tooltip';
 import { useEditorStore } from "@/app/store";
 import { fonts, FontsProps } from "@/lib/fonts-options";
-import { SettingsPanelItem } from './item';
-import { Tooltip } from '../tooltip';
+import { SettingsPanelItem } from './ui/item';
 
 export const FontFamilySelector = () => {
   const fontFamily = useEditorStore((state) => state.fontFamily);

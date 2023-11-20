@@ -1,17 +1,17 @@
 import React from "react";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../select";
-
+} from "@/components/ui/select";
+import { Tooltip } from '@/components/ui/tooltip';
 import { themes } from "@/lib/themes-options";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/app/store";
-import { SettingsPanelItem } from "./item";
-import { Tooltip } from '../tooltip';
+import { SettingsPanelItem } from "./ui/item";
 
 export const ThemeSelector = () => {
   const backgroundTheme = useEditorStore(

@@ -3,21 +3,22 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useQuery } from "@tanstack/react-query";
-import Hotjar from "@hotjar/browser";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import Hotjar from "@hotjar/browser";
 
 import { useEditorStore, useUserStore } from "./store";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
-import { SettingsPanel } from "@/components/ui/settings-panel";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
+
+import { SettingsPanel } from "@/feature-settings-panel";
 import { UserTools } from "@/feature-user-tools";
+
 import { cn } from "@/lib/utils";
 import { Room } from "./room";
-import { CollectionsEmptyState } from "@/feature-snippets/ui/snippet-empty-state";
 
 export default function Home() {
   const supabase = createClientComponentClient<Database>();

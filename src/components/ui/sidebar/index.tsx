@@ -31,7 +31,6 @@ const initialWidth = 50;
  */
 const useSidebarMouseEvents = () => {
   const [width, setWidth] = useState(initialWidth);
-  const user = useUserStore((state) => state.user);
 
   const handleMouseMove = useCallback(() => {
     const newWidth = 300;

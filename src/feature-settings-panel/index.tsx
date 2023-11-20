@@ -8,9 +8,9 @@ import { FontSizeSelector } from "./fontsize-selector";
 import { PaddingSelector } from "./padding-selector";
 import { BackgroundSwitch } from "./background-switch";
 import { useEditorStore } from "@/app/store";
-import { Button } from "../button";
+import { Button } from "@/components/ui/button";
 
-import * as S from "./styles";
+import * as S from "./ui/styles";
 
 export const SettingsPanel = () => {
   const router = useRouter();

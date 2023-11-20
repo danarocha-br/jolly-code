@@ -451,6 +451,34 @@ export async function deleteCollection({
   supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
   try {
+    // Fetch the collection
+    const { data: collection, error: fetchError } = await supabase
+      .from("collection")
+      .select("snippets")
+      .eq("id", collection_id)
+      .eq("user_id", user_id)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    // Delete all snippets that belong to the collection
+    if (collection && collection.snippets) {
+      for (const snippet_id of collection.snippets) {
+        const { error: deleteSnippetError } = await supabase
+          .from("snippet")
+          .delete()
+          .eq("id", snippet_id)
+          .eq("user_id", user_id);
+
+        if (deleteSnippetError) {
+          throw deleteSnippetError;
+        }
+      }
+    }
+
+    // Delete the collection
     const { error: deleteError } = await supabase
       .from("collection")
       .delete()

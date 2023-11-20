@@ -1,10 +1,10 @@
 import React from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
+import { Slider } from "@/components/ui/slider";
 import { useEditorStore } from "@/app/store";
 import { useMediaQuery } from "@/lib/utils/media-query";
-import { Slider } from "../slider";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useHotkeys } from "react-hotkeys-hook";
 
 const changeFontSize = hotKeyList.filter(
   (item) => item.label === "Change font size"

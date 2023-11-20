@@ -1,22 +1,43 @@
-import React, { useMemo } from "react";
+import React, { useState } from "react";
 import { CaretSortIcon } from "@radix-ui/react-icons";
+import { CommandEmpty } from "cmdk";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useEditorStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { LanguageProps, languages } from "@/lib/language-options";
 import { cn } from "@/lib/utils";
 import { languagesLogos } from "@/lib/language-logos";
-import { Popover, PopoverContent, PopoverTrigger } from "../popover";
-import { Button } from "../button";
-import { Command, CommandGroup, CommandInput, CommandItem } from "../command";
-import { Tooltip } from "../tooltip";
-import { CommandEmpty } from "cmdk";
-import { SettingsPanelItem } from "./item";
-import { debounce } from "@/lib/utils/debounce";
-import { useMutation } from "@tanstack/react-query";
-import { SnippetData } from "../code-editor/editor";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui//popover";
+import { Button } from "@/components/ui//button";
+import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui//command";
+import { Tooltip } from "@/components/ui//tooltip";
+import { SettingsPanelItem } from "./ui/item";
+import { updateSnippet } from "@/feature-snippets/db-helpers";
+import { Snippet } from "@/lib/services/database";
 
+const languagesArray = Object.entries(languages).map(([key, label]) => ({
+  label: label,
+  value: key,
+}));
+
+/**
+ * Renders a language selector component.
+ */
 export const LanguageSelector = () => {
   const currentState = useEditorStore((state) => state.currentEditorState);
+  const user = useUserStore((state) => state.user);
+
+  const queryClient = useQueryClient();
+  const queryKey = ["collections"];
 
   const { language, autoDetectLanguage } = useEditorStore((state) => {
     const editor = state.editors.find(
@@ -33,31 +54,28 @@ export const LanguageSelector = () => {
         };
   });
 
-  const [open, setOpen] = React.useState(false);
-  const [value, setValue] = React.useState(language);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(language);
 
-  const handleUpdateSnippet = useMutation<
-    SnippetData,
-    unknown,
-    SnippetData,
-    unknown
-  >({
-    mutationKey: ["updateSnippet"],
+  const { mutate: handleUpdateSnippet } = useMutation({
+    mutationFn: updateSnippet,
+
+    onError: (err, variables, context) => {
+      const { previousState } = context as { previousState: Snippet };
+
+      queryClient.setQueryData(queryKey, previousState);
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
-  const debouncedUpdateSnippet = useMemo(
-    () =>
-      debounce((id: string, language: string) => {
-        if (id) {
-          handleUpdateSnippet.mutate({
-            id,
-            language,
-          });
-        }
-      }, 1000),
-    []
-  );
-
+  /**
+   * Handles the change of the language.
+   *
+   * @param {string} language - The new language to be set.
+   */
   function handleChange(language: string) {
     if (currentState) {
       if (language === "auto-detect") {
@@ -87,15 +105,17 @@ export const LanguageSelector = () => {
           }),
         });
         setValue(language);
-        debouncedUpdateSnippet(currentState.id, language);
+
+        if (user) {
+          handleUpdateSnippet({
+            user_id: user?.id,
+            id: currentState.id,
+            language,
+          });
+        }
       }
     }
   }
-
-  const languagesArray = Object.entries(languages).map(([key, label]) => ({
-    label: label,
-    value: key,
-  }));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

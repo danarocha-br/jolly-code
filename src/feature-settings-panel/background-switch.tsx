@@ -1,11 +1,11 @@
 import React from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import { useEditorStore } from "@/app/store";
-import { Button } from "../button";
-import { SettingsPanelItem } from "./item";
-import { Tooltip } from "../tooltip";
+import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useHotkeys } from "react-hotkeys-hook";
+import { SettingsPanelItem } from "./ui/item";
 
 const toggleBackground = hotKeyList.filter(
   (item) => item.label === "Toggle background"
