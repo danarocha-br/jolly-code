@@ -20,7 +20,7 @@ import {
 } from "../dropdown-menu";
 import { Avatar } from "../avatar";
 import { LoginDialog } from "@/feature-login";
-import { CopyURLToClipboard } from '@/feature-share-code';
+import { CopyURLToClipboard } from "@/feature-share-code";
 
 export const Nav = () => {
   const supabase = createClientComponentClient();
@@ -64,7 +64,7 @@ export const Nav = () => {
   useHotkeys(toggleTheme[0].hotKey, () => handleToggleTheme());
 
   return (
-    <nav className="fixed top-0 flex items-center justify-between gap-2 px-3 lg:px-4 py-3 z-50 w-full">
+    <nav className="w-full lg:w-auto fixed top-0 right-0 flex items-center justify-between gap-2 px-3 lg:px-4 py-3 z-50">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
