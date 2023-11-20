@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-//TODO: layout for this page
 export default function NotFound() {
   return (
     <div className="w-full flex flex-col justify-center items-center h-screen">
