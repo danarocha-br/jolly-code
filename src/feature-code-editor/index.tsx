@@ -6,9 +6,9 @@ import { useEditorStore } from "@/app/store";
 import { useMediaQuery } from "@/lib/utils/media-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area/index";
 import { Editor } from "./editor";
-import { ResizableHandle } from './resizable-handle';
+import { ResizableHandle } from "./resizable-handle";
 
 type CodeEditor = {
   isLoading: boolean;
@@ -23,6 +23,8 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
   const activeEditorTabId = useEditorStore((state) => state.activeEditorTabId);
   const padding = useEditorStore((state) => state.padding);
   const { createNewTab, removeEditor, setActiveTab } = useEditorStore();
+
+  const presentational = useEditorStore((state) => state.presentational);
 
   const tabs = useMemo(() => {
     return Array.isArray(editorStore) ? editorStore : [];
@@ -96,7 +98,7 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
                   {tab.title}
                 </div>
 
-                {tabs.length > 1 && (
+                {tabs.length > 1 && !presentational && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -108,14 +110,17 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
                 )}
               </TabsTrigger>
             ))}
-            <Button
-              variant="secondary"
-              size="icon"
-              className="ml-2 bg-foreground/[0.02]"
-              onClick={handleAddTabs}
-            >
-              <i className="ri-add-line text-lg" />
-            </Button>
+
+            {!presentational && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="ml-2 bg-foreground/[0.02]"
+                onClick={handleAddTabs}
+              >
+                <i className="ri-add-line text-lg" />
+              </Button>
+            )}
           </TabsList>
 
           <ScrollBar

@@ -433,7 +433,6 @@ export const Editor = forwardRef<any, EditorProps>(
                       value="initial"
                       className={cn(
                         "relative"
-                        // editorPreferences === "minimal" && "!bg-transparent"
                       )}
                     >
                       <TitleInput
@@ -525,7 +524,6 @@ export const Editor = forwardRef<any, EditorProps>(
                 </section>
               </TabsContent>
 
-              {/* <TabsContent value="new-tab"></TabsContent> */}
             </Tabs>
           </div>
 

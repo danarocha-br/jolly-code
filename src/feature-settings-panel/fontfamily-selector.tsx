@@ -5,7 +5,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "@/components/ui/select";
+} from "@/components/ui/select/index";
 import { Tooltip } from '@/components/ui/tooltip';
 import { useEditorStore } from "@/app/store";
 import { fonts, FontsProps } from "@/lib/fonts-options";

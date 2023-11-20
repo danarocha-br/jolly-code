@@ -10,7 +10,6 @@ import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore, useUserStore } from "@/app/store";
 import { ExportMenu } from "@/feature-export/export-menu";
-import { CopyURLToClipboard } from "@/feature-export//copy-url-to-clipboard";
 import UsersPresence from "./users-presence";
 import {
   DropdownMenu,
@@ -21,6 +20,7 @@ import {
 } from "../dropdown-menu";
 import { Avatar } from "../avatar";
 import { LoginDialog } from "@/feature-login";
+import { CopyURLToClipboard } from '@/feature-share-code';
 
 export const Nav = () => {
   const supabase = createClientComponentClient();

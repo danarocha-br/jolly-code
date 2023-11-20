@@ -10,11 +10,12 @@ import { useUserStore, useEditorStore } from "@/app/store";
 
 export const CopyURLToClipboard = () => {
   const user = useUserStore((state) => state.user);
-  const currentState = useEditorStore((state) => state.currentEditorState);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+
+  const currentEditorState = useEditorStore((state) => state.currentEditorState);
   const { code } = useEditorStore((state) => {
     const editor = state.editors.find(
-      (editor) => editor.id === currentState?.id
+      (editor) => editor.id === currentEditorState?.id
     );
     return editor
       ? {
@@ -32,35 +33,38 @@ export const CopyURLToClipboard = () => {
   }, []);
 
   const postLinkDataToDatabase = useMutation({
-    mutationFn: async(url: string) => {
-    try {
-      const response = await fetch("/api/shorten-url", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: user?.id,
-          snippet_id: "",
-          url,
-        }),
-      });
+    mutationFn: async (url: string) => {
+      try {
+        const response = await fetch("/api/shorten-url", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: user?.id,
+            snippet_id: "",
+            url,
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      const shortUrl = data.short_url;
-      await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
+        const shortUrl = data.short_url;
+        await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
 
-      return { response };
-    } catch (error) {
-      toast.error("Oh no, something went wrong. Please try again.");
-    }
-  }});
+        return { response };
+      } catch (error) {
+        toast.error("Oh no, something went wrong. Please try again.");
+      }
+    },
+  });
 
   const handleCopyLinkToClipboard = useCallback(async () => {
-    const state = useEditorStore.getState();
     const stringifiedState = Object.fromEntries(
-      Object.entries(state).map(([key, value]) => [key, String(value)])
+      Object.entries(currentEditorState || {}).map(([key, value]) => [
+        key,
+        String(value),
+      ])
     );
 
     const queryParams = new URLSearchParams({
@@ -73,7 +77,7 @@ export const CopyURLToClipboard = () => {
     await postLinkDataToDatabase.mutate(url);
 
     toast.success("Link copied to clipboard.");
-  }, [postLinkDataToDatabase, currentUrl, code]);
+  }, [postLinkDataToDatabase, currentUrl, code, currentEditorState]);
 
   const copyLink = useMemo(
     () => hotKeyList.filter((item) => item.label === "Copy link"),

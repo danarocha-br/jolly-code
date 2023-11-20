@@ -10,13 +10,13 @@ import { Separator } from "../components/ui/separator";
 import { EditorOptionsMenu } from "./ui/editor-options-menu";
 import { Tooltip } from "../components/ui/tooltip";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Changelog } from "../components/ui/changelog";
 import { CodeAnnotationMenu } from "./ui/code-annotation-menu";
 import { HotKeysPopover } from "./ui/hotkeys-menu";
 import { UserMenu } from "./ui/user-menu";
 import { LoginMenu } from "./ui/login-menu";
 
 import * as S from "./ui/styles";
+import { Changelog } from '@/feature-changelog';
 
 export const UserTools = () => {
   const supabase = createClientComponentClient();

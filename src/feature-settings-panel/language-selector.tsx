@@ -18,7 +18,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-} from "@/components/ui//command";
+} from "@/components/ui/command/index";
 import { Tooltip } from "@/components/ui//tooltip";
 import { SettingsPanelItem } from "./ui/item";
 import { updateSnippet } from "@/feature-snippets/db-helpers";

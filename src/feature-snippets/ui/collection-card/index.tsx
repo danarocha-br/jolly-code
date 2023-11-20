@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/components/ui/separator/index';
 import * as S from "./styles";
 
 type CollectionCardProps = {

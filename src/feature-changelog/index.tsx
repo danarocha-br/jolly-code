@@ -7,9 +7,9 @@ import dayjs from "dayjs";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
 
-import { Separator } from "../separator";
-import { Badge } from "../badge";
-import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as S from "./styles";
 
 type ChangeLog = {

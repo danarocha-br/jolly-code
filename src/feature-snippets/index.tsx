@@ -1,8 +1,8 @@
 "use client";
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area/index";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/app/store";
 import { CollectionsEmptyState } from "./ui/snippet-empty-state";

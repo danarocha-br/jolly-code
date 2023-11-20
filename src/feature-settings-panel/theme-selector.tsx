@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select/index";
 import { Tooltip } from '@/components/ui/tooltip';
 import { themes } from "@/lib/themes-options";
 import { cn } from "@/lib/utils";
