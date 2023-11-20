@@ -27,7 +27,13 @@ export const metadata: Metadata = {
     siteName: "Jolly Code",
     description:
       "Beautify, share, and improve your code. A multi-language, visually-appealing code sharing platform.",
+    images: [
+      {
+        url: "https://github.com/danarocha-br/jolly-code/blob/main/src/assets/app.png",
+      },
+    ],
   },
+
   icons: {
     icon: ["./favicon.ico"],
   },
