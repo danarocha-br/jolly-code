@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15,10 +15,11 @@ import { Sidebar } from "@/components/ui/sidebar";
 
 import { SettingsPanel } from "@/feature-settings-panel";
 import { UserTools } from "@/feature-user-tools";
-import { CodeEditor } from '@/feature-code-editor';
+import { CodeEditor } from "@/feature-code-editor";
 
 import { useEditorStore, useUserStore } from "./store";
 import { Room } from "./room";
+import { Logo } from '@/components/ui/logo';
 
 export default function Home() {
   const supabase = createClientComponentClient<Database>();
@@ -106,41 +107,52 @@ export default function Home() {
 
   return (
     <Room>
-      <link
-        rel="stylesheet"
-        href={themes[backgroundTheme].theme}
-        crossOrigin="anonymous"
-      />
-      <link
-        rel="stylesheet"
-        href={fonts[fontFamily].src}
-        crossOrigin="anonymous"
-      />
-
-      <div
-        className={cn(
-          "min-h-screen",
-          "flex",
-          "flex-col",
-          "lg:flex-row",
-          "bg-background",
-          [isPresentational && themes[backgroundTheme].background]
-        )}
+      <Suspense
+        fallback={
+          <div className="min-h-screen w-full flex justify-center items-center">
+            <Logo
+              variant="short"
+              className="animate-pulse grayscale duration-[0.75s]"
+            />
+          </div>
+        }
       >
-        <Sidebar />
+        <link
+          rel="stylesheet"
+          href={themes[backgroundTheme].theme}
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href={fonts[fontFamily].src}
+          crossOrigin="anonymous"
+        />
 
-        <Nav />
+        <div
+          className={cn(
+            "min-h-screen",
+            "flex",
+            "flex-col",
+            "lg:flex-row",
+            "bg-background",
+            [isPresentational && themes[backgroundTheme].background]
+          )}
+        >
+          <Sidebar />
 
-        <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
-          <main className="relative flex items-center justify-center lg:-ml-16">
-            <CodeEditor isLoading={isLoading} />
+          <Nav />
 
-            <SettingsPanel />
+          <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
+            <main className="relative flex items-center justify-center lg:-ml-16">
+              <CodeEditor isLoading={isLoading} />
 
-            <UserTools />
-          </main>
+              <SettingsPanel />
+
+              <UserTools />
+            </main>
+          </div>
         </div>
-      </div>
+      </Suspense>
     </Room>
   );
 }
