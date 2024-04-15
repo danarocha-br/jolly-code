@@ -12,7 +12,9 @@ export const CopyURLToClipboard = () => {
   const user = useUserStore((state) => state.user);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
-  const currentEditorState = useEditorStore((state) => state.currentEditorState);
+  const currentEditorState = useEditorStore(
+    (state) => state.currentEditorState
+  );
   const { code } = useEditorStore((state) => {
     const editor = state.editors.find(
       (editor) => editor.id === currentEditorState?.id
@@ -34,28 +36,30 @@ export const CopyURLToClipboard = () => {
 
   const postLinkDataToDatabase = useMutation({
     mutationFn: async (url: string) => {
-      try {
-        const response = await fetch("/api/shorten-url", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: user?.id,
-            snippet_id: "",
-            url,
-          }),
-        });
+      const response = await fetch("/api/shorten-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: user?.id,
+          snippet_id: "",
+          url,
+        }),
+      });
 
-        const data = await response.json();
-
-        const shortUrl = data.short_url;
-        await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
-
-        return { response };
-      } catch (error) {
-        toast.error("Oh no, something went wrong. Please try again.");
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
       }
+
+      const data = await response.json();
+      return data.short_url;
+    },
+    onSuccess: async (shortUrl) => {
+      await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
+    },
+    onError: (error) => {
+      toast.error("Oh no, something went wrong. Please try again.");
     },
   });
 
@@ -74,7 +78,7 @@ export const CopyURLToClipboard = () => {
 
     const url = `${currentUrl}?${queryParams}&shared=true`;
 
-    await postLinkDataToDatabase.mutate(url);
+    postLinkDataToDatabase.mutate(url);
 
     toast.success("Link copied to clipboard.");
   }, [postLinkDataToDatabase, currentUrl, code, currentEditorState]);

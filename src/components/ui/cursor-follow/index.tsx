@@ -46,7 +46,7 @@ export const FollowerPointerCard = ({
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       ref={ref}
-      className={cn("relative cursor-auto", className)}
+      className={cn("relative cursor-auto z-[999]", className)}
     >
       <AnimatePresence>
         {isInside && <FollowPointer x={x} y={y} title={title} />}
