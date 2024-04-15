@@ -10,6 +10,8 @@ import { SnippetCallout } from "./ui/snippet-callout";
 import { SnippetsList } from "./snippet-list";
 import { fetchCollections } from "./db-helpers";
 import { Collection, Snippet } from "./dtos";
+import { FollowerPointerCard } from "@/components/ui/cursor-follow";
+import { Avatar } from '@/components/ui/avatar';
 
 type SnippetsListProps = {
   collections: Collection[] | [];
@@ -57,12 +59,24 @@ export function Snippets() {
   });
 
   return (
-    <section>
+    <section className="cursor-none">
       {!!user && !isLoading ? (
-        <SnippetsCollection
-          collections={collections?.data || []}
-          isRefetching={isRefetching}
-        />
+        <FollowerPointerCard
+          title={
+            <div className='flex gap-1 items-center'>
+              <Avatar
+                imageSrc={user.user_metadata.avatar_url}
+                alt={user.user_metadata.full_name}
+              />
+              <span>{user.user_metadata.full_name}</span>
+            </div>
+          }
+        >
+          <SnippetsCollection
+            collections={collections?.data || []}
+            isRefetching={isRefetching}
+          />
+        </FollowerPointerCard>
       ) : isLoading ? (
         <div className="flex flex-col p-4 justify-center items-center gap-4">
           <Skeleton />
