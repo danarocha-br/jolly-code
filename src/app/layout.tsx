@@ -6,34 +6,35 @@ import type { Metadata } from "next";
 
 import { Sen } from "next/font/google";
 import { Providers } from "./providers";
+import { siteConfig } from "@/lib/utils/site-config";
 
 const sen = Sen({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Jolly Code",
-  description:
-    "Beautify, share, and improve your code. A multi-language, visually-appealing code sharing platform.",
-  authors: [
-    {
-      name: "Dana Rocha",
-      url: "https://bento.me/danarocha",
-    },
-  ],
-
+  title: siteConfig.title,
+  description: siteConfig.description,
+  authors: siteConfig.authors,
+  keywords: siteConfig.keywords,
+  creator: "Dana Rocha",
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://jollycode.dev",
-    siteName: "Jolly Code",
-    description:
-      "Beautify, share, and improve your code. A multi-language, visually-appealing code sharing platform.",
+    siteName: siteConfig.title,
+    description: siteConfig.description,
     images: [
       {
-        url: "https://github.com/danarocha-br/jolly-code/blob/main/src/assets/app.png",
+        url: siteConfig.imageUrl,
       },
     ],
   },
-
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [siteConfig.imageUrl],
+    creator: "@danarocha_",
+  },
   icons: {
     icon: ["./favicon.ico"],
   },
