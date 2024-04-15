@@ -62,7 +62,7 @@ export const Sidebar = () => {
         animate={{ width }}
         transition={{ ease: "easeOut", duration: 0.3 }}
         onMouseMove={handleMouseMove}
-        // onMouseLeave={handleMouseLeave}
+        onMouseLeave={handleMouseLeave}
       >
         <Button
           size="icon"

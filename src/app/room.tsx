@@ -5,7 +5,8 @@ import { ClientSideSuspense } from "@liveblocks/react";
 
 import { RoomProvider } from "../../liveblocks.config";
 import { useParams } from "next/navigation";
-import { Logo } from '@/components/ui/logo';
+import { Logo } from "@/components/ui/logo";
+import { useUserStore } from "./store";
 
 export function Room({ children }: { children: ReactNode }) {
   function useOverrideRoomId(roomId: string) {
@@ -18,6 +19,7 @@ export function Room({ children }: { children: ReactNode }) {
   }
 
   const roomId = useOverrideRoomId("jollycode");
+  const { user } = useUserStore();
 
   return (
     <RoomProvider id={roomId} initialPresence={{}}>
@@ -31,9 +33,7 @@ export function Room({ children }: { children: ReactNode }) {
           </div>
         }
       >
-        {() => (
-          children
-        )}
+        {() => children}
       </ClientSideSuspense>
     </RoomProvider>
   );

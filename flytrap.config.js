@@ -6,5 +6,6 @@ export default defineFlytrapConfig({
   secretApiKey: process.env.FLY_TRAP_SECRET_API_KEY,
   privateKey: process.env.FLY_TRAP_PRIVATE_KEY,
   mode: "capture",
-  packageIgnores: ['next/font'],
+  excludeDirectories: [".next", "src/components/ui"],
+  packageIgnores: ["next/font", "zod"],
 });
