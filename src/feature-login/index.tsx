@@ -1,4 +1,5 @@
-import React from "react";
+'use client'
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -23,8 +24,10 @@ export const LoginDialog = ({ children }: LoginProps) => {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  const previousRoute = location.href;
-  localStorage.setItem("previousRoute", previousRoute);
+  useEffect(() => {
+    const previousRoute = window.location.href;
+    localStorage.setItem("previousRoute", previousRoute);
+  }, []);
 
   const { mutate: handleSignInWithGithub, isPending } = useMutation({
     mutationFn: async () => {
@@ -32,8 +35,11 @@ export const LoginDialog = ({ children }: LoginProps) => {
         provider: "github",
       });
 
-      const previousRoute = localStorage.getItem("previousRoute");
-      router.push(previousRoute || "/");
+      let previousRoute = "/";
+      if (typeof window !== "undefined") {
+        previousRoute = localStorage.getItem("previousRoute") || "/";
+      }
+      router.push(previousRoute);
 
       if (error) {
         toast.error("Sorry, something went wrong. Please try again.");
