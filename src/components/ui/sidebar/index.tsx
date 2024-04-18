@@ -13,6 +13,7 @@ import { LoginDialog } from "@/feature-login";
 import { CreateCollectionDialog } from '@/feature-snippets/create-collection-dialog';
 import { Snippets } from '@/feature-snippets';
 import * as S from "./styles";
+import { useRouter } from 'next/navigation';
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -47,6 +48,7 @@ const useSidebarMouseEvents = () => {
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
+  const router = useRouter();
 
   const user = useUserStore((state) => state.user);
   const isPresentational = useEditorStore((state) => state.presentational);
@@ -141,6 +143,9 @@ export const Sidebar = () => {
                     size="icon"
                     variant="ghost"
                     className="relative -right-3"
+                    onClick={() =>
+                      router.push("https://github.com/danarocha-br/jolly-code")
+                    }
                   >
                     <i className="ri-github-fill text-xl" />
                   </Button>
@@ -151,7 +156,7 @@ export const Sidebar = () => {
                   <p>
                     with 💜 by{" "}
                     <Link
-                      href="https://bento.me/danarocha"
+                      href="https://github.com/danarocha-br/jolly-code"
                       className="text-violet-300 transition-colors hover:text-violet-400"
                     >
                       Dana Rocha
