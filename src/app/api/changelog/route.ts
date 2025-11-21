@@ -1,7 +1,7 @@
 import { NextApiResponse } from "next";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest | Request, res: NextApiResponse) {
+export async function POST(req: NextRequest | Request) {
   try {
     const response = await fetch("https://canny.io/api/v1/entries/list", {
       method: "POST",

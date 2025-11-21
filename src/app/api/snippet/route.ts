@@ -10,9 +10,9 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
  * @return {Promise<object>} A JSON response containing the snippet data.
  */
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {

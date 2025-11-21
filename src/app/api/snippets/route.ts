@@ -17,9 +17,9 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
  * @return {Promise<object>} A JSON response containing the list of snippets.
  */
 export async function GET() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -77,9 +77,9 @@ export async function GET() {
  * @return {Promise<NextResponse>} A promise that resolves to the response object.
  */
 export async function POST(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -137,9 +137,9 @@ export async function POST(request: NextRequest) {
  * @return {Promise<NextResponse>} A promise that resolves to a NextResponse object.
  */
 export async function DELETE(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -184,9 +184,9 @@ export async function DELETE(request: NextRequest) {
  * @return {Promise<NextResponse>} A promise that resolves to the response object.
  */
 export async function PUT(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -207,7 +207,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const data: Snippet[]  = await updateSnippet({
+    const data: Snippet[] = await updateSnippet({
       id: snippet_id,
       user_id: user_id || null,
       title,

@@ -17,9 +17,9 @@ import { validateContentType } from "@/lib/utils/validate-content-type-request";
  * @return {Promise<NextResponse>} A JSON response with a status code of 200 and the list of collections in the `data` field. If an error occurs, the response will have a status code of 500 and an error message.
  */
 export async function GET() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -77,9 +77,9 @@ export async function GET() {
  * @return {Promise<NextResponse>} A promise that resolves to the response object.
  */
 export async function POST(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -135,9 +135,9 @@ export async function POST(request: NextRequest) {
  * @return {Promise<NextResponse>} A promise that resolves to a response object.
  */
 export async function PUT(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {
@@ -193,9 +193,9 @@ export async function PUT(request: NextRequest) {
  * @returns {NextResponse} The response object.
  */
 export async function DELETE(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient<Database>({
-    cookies: () => cookieStore,
+    cookies: () => Promise.resolve(cookieStore),
   });
 
   try {

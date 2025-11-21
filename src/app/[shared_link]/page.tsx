@@ -1,14 +1,15 @@
 "use client";
 
+import { use } from "react";
 import { notFound, redirect } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { Logo } from "@/components/ui/logo";
 
 type SharedLinkPageProps = {
-  params: {
+  params: Promise<{
     shared_link: string;
-  };
+  }>;
 };
 
 /**
@@ -18,7 +19,7 @@ type SharedLinkPageProps = {
  * @return {JSX.Element} Redirects to the original URL of the shared link.
  */
 export default function SharedLinkPage({ params }: SharedLinkPageProps) {
-  const { shared_link } = params;
+  const { shared_link } = use(params);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["shared_link", shared_link],
