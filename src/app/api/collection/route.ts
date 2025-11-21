@@ -1,13 +1,9 @@
 import { getUserCollectionById } from "@/lib/services/database";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     let currentUser;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,7 +19,7 @@ import { CodeEditor } from "@/feature-code-editor";
 import { useEditorStore, useUserStore } from "@/app/store";
 
 export const Home = () => {
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createClient();
   const searchParams = useSearchParams();
   const shared = searchParams.get("shared");
 

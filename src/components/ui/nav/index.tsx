@@ -1,10 +1,12 @@
+"use client";
+
 import React, { useMemo } from "react";
 import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/client";
 
 import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
@@ -23,7 +25,7 @@ import { LoginDialog } from "@/feature-login";
 import { CopyURLToClipboard } from "@/feature-share-code";
 
 export const Nav = () => {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const memoizedTheme = useMemo(() => theme, [theme]);

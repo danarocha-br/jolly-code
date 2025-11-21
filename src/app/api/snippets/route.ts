@@ -8,8 +8,7 @@ import {
   insertSnippet,
   updateSnippet,
 } from "@/lib/services/database";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/server";
 
 /**
  * Retrieves a list of snippets for the authenticated user.
@@ -17,10 +16,7 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
  * @return {Promise<object>} A JSON response containing the list of snippets.
  */
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     let currentUser;
@@ -77,10 +73,7 @@ export async function GET() {
  * @return {Promise<NextResponse>} A promise that resolves to the response object.
  */
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     const { id, title, code, language, user_id, url } =
@@ -137,10 +130,7 @@ export async function POST(request: NextRequest) {
  * @return {Promise<NextResponse>} A promise that resolves to a NextResponse object.
  */
 export async function DELETE(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     const { snippet_id, user_id } = await validateContentType(request).json();
@@ -184,10 +174,7 @@ export async function DELETE(request: NextRequest) {
  * @return {Promise<NextResponse>} A promise that resolves to the response object.
  */
 export async function PUT(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     const { id: snippet_id, title, code, language, user_id, url } =

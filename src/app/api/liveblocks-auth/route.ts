@@ -1,6 +1,5 @@
 import { Liveblocks } from "@liveblocks/node";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
 const API_KEY = process.env.LIVEBLOCKS_SECRET_KEY!;
@@ -8,10 +7,7 @@ const API_KEY = process.env.LIVEBLOCKS_SECRET_KEY!;
 const liveblocks = new Liveblocks({ secret: API_KEY });
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const supabase = createServerComponentClient({
-    cookies: () => cookieStore as any,
-  });
+  const supabase = await createClient();
 
   // Get the session from Supabase
 

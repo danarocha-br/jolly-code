@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSnippetById } from "@/lib/services/database";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/server";
 
 /**
  * Retrieves the snippet by given ID for the authenticated user.
@@ -10,10 +9,7 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
  * @return {Promise<object>} A JSON response containing the snippet data.
  */
 export async function GET(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     let currentUser;

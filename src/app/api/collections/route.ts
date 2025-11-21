@@ -1,5 +1,4 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
@@ -17,10 +16,7 @@ import { validateContentType } from "@/lib/utils/validate-content-type-request";
  * @return {Promise<NextResponse>} A JSON response with a status code of 200 and the list of collections in the `data` field. If an error occurs, the response will have a status code of 500 and an error message.
  */
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     let currentUser;
@@ -77,10 +73,7 @@ export async function GET() {
  * @return {Promise<NextResponse>} A promise that resolves to the response object.
  */
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     const { user_id, title, snippets } =
@@ -135,10 +128,7 @@ export async function POST(request: NextRequest) {
  * @return {Promise<NextResponse>} A promise that resolves to a response object.
  */
 export async function PUT(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     const { id, title, user_id, snippets } =
@@ -193,10 +183,7 @@ export async function PUT(request: NextRequest) {
  * @returns {NextResponse} The response object.
  */
 export async function DELETE(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: () => Promise.resolve(cookieStore),
-  });
+  const supabase = await createClient();
 
   try {
     const { collection_id, user_id } = await validateContentType(request).json();
