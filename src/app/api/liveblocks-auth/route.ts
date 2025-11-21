@@ -8,8 +8,9 @@ const API_KEY = process.env.LIVEBLOCKS_SECRET_KEY!;
 const liveblocks = new Liveblocks({ secret: API_KEY });
 
 export async function POST(request: Request) {
+  const cookieStore = await cookies();
   const supabase = createServerComponentClient({
-    cookies: () => cookies(),
+    cookies: () => cookieStore as any,
   });
 
   // Get the session from Supabase
