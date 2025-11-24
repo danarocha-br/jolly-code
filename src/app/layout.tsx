@@ -56,7 +56,7 @@ export default async function RootLayout({
     queryKey: ["user"],
     queryFn: async () => {
       const { data } = await supabase.auth.getSession();
-      return data.session?.user;
+      return data.session?.user ?? null;
     },
   });
 

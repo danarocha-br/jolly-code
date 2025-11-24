@@ -32,24 +32,13 @@ export async function trackSharedLinkVisit(id: string) {
     const supabase = await createClient();
 
     try {
-        const { data, error } = await supabase
-            .from("links")
-            .select("visits")
-            .eq("id", id)
-            .single();
+        const { error } = await supabase.rpc("increment_link_visits", {
+            link_id: id,
+        });
 
-        if (error || !data) {
-            console.error("Error fetching visits:", error);
-            return;
+        if (error) {
+            console.error("Error tracking visit:", error);
         }
-
-        const currentVisits = data.visits || 0;
-        const updatedVisitCount = currentVisits + 1;
-
-        await supabase
-            .from("links")
-            .update({ visits: updatedVisitCount })
-            .eq("id", id);
     } catch (error) {
         console.error("Error tracking visit:", error);
     }

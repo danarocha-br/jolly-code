@@ -129,7 +129,7 @@ export const Editor = forwardRef<any, EditorProps>(
       const randomSnippet =
         codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
-      if (currentEditor && editors.length === 1 && !userHasEditedCode) {
+      if (currentEditor && editors.length === 1 && !userHasEditedCode && !code) {
         useEditorStore.setState({
           editors: editors.map((editor) => {
             if (editor.id === currentEditor?.id) {

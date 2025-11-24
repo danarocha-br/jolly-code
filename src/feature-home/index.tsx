@@ -90,8 +90,28 @@ export const Home = () => {
 
     const state = Object.fromEntries(queryParams);
 
+    const { activeEditorTabId, updateEditor, resetEditors } = useEditorStore.getState();
+
+    if (codeParam) {
+      try {
+        // Reset editors to clear any persisted state for unauthenticated users
+        resetEditors();
+        
+        // Get the new active tab ID after reset
+        const newActiveTabId = useEditorStore.getState().activeEditorTabId;
+        
+        const decodedCode = atob(codeParam);
+        updateEditor(newActiveTabId, {
+          code: decodedCode,
+          language: state.language || "plaintext",
+          title: state.title || "Untitled",
+        });
+      } catch (e) {
+        console.error("Failed to decode code param", e);
+      }
+    }
+
     useEditorStore.setState({
-      ...state,
       padding: 28,
       fontSize: Number(15),
     });
