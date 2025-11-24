@@ -72,7 +72,7 @@ export const DialogChooseCollection = forwardRef(
           <DialogHeader>Choose a collection</DialogHeader>
 
           <div className="w-full">
-            {collections && collections.data.length === 0 && (
+            {collections && collections.length === 0 && (
               <div className="flex justify-center px-24">
                 <CollectionsEmptyState />
               </div>
@@ -80,8 +80,8 @@ export const DialogChooseCollection = forwardRef(
 
             <div className="grid grid-cols-3 gap-3 my-4 w-full">
               {collections &&
-                collections.data.length >= 1 &&
-                collections.data
+                collections.length >= 1 &&
+                collections
                   ?.sort((a: Collection, b: Collection) =>
                     a.title.localeCompare(b.title)
                   )

@@ -2,8 +2,20 @@ import { toast } from "sonner";
 
 import { Snippet, Collection } from "./dtos";
 import { EditorState } from "@/app/store";
+import {
+  getSnippets,
+  getSnippetById,
+  createSnippet as createSnippetAction,
+  updateSnippet as updateSnippetAction,
+  deleteSnippet,
+  getCollections,
+  getCollectionById,
+  createCollection as createCollectionAction,
+  updateCollection as updateCollectionAction,
+  deleteCollection,
+} from "@/actions";
 
-const headers = { "Content-Type": "application/json" };
+
 
 export type UpdateSnippetProps = {
   id: string;
@@ -54,29 +66,23 @@ export async function createCollection({
 
     if (!user_id) {
       toast.error(`You must be authenticated to create a collection.`);
+      return undefined;
     }
 
-    const response = await fetch("/api/collections", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        user_id,
-        title: sanitizedTitle,
-        snippets,
-      }),
+    const result = await createCollectionAction({
+      title: sanitizedTitle,
+      snippets: snippets as any,
     });
 
-    if (!response.ok) {
-      toast.error(`Failed to save the collection.`);
-    } else {
-      return;
-      // toast.success(`${sanitizedTitle} was created.`);
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
-    const { data } = await response.json();
 
-    return { data };
+    return { data: result.data! };
   } catch (error) {
     toast.error(`Failed to save the collection.`);
+    return undefined;
   }
 }
 
@@ -85,22 +91,18 @@ export async function createCollection({
  *
  * @return {Promise<Collection[]>} The fetched collections.
  */
-export async function fetchCollections() {
+export async function fetchCollections(): Promise<Collection[]> {
   try {
-    const response = await fetch("/api/collections", { method: "GET" });
-    if (!response.ok) {
+    const result = await getCollections();
+
+    if (result.error) {
+      toast.error(result.error);
       return [];
     }
 
-    const data = await response.json();
-
-    if (!data) {
-      return [];
-    }
-
-    return data;
+    return result.data!;
   } catch (error) {
-    console.error("Network error:", error);
+    console.error("Error:", error);
     toast.error("Cannot fetch collections. Please try again.");
     return [];
   }
@@ -119,25 +121,19 @@ export async function fetchCollectionById(
   }
 
   try {
-    const params = new URLSearchParams();
-    params.append("id", id);
-    const url = `/api/collection?${params.toString()}`;
+    const result = await getCollectionById(id);
 
-    const response = await fetch(url, { method: "GET" });
-    if (!response.ok) {
-      return;
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
 
-    const data = await response.json();
-
-    if (!data) {
-      return;
-    }
-
-    return data;
+    // Return as array for backwards compatibility
+    return [result.data!];
   } catch (error) {
-    console.error("Network error:", error);
+    console.error("Error:", error);
     toast.error("Cannot fetch collections. Please try again.");
+    return undefined;
   }
 }
 
@@ -156,23 +152,14 @@ export const removeCollection = async ({
   user_id: string | undefined;
 }): Promise<void> => {
   try {
-    const url = "/api/collections";
-    const options = {
-      method: "DELETE",
-      headers,
-      body: JSON.stringify({
-        user_id,
-        collection_id,
-      }),
-    };
-    const response = await fetch(url, options);
+    const result = await deleteCollection(collection_id);
 
-    if (!response.ok) {
-      toast.error(`Something went wrong, please try again.`);
-    } else {
+    if (result.error) {
+      toast.error(result.error);
       return;
     }
-    await response.json();
+
+    // Success - no toast needed as it's handled by the caller
   } catch (error) {
     toast.error(`Failed to delete collection.`);
   }
@@ -193,25 +180,20 @@ export const updateCollectionTitle = async ({
   { data: Collection } | undefined
 > => {
   try {
-    const updateResponse = await fetch("/api/collections", {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({
-        id,
-        user_id,
-        title,
-      }),
+    const result = await updateCollectionAction({
+      id,
+      title,
     });
 
-    if (!updateResponse.ok) {
-      return;
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
 
-    const { data } = await updateResponse.json();
-
-    return { data };
+    return { data: result.data! };
   } catch (error) {
     toast.error("Something went wrong, please try again.");
+    return undefined;
   }
 };
 
@@ -221,15 +203,18 @@ export const removeSnippetFromPreviousCollection = async (
   previous_collection_id: string
 ): Promise<void> => {
   try {
-    const collectionResponse = await fetch(
-      `/api/collection?id=${previous_collection_id}`
-    );
-    const { data: currentCollection } = await collectionResponse.json();
+    const collectionResult = await getCollectionById(previous_collection_id);
+
+    if (collectionResult.error || !collectionResult.data) {
+      return;
+    }
+
+    const currentCollection = collectionResult.data;
 
     // Check for null or if it's an array
     const currentSnippets =
       currentCollection?.snippets !== null &&
-      Array.isArray(currentCollection?.snippets)
+        Array.isArray(currentCollection?.snippets)
         ? currentCollection.snippets
         : [];
 
@@ -239,20 +224,13 @@ export const removeSnippetFromPreviousCollection = async (
         (id: string) => id !== snippet_id
       );
 
-      const updateResponse = await fetch("/api/collections", {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({
-          id: previous_collection_id,
-          snippets: updatedSnippets,
-          user_id,
-        }),
+      const result = await updateCollectionAction({
+        id: previous_collection_id,
+        snippets: updatedSnippets as any,
       });
 
-      if (!updateResponse.ok) {
+      if (result.error) {
         toast.error("Something went wrong, please try again.");
-      } else {
-        return;
       }
     }
   } catch (error) {
@@ -287,13 +265,19 @@ export const updateCollection = async ({
       previous_collection_id
     );
 
-    const collectionResponse = await fetch(`/api/collection?id=${id}`);
-    const { data: currentCollection } = await collectionResponse.json();
+    const collectionResult = await getCollectionById(id);
+
+    if (collectionResult.error || !collectionResult.data) {
+      toast.error("Failed to fetch collection");
+      return undefined;
+    }
+
+    const currentCollection = collectionResult.data;
 
     // Check for null or if it's an array
     const currentSnippets =
       currentCollection?.snippets !== null &&
-      Array.isArray(currentCollection?.snippets)
+        Array.isArray(currentCollection?.snippets)
         ? currentCollection.snippets
         : [];
 
@@ -301,28 +285,25 @@ export const updateCollection = async ({
     if (!currentSnippets.includes(snippet_id)) {
       const updatedSnippets = [...currentSnippets, snippet_id];
 
-      const updateResponse = await fetch("/api/collections", {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({
-          id,
-          user_id,
-          title,
-          snippets: updatedSnippets,
-        }),
+      const result = await updateCollectionAction({
+        id,
+        title,
+        snippets: updatedSnippets as any,
       });
 
-      if (!updateResponse.ok) {
-        return;
+      if (result.error) {
+        toast.error(result.error);
+        return undefined;
       }
-      const { data } = await updateResponse.json();
 
-      return data;
+      return result.data;
     } else {
       toast.error("This snippet already belongs to this collection.");
+      return undefined;
     }
   } catch (error) {
     toast.error("Something went wrong, please try again.");
+    return undefined;
   }
 };
 
@@ -390,35 +371,25 @@ export async function createSnippet({
   try {
     const url = createUrl(currentUrl, code, state, user_id);
 
-    const response = await fetch("/api/snippets", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        id,
-        user_id,
-        title,
-        code,
-        language,
-        url,
-      }),
+    const result = await createSnippetAction({
+      id,
+      title,
+      code,
+      language,
+      url,
     });
 
-    if (!response.ok) {
-      toast.error(`Failed to save the snippet.`);
-    } else {
-      toast.success("Your code snippet was saved.", {
-        // action: {
-        //   label: "Choose folder",
-        //   onClick: () => console.log("Action!"),
-        // },
-      });
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
-    const { data } = await response.json();
 
-    return { data };
+    toast.success("Your code snippet was saved.");
+    return { data: result.data! };
   } catch (error) {
     console.log(error);
     toast.error(`Failed to save the snippet.`);
+    return undefined;
   }
 }
 
@@ -428,20 +399,18 @@ export async function createSnippet({
  */
 export async function fetchSnippets(): Promise<Snippet[] | undefined> {
   try {
-    const response = await fetch("/api/snippets", { method: "GET" });
-    if (!response.ok) {
-      toast.error("Cannot fetch snippets. Please try again.");
-    }
-    const data = await response.json();
+    const result = await getSnippets();
 
-    if (!data) {
-      return;
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
 
-    return data;
+    return result.data;
   } catch (error) {
-    console.error("Network error:", error);
+    console.error("Error:", error);
     toast.error("Cannot fetch snippets. Please try again.");
+    return undefined;
   }
 }
 
@@ -454,18 +423,18 @@ export async function fetchSnippetById(
   id: string
 ): Promise<Snippet | undefined> {
   try {
-    const response = await fetch(`/api/snippet?id=${id}`, { method: "GET" });
+    const result = await getSnippetById(id);
 
-    const { data } = await response.json();
-
-    if (!data) {
-      return;
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
 
-    return data;
+    return result.data!;
   } catch (error) {
-    console.error("Network error:", error);
+    console.error("Error:", error);
     toast.error("Something went wrong. Please try again.");
+    return undefined;
   }
 }
 
@@ -480,23 +449,19 @@ export async function removeSnippet({
   user_id,
 }: RemoveSnippetProps): Promise<void> {
   try {
-    const url = "/api/snippets";
-    const options = {
-      method: "DELETE",
-      headers,
-      body: JSON.stringify({
-        user_id,
-        snippet_id,
-      }),
-    };
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      toast.error(`Something went wrong, please try again.`);
-    } else {
-      toast.success("Snippet was removed.");
+    if (!snippet_id) {
+      toast.error("Snippet ID is missing.");
+      return;
     }
-    await response.json();
+
+    const result = await deleteSnippet(snippet_id);
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("Snippet was removed.");
   } catch (error) {
     toast.error(`Failed to remove the snippet.`);
   }
@@ -530,27 +495,22 @@ export async function updateSnippet({
   }
 
   try {
-    const response = await fetch("/api/snippets", {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({
-        id,
-        user_id,
-        title,
-        code,
-        language,
-        url,
-      }),
+    const result = await updateSnippetAction({
+      id,
+      title,
+      code,
+      language,
+      url: url ?? undefined,
     });
 
-    if (!response.ok) {
-      return;
+    if (result.error) {
+      toast.error(result.error);
+      return undefined;
     }
 
-    const { data } = await response.json();
-
-    return { data };
+    return { data: result.data! };
   } catch (error) {
     toast.error(`Failed to update the ${title}.`);
+    return undefined;
   }
 }

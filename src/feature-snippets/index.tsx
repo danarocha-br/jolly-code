@@ -49,10 +49,10 @@ export function Snippets() {
   const user = useUserStore((state) => state.user);
 
   const {
-    isLoading,
     data: collections,
+    isLoading,
     isRefetching,
-  } = useQuery<{ data: Snippet[] }>({
+  } = useQuery<Collection[]>({
     queryKey: ["collections"],
     queryFn: fetchCollections,
     enabled: !!user,
@@ -73,7 +73,7 @@ export function Snippets() {
           }
         >
           <SnippetsCollection
-            collections={collections?.data || []}
+            collections={collections || []}
             isRefetching={isRefetching}
           />
         </FollowerPointerCard>
