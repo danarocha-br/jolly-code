@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
-import { deleteCollection as deleteCollectionFromDb } from '@/lib/services/database'
+import { deleteCollection as deleteCollectionFromDb } from '@/lib/services/database/collections'
 
 /**
  * Server Action: Delete a collection

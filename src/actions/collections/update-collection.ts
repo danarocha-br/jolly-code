@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
-import { updateCollection as updateCollectionInDb } from '@/lib/services/database'
+import { updateCollection as updateCollectionInDb } from '@/lib/services/database/collections'
 import type { Collection, Snippet } from '@/feature-snippets/dtos'
 
 export type UpdateCollectionInput = {

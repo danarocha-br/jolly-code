@@ -22,7 +22,7 @@ import {
 import { Tooltip } from "@/components/ui//tooltip";
 import { SettingsPanelItem } from "./ui/item";
 import { updateSnippet } from "@/feature-snippets/db-helpers";
-import { Snippet } from "@/lib/services/database";
+import { Snippet } from "@/lib/services/database/types";
 
 const languagesArray = Object.entries(languages).map(([key, label]) => ({
   label: label,

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
-import { deleteSnippet as deleteSnippetFromDb } from '@/lib/services/database'
+import { deleteSnippet as deleteSnippetFromDb } from '@/lib/services/database/snippets'
 
 /**
  * Server Action: Delete a snippet

@@ -1,4 +1,4 @@
-import { Database as DB } from "@lib/database-types";
+import { Database as DB } from "@/types/database";
 
 declare global {
   namespace NodeJS {
@@ -15,4 +15,4 @@ declare global {
   type Database = DB;
 }
 
-export {};
+export { };

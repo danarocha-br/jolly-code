@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
-import { getUsersSnippetsList } from '@/lib/services/database'
+import { getUsersSnippetsList } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/feature-snippets/dtos'
 
 /**
