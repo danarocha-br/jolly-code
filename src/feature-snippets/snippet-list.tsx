@@ -18,7 +18,7 @@ import {
   removeCollection,
   removeSnippet,
   updateCollectionTitle,
-} from "./db-helpers";
+} from "./queries";
 import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
@@ -84,10 +84,23 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleDeleteCollection } = useMutation({
     mutationFn: removeCollection,
-    onError: (err, variables, context) => {
-      const { previousState } = context as { previousState: Collection[] };
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData<Collection[]>(queryKey);
 
-      queryClient.setQueryData(queryKey, previousState);
+      if (previousState) {
+        queryClient.setQueryData<Collection[]>(
+          queryKey,
+          previousState.filter((c) => c.id !== variables.collection_id)
+        );
+      }
+
+      return { previousState };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
     },
 
     onSettled: () => {
@@ -97,11 +110,25 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateCollectionTitle,
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData<Collection[]>(queryKey);
 
+      if (previousState) {
+        queryClient.setQueryData<Collection[]>(
+          queryKey,
+          previousState.map((c) =>
+            c.id === variables.id ? { ...c, title: variables.title || "" } : c
+          )
+        );
+      }
+
+      return { previousState };
+    },
     onError: (err, variables, context) => {
-      const { previousState } = context as { previousState: Collection[] };
-
-      queryClient.setQueryData(queryKey, previousState);
+      if (context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
     },
 
     onSettled: () => {
@@ -111,14 +138,32 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleDeleteSnippet } = useMutation({
     mutationFn: removeSnippet,
-    onError: (err, variables, context) => {
-      const { previousState } = context as { previousState: Snippet };
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData<Collection[]>(queryKey);
 
-      queryClient.setQueryData(queryKey, previousState);
+      if (previousState) {
+        queryClient.setQueryData<Collection[]>(
+          queryKey,
+          previousState.map((c) => ({
+            ...c,
+            snippets: c.snippets?.filter((s) => s !== variables.snippet_id) || [],
+          }))
+        );
+      }
+
+      return { previousState };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
     },
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      // Invalidate any cached snippet queries to avoid fetching deleted snippets
+      queryClient.invalidateQueries({ queryKey: ['snippet'] });
     },
   });
 

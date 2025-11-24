@@ -40,11 +40,26 @@ export const metadata: Metadata = {
   },
 };
 
+import { dehydrate } from "@tanstack/react-query";
+import { getQueryClient } from "@/lib/react-query/query-client";
+import { createClient } from "@/utils/supabase/server";
+
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const queryClient = getQueryClient();
+  const supabase = await createClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.user;
+    },
+  });
+
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <head>
@@ -54,7 +69,7 @@ export default async function RootLayout({
         />
       </head>
       <body className={sen.className}>
-        <Providers>{children}</Providers>
+        <Providers state={dehydrate(queryClient)}>{children}</Providers>
         <Analytics />
       </body>
     </html>

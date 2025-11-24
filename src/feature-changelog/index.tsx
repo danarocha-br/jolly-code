@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as S from "./styles";
+import { getChangelog } from "@/lib/services/changelog";
 
 type ChangeLog = {
   id: string;
@@ -25,23 +26,9 @@ type ChangelogProps = {
 };
 
 export const Changelog = ({ children }: ChangelogProps) => {
-  async function fetchData() {
-    try {
-      const response = await fetch("/api/changelog", { method: "POST" });
-      if (!response.ok) {
-        toast.error("An error occurred.");
-      }
-      const data = await response.json();
-
-      return data;
-    } catch (error) {
-      toast.error("An error occurred.");
-    }
-  }
-
-  const { isLoading, data } = useQuery({
+  const { isLoading, data, error } = useQuery({
     queryKey: ["changelogs"],
-    queryFn: fetchData,
+    queryFn: getChangelog,
   });
 
   return (
@@ -70,8 +57,20 @@ export const Changelog = ({ children }: ChangelogProps) => {
               </div>
             )}
 
+            {error && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <i className="ri-error-warning-line text-3xl text-destructive mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Failed to load changelog
+                </p>
+              </div>
+            )}
+
             {!isLoading &&
+              !error &&
               data &&
+              data.result?.entries &&
+              Array.isArray(data.result.entries) &&
               data.result.entries.map((entry: ChangeLog, index: number) => (
                 <React.Fragment key={entry.id}>
                   <div className="w-full pt-4">

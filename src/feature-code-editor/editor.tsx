@@ -23,7 +23,7 @@ import {
   createSnippet,
   removeSnippet,
   updateSnippet,
-} from "@/feature-snippets/db-helpers";
+} from "@/feature-snippets/queries";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import * as S from "./styles";
@@ -287,6 +287,8 @@ export const Editor = forwardRef<any, EditorProps>(
         queryClient.invalidateQueries({
           queryKey: queryKey,
         });
+        // Invalidate snippet queries to refresh title in collection list
+        queryClient.invalidateQueries({ queryKey: ['snippet'] });
       },
       onSettled: () => {
         queryClient.invalidateQueries({

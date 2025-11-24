@@ -8,10 +8,8 @@ import { useUserStore } from "@/app/store";
 import { CollectionsEmptyState } from "./ui/snippet-empty-state";
 import { SnippetCallout } from "./ui/snippet-callout";
 import { SnippetsList } from "./snippet-list";
-import { fetchCollections } from "./db-helpers";
+import { fetchCollections } from "./queries";
 import { Collection, Snippet } from "./dtos";
-import { FollowerPointerCard } from "@/components/ui/cursor-follow";
-import { Avatar } from '@/components/ui/avatar';
 
 type SnippetsListProps = {
   collections: Collection[] | [];
@@ -52,6 +50,7 @@ export function Snippets() {
     data: collections,
     isLoading,
     isRefetching,
+    error,
   } = useQuery<Collection[]>({
     queryKey: ["collections"],
     queryFn: fetchCollections,
@@ -59,29 +58,24 @@ export function Snippets() {
   });
 
   return (
-    <section className="cursor-none">
-      {!!user && !isLoading ? (
-        <FollowerPointerCard
-          title={
-            <div className='flex gap-1 items-center'>
-              <Avatar
-                imageSrc={user.user_metadata.avatar_url}
-                alt={user.user_metadata.full_name}
-              />
-              <span>{user.user_metadata.full_name}</span>
-            </div>
-          }
-        >
-          <SnippetsCollection
-            collections={collections || []}
-            isRefetching={isRefetching}
-          />
-        </FollowerPointerCard>
+    <section>
+      {!!user && !isLoading && !error ? (
+        <SnippetsCollection
+          collections={collections || []}
+          isRefetching={isRefetching}
+        />
       ) : isLoading ? (
         <div className="flex flex-col p-4 justify-center items-center gap-4">
           <Skeleton />
           <Skeleton />
           <Skeleton />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col p-4 justify-center items-center gap-4">
+          <i className="ri-error-warning-line text-4xl text-destructive" />
+          <p className="text-sm text-muted-foreground">
+            Failed to load collections. Please try again.
+          </p>
         </div>
       ) : (
         <SnippetCallout />

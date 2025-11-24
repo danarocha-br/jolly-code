@@ -204,7 +204,7 @@ export async function getSnippetById({
             .eq("user_id", user_id);
 
         if (data && data.length > 0) {
-            return data[0];
+            return data;
         } else {
             throw new Error("Snippet not found.");
         }

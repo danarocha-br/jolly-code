@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useRef } from "react";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 
 import { Button } from "../button";
 import { Logo } from "../logo";
@@ -13,7 +14,6 @@ import { LoginDialog } from "@/feature-login";
 import { CreateCollectionDialog } from '@/feature-snippets/create-collection-dialog';
 import { Snippets } from '@/feature-snippets';
 import * as S from "./styles";
-import { useRouter } from 'next/navigation';
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   dark: "light",
@@ -32,22 +32,80 @@ const initialWidth = 50;
  */
 const useSidebarMouseEvents = () => {
   const [width, setWidth] = useState(initialWidth);
+  const collapseTimeout = useRef<NodeJS.Timeout | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const hasOpenPortals = useRef(false);
 
-  const handleMouseMove = useCallback(() => {
+  // Monitor for Radix UI portals being added/removed from the DOM
+  React.useEffect(() => {
+    const checkForPortals = () => {
+      // Check if any Radix portals are currently in the DOM
+      const portals = document.querySelectorAll(
+        '[data-radix-popper-content-wrapper], [data-radix-dropdown-menu-content], [data-radix-hover-card-content], [data-radix-portal]'
+      );
+      hasOpenPortals.current = portals.length > 0;
+    };
+
+    // Initial check
+    checkForPortals();
+
+    // Set up a MutationObserver to watch for portal changes
+    const observer = new MutationObserver(() => {
+      checkForPortals();
+    });
+
+    // Observe the body for added/removed portals
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const handlePointerEnter = useCallback(() => {
+    // Cancel any pending collapse when the pointer enters
+    if (collapseTimeout.current) {
+      clearTimeout(collapseTimeout.current);
+      collapseTimeout.current = null;
+    }
     const newWidth = 300;
     setWidth(newWidth);
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const handlePointerLeave = useCallback(() => {
+    // Don't collapse if there are open portals (dropdowns, etc.)
+    if (hasOpenPortals.current) {
+      return;
+    }
+    
+    // Start a timeout before collapsing
+    collapseTimeout.current = setTimeout(() => {
+      // Double-check portals before collapsing
+      if (!hasOpenPortals.current) {
+        setWidth(initialWidth);
+        collapseTimeout.current = null;
+      }
+    }, 300);
+  }, []);
+
+  const closeSidebar = useCallback(() => {
+    // Immediate collapse when user clicks the close button
+    if (collapseTimeout.current) {
+      clearTimeout(collapseTimeout.current);
+      collapseTimeout.current = null;
+    }
     setWidth(initialWidth);
   }, []);
 
-  return { width, handleMouseMove, handleMouseLeave };
+  return { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef };
 };
 
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
-  const { width, handleMouseMove, handleMouseLeave } = useSidebarMouseEvents();
+  const { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef } = useSidebarMouseEvents();
   const router = useRouter();
 
   const user = useUserStore((state) => state.user);
@@ -58,13 +116,14 @@ export const Sidebar = () => {
   return (
     <aside className="hidden lg:flex">
       <motion.div
+        ref={sidebarRef}
         className={S.container({
           isPresentational,
         })}
         animate={{ width }}
         transition={{ ease: "easeOut", duration: 0.3 }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
       >
         <Button
           size="icon"
@@ -174,7 +233,7 @@ export const Sidebar = () => {
 
         <Tooltip content="Close sidebar">
           <div className="absolute bottom-6 right-2">
-            <Button size="icon" variant="ghost" onClick={handleMouseLeave}>
+            <Button size="icon" variant="ghost" onClick={closeSidebar}>
               <i className="ri-layout-right-2-line text-xl" />
             </Button>
           </div>

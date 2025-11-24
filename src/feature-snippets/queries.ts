@@ -90,6 +90,7 @@ export async function createCollection({
  * Fetches collections from the API.
  *
  * @return {Promise<Collection[]>} The fetched collections.
+ * @throws {Error} - Throws an error if collections cannot be fetched.
  */
 export async function fetchCollections(): Promise<Collection[]> {
   try {
@@ -97,14 +98,19 @@ export async function fetchCollections(): Promise<Collection[]> {
 
     if (result.error) {
       toast.error(result.error);
-      return [];
+      throw new Error(result.error);
     }
 
-    return result.data!;
+    if (!result.data) {
+      throw new Error("No collections found");
+    }
+
+    return result.data;
   } catch (error) {
     console.error("Error:", error);
-    toast.error("Cannot fetch collections. Please try again.");
-    return [];
+    const errorMessage = error instanceof Error ? error.message : "Cannot fetch collections. Please try again.";
+    toast.error(errorMessage);
+    throw error;
   }
 }
 
@@ -112,10 +118,11 @@ export async function fetchCollections(): Promise<Collection[]> {
  * Fetches collections from the API by given ID.
  *
  * @return {Promise<Collection[]>} The fetched collections.
+ * @throws {Error} - Throws an error if the collection cannot be fetched.
  */
 export async function fetchCollectionById(
   id: string
-): Promise<Collection[] | undefined> {
+): Promise<Collection[]> {
   if (!id) {
     throw new Error("Invalid id");
   }
@@ -125,15 +132,20 @@ export async function fetchCollectionById(
 
     if (result.error) {
       toast.error(result.error);
-      return undefined;
+      throw new Error(result.error);
+    }
+
+    if (!result.data) {
+      throw new Error("Collection not found");
     }
 
     // Return as array for backwards compatibility
-    return [result.data!];
+    return [result.data];
   } catch (error) {
     console.error("Error:", error);
-    toast.error("Cannot fetch collections. Please try again.");
-    return undefined;
+    const errorMessage = error instanceof Error ? error.message : "Cannot fetch collections. Please try again.";
+    toast.error(errorMessage);
+    throw error;
   }
 }
 
@@ -395,22 +407,28 @@ export async function createSnippet({
 
 /**
  * Fetches snippets from the API.
- * @returns A promise that resolves to an array of Snippet objects, or undefined if there was an error.
+ * @returns A promise that resolves to an array of Snippet objects.
+ * @throws {Error} - Throws an error if snippets cannot be fetched.
  */
-export async function fetchSnippets(): Promise<Snippet[] | undefined> {
+export async function fetchSnippets(): Promise<Snippet[]> {
   try {
     const result = await getSnippets();
 
     if (result.error) {
       toast.error(result.error);
-      return undefined;
+      throw new Error(result.error);
+    }
+
+    if (!result.data) {
+      throw new Error("No snippets found");
     }
 
     return result.data;
   } catch (error) {
     console.error("Error:", error);
-    toast.error("Cannot fetch snippets. Please try again.");
-    return undefined;
+    const errorMessage = error instanceof Error ? error.message : "Cannot fetch snippets. Please try again.";
+    toast.error(errorMessage);
+    throw error;
   }
 }
 
@@ -418,23 +436,29 @@ export async function fetchSnippets(): Promise<Snippet[] | undefined> {
  * Fetches a snippet by its ID from the API.
  * @param {string} id - The ID of the snippet.
  * @returns {Promise<Snippet>} - A promise that resolves to the snippet data.
+ * @throws {Error} - Throws an error if the snippet cannot be fetched.
  */
 export async function fetchSnippetById(
   id: string
-): Promise<Snippet | undefined> {
+): Promise<Snippet> {
   try {
     const result = await getSnippetById(id);
 
     if (result.error) {
       toast.error(result.error);
-      return undefined;
+      throw new Error(result.error);
     }
 
-    return result.data!;
+    if (!result.data) {
+      throw new Error("Snippet not found");
+    }
+
+    return result.data;
   } catch (error) {
     console.error("Error:", error);
-    toast.error("Something went wrong. Please try again.");
-    return undefined;
+    const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+    toast.error(errorMessage);
+    throw error;
   }
 }
 
