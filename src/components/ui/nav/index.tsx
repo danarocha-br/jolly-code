@@ -23,6 +23,7 @@ import {
 import { Avatar } from "../avatar";
 import { LoginDialog } from "@/feature-login";
 import { CopyURLToClipboard } from "@/feature-share-code";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export const Nav = () => {
   const supabase = createClient();
@@ -151,6 +152,18 @@ export const Nav = () => {
         <ExportMenu />
 
         <CopyURLToClipboard />
+
+        <Tooltip content="GitHub repository">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() =>
+              router.push("https://github.com/danarocha-br/jolly-code")
+            }
+          >
+            <i className="ri-github-fill text-xl" />
+          </Button>
+        </Tooltip>
       </div>
     </nav>
   );
