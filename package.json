@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix && pnpm run lint"
   },
   "dependencies": {
     "@hotjar/browser": "^1.0.9",
@@ -72,10 +73,13 @@
     "@types/react": "19.2.6",
     "@types/react-dom": "19.2.3",
     "@types/uuid": "^9.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.48.0",
+    "@typescript-eslint/parser": "^8.48.0",
     "autoprefixer": "^10.4.16",
     "encoding": "^0.1.13",
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.3",
+    "eslint-config-prettier": "^10.1.8",
     "postcss": "^8.4.31",
     "tailwind-scrollbar": "^3.0.5",
     "tailwindcss": "^3.4.1",
