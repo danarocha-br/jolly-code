@@ -143,7 +143,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }),
         });
       }
-    }, []);
+    }, [code, currentEditor, editors, userHasEditedCode]);
 
     useEffect(() => {
       if (autoDetectLanguage) {

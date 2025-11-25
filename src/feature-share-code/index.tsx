@@ -31,6 +31,7 @@ export const CopyURLToClipboard = () => {
   useEffect(() => {
     const urlObj = new URL(window.location.href);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentUrl(urlObj.origin);
   }, []);
 

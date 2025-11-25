@@ -47,6 +47,7 @@ export const TitleInput = ({
   const updateEditor = useEditorStore((state) => state.updateEditor);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalTitle(currentState?.title || "Untitled");
   }, [currentState?.title]);
 
