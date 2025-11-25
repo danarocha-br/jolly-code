@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,7 +19,7 @@ import { CodeEditor } from "@/feature-code-editor";
 import { useEditorStore, useUserStore } from "@/app/store";
 
 export const Home = () => {
-  const supabase = createClientComponentClient<Database>();
+  const supabase = createClient();
   const searchParams = useSearchParams();
   const shared = searchParams.get("shared");
 
@@ -62,6 +62,7 @@ export const Home = () => {
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true);
   }, []);
 
@@ -90,8 +91,28 @@ export const Home = () => {
 
     const state = Object.fromEntries(queryParams);
 
+    const { activeEditorTabId, updateEditor, resetEditors } = useEditorStore.getState();
+
+    if (codeParam) {
+      try {
+        // Reset editors to clear any persisted state for unauthenticated users
+        resetEditors();
+        
+        // Get the new active tab ID after reset
+        const newActiveTabId = useEditorStore.getState().activeEditorTabId;
+        
+        const decodedCode = atob(codeParam);
+        updateEditor(newActiveTabId, {
+          code: decodedCode,
+          language: state.language || "plaintext",
+          title: state.title || "Untitled",
+        });
+      } catch (e) {
+        console.error("Failed to decode code param", e);
+      }
+    }
+
     useEditorStore.setState({
-      ...state,
       padding: 28,
       fontSize: Number(15),
     });

@@ -5,7 +5,7 @@ import { UseMutateFunction } from "@tanstack/react-query";
 import { useEditorStore } from "@/app/store";
 import { languagesLogos } from "@/lib/language-logos";
 import { debounce } from "@/lib/utils/debounce";
-import { UpdateSnippetProps } from "@/feature-snippets/db-helpers";
+import { UpdateSnippetProps } from "@/feature-snippets/queries";
 import { input } from "./styles";
 
 type TitleInputProps = {
@@ -47,6 +47,7 @@ export const TitleInput = ({
   const updateEditor = useEditorStore((state) => state.updateEditor);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalTitle(currentState?.title || "Untitled");
   }, [currentState?.title]);
 

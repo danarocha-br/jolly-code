@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/client";
 
 import {
   Dialog,
@@ -21,7 +21,7 @@ type LoginProps = {
 };
 
 export const LoginDialog = ({ children }: LoginProps) => {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
@@ -33,13 +33,10 @@ export const LoginDialog = ({ children }: LoginProps) => {
     mutationFn: async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
       });
-
-      let previousRoute = "/";
-      if (typeof window !== "undefined") {
-        previousRoute = localStorage.getItem("previousRoute") || "/";
-      }
-      router.push(previousRoute);
 
       if (error) {
         toast.error("Sorry, something went wrong. Please try again.");

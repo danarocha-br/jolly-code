@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
 import { Card, CardContent } from "../components/ui/card";
@@ -19,7 +19,7 @@ import * as S from "./ui/styles";
 import { Changelog } from '@/feature-changelog';
 
 export const UserTools = () => {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const router = useRouter();
   const { user } = useUserStore();
 

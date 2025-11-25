@@ -10,6 +10,7 @@ export const button = cva([
   "outline-none",
   "group/button",
   "transition-all",
+  "relative",
 
   "hover:border-primary",
 ]);

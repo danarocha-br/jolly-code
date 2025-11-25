@@ -17,9 +17,9 @@ const shortcuts = hotKeyList.filter((item) => item.label === "Shortcuts");
 export const HotKeysPopover = () => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  useHotkeys(shortcuts[0].hotKey, () => handleOpenPopover());
-
   const handleOpenPopover = () => setIsPopoverOpen(!isPopoverOpen);
+
+  useHotkeys(shortcuts[0].hotKey, () => handleOpenPopover());
 
   if (!hotKeyList) {
     return null;

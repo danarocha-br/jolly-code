@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { fetchSnippetById, RemoveSnippetProps } from "../db-helpers";
+import { fetchSnippetById, RemoveSnippetProps } from "../queries";
 import { Snippet } from "../dtos";
 import * as S from "./styles";
 
@@ -36,8 +36,8 @@ export function CollectionItem({
 }: CollectionItemProps) {
   const user = useUserStore((state) => state.user);
 
-  const { data: snippet, isLoading } = useQuery({
-    queryKey: ["collections", id],
+  const { data: snippet, isLoading, error } = useQuery({
+    queryKey: ["snippet", id],
     queryFn: () => fetchSnippetById(id),
     enabled: !!user,
   });
@@ -46,6 +46,8 @@ export function CollectionItem({
 
   return isLoading ? (
     <Skeleton />
+  ) : error ? (
+    null // Don't render anything if there's an error
   ) : snippet ? (
     <li className={S.snippet()}>
       <Suspense fallback={<Skeleton />}>

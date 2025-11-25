@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import Error from "next/error";
-import { SupabaseClient, createClient } from "@supabase/supabase-js";
+
+import { createClient } from "@/utils/supabase/server";
 
 import { isValidURL } from "@/lib/utils/is-valid-url";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
+import { Database } from "@/types/database";
 
 export const runtime = "edge";
 
-const supabase: SupabaseClient = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 const shortURLs: { [key: string]: string } = {};
 const keySet: Set<string> = new Set();
@@ -23,6 +21,7 @@ const keySet: Set<string> = new Set();
  * @return {Promise<NextResponse>} A promise that resolves to a NextResponse object containing the URL associated with the slug, or an error response if the slug is invalid or not found.
  */
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
   const url = new URL(request.url);
 
   const slug = url.searchParams.get("slug");
@@ -65,6 +64,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = await createClient();
   try {
     const contentType = await request.headers.get("content-type");
     if (contentType !== "application/json") {
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     const shortUrl = key;
 
-    const result = await supabase
+    const { error: insertError } = await supabase
       .from("links")
       .insert([
         {
@@ -126,20 +126,19 @@ export async function POST(request: NextRequest) {
           short_url: shortUrl,
           snippet_id: snippet_id ? snippet_id : null,
         },
-      ])
-      .select();
+      ]);
 
-    data = result.data;
-
-    if (!data || !data[0]) {
-      return NextResponse.json({ error: "No data found." }, { status: 404 });
+    if (insertError) {
+      console.error("Insert Error:", insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
     return NextResponse.json({
       status: 200,
-      short_url: data[0].short_url,
+      short_url: shortUrl,
     });
-  } catch (error) {
-    return NextResponse.json(error, { status: 500 });
+  } catch (error: any) {
+    console.error("Shorten URL Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

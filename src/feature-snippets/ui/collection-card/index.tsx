@@ -8,6 +8,8 @@ type CollectionCardProps = {
   title: string;
   snippets?: string[];
   onSelect: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
 } & React.HTMLAttributes<HTMLButtonElement>;
 
 export const CollectionCard = ({
@@ -15,6 +17,8 @@ export const CollectionCard = ({
   title,
   snippets,
   onSelect,
+  isLoading = false,
+  disabled = false,
   ...props
 }: CollectionCardProps) => {
   return (
@@ -22,8 +26,16 @@ export const CollectionCard = ({
       key={id}
       className={S.button()}
       onClick={() => onSelect()}
+      disabled={disabled || isLoading}
+      style={{ opacity: disabled ? 0.5 : 1 }}
       {...props}
     >
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg z-10">
+          <i className="ri-loader-4-fill text-2xl animate-spin text-primary" />
+        </div>
+      )}
+      
       <div className={S.editorContainer()}>
         <div className={S.editorContent()}>
           <div className={S.editorHeader()}>

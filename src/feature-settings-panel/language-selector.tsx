@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/command/index";
 import { Tooltip } from "@/components/ui//tooltip";
 import { SettingsPanelItem } from "./ui/item";
-import { updateSnippet } from "@/feature-snippets/db-helpers";
-import { Snippet } from "@/lib/services/database";
+import { updateSnippet } from "@/feature-snippets/queries";
+import { Snippet } from "@/lib/services/database/types";
+import { Collection } from "@/feature-snippets/dtos";
 
 const languagesArray = Object.entries(languages).map(([key, label]) => ({
   label: label,
@@ -59,11 +60,16 @@ export const LanguageSelector = () => {
 
   const { mutate: handleUpdateSnippet } = useMutation({
     mutationFn: updateSnippet,
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData<Collection[]>(queryKey);
 
+      return { previousState };
+    },
     onError: (err, variables, context) => {
-      const { previousState } = context as { previousState: Snippet };
-
-      queryClient.setQueryData(queryKey, previousState);
+      if (context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
     },
 
     onSettled: () => {

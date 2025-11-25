@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label/index";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { createCollection } from "../db-helpers";
+import { createCollection } from "../queries";
 import { Collection } from "../dtos";
 
 export function CreateCollectionDialog({

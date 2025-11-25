@@ -23,7 +23,7 @@ import {
   createSnippet,
   removeSnippet,
   updateSnippet,
-} from "@/feature-snippets/db-helpers";
+} from "@/feature-snippets/queries";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import * as S from "./styles";
@@ -129,7 +129,7 @@ export const Editor = forwardRef<any, EditorProps>(
       const randomSnippet =
         codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
-      if (currentEditor && editors.length === 1 && !userHasEditedCode) {
+      if (currentEditor && editors.length === 1 && !userHasEditedCode && !code) {
         useEditorStore.setState({
           editors: editors.map((editor) => {
             if (editor.id === currentEditor?.id) {
@@ -143,7 +143,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }),
         });
       }
-    }, []);
+    }, [code, currentEditor, editors, userHasEditedCode]);
 
     useEffect(() => {
       if (autoDetectLanguage) {
@@ -287,6 +287,8 @@ export const Editor = forwardRef<any, EditorProps>(
         queryClient.invalidateQueries({
           queryKey: queryKey,
         });
+        // Invalidate snippet queries to refresh title in collection list
+        queryClient.invalidateQueries({ queryKey: ['snippet'] });
       },
       onSettled: () => {
         queryClient.invalidateQueries({

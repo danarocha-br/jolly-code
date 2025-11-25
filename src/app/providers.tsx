@@ -4,19 +4,11 @@ import { useState } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import Script from "next/script";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, HydrationBoundary, DehydratedState } from "@tanstack/react-query";
+import { getQueryClient } from "@/lib/react-query/query-client";
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000,
-          },
-        },
-      })
-  );
+export function Providers({ children, state }: { children: React.ReactNode; state?: DehydratedState }) {
+  const queryClient = getQueryClient();
 
   return (
     <>
@@ -36,8 +28,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       />
       <ThemeProvider defaultTheme="dark" attribute="class">
         <QueryClientProvider client={queryClient}>
-          {children}
-          <Toaster position="top-center" theme="light" richColors />
+          <HydrationBoundary state={state}>
+            {children}
+            <Toaster position="top-center" theme="light" richColors />
+          </HydrationBoundary>
         </QueryClientProvider>
       </ThemeProvider>
     </>
