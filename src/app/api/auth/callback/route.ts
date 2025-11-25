@@ -9,8 +9,9 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get("next") || "/";
 
   if (code) {
+    console.log('Exchanging code for session...');
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (error) {
       console.error('OAuth callback error:', error.message);
@@ -19,8 +20,19 @@ export async function GET(request: NextRequest) {
         new URL(`/?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
       );
     }
+    
+    console.log('Session established successfully:', !!data.session);
   }
 
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
+  const forwardedHost = request.headers.get('x-forwarded-host'); // original origin before load balancer
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (isDev) {
+    return NextResponse.redirect(new URL(next, requestUrl.origin));
+  } else if (forwardedHost) {
+    return NextResponse.redirect(new URL(next, `https://${forwardedHost}`));
+  } else {
+    return NextResponse.redirect(new URL(next, requestUrl.origin));
+  }
 }
