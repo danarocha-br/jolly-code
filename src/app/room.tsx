@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useMemo } from "react";
+import { User } from "@supabase/supabase-js";
+import { ReactNode, useEffect, useMemo } from "react";
 import { ClientSideSuspense } from "@liveblocks/react";
 
 import { RoomProvider } from "../../liveblocks.config";
@@ -8,7 +9,13 @@ import { useParams } from "next/navigation";
 import { Logo } from "@/components/ui/logo";
 import { useUserStore } from "./store";
 
-export function Room({ children }: { children: ReactNode }) {
+export function Room({
+  children,
+  user,
+}: {
+  children: ReactNode;
+  user: User | null;
+}) {
   function useOverrideRoomId(roomId: string) {
     const query = useParams();
     const overrideRoomId = useMemo(() => {
@@ -19,7 +26,12 @@ export function Room({ children }: { children: ReactNode }) {
   }
 
   const roomId = useOverrideRoomId("jollycode");
-  const { user } = useUserStore();
+
+  useEffect(() => {
+    if (user) {
+      useUserStore.setState({ user });
+    }
+  }, [user]);
 
   return (
     <RoomProvider id={roomId} initialPresence={{}}>

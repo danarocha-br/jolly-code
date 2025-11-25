@@ -30,7 +30,7 @@ export default async function Index() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <Room>
+      <Room user={session?.user ?? null}>
         <Home />
       </Room>
     </HydrationBoundary>
