@@ -27,6 +27,15 @@ export const LoginDialog = ({ children }: LoginProps) => {
   useEffect(() => {
     const previousRoute = window.location.href;
     localStorage.setItem("previousRoute", previousRoute);
+
+    // Check for OAuth errors in URL
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      toast.error(`Authentication failed: ${error}`);
+      // Clean up the URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const { mutate: handleSignInWithGithub, isPending } = useMutation({
