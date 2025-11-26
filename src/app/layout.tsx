@@ -1,5 +1,6 @@
 import "./globals.css";
 import "remixicon/fonts/remixicon.css";
+import "devicon/devicon.min.css";
 
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
@@ -66,10 +67,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.15.1/devicon.min.css"
-        />
+
       </head>
       <body className={sen.className}>
         <CSPostHogProvider user={user}>
