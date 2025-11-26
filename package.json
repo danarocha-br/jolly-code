@@ -11,7 +11,6 @@
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix && pnpm run lint"
   },
   "dependencies": {
-    "@hotjar/browser": "^1.0.9",
     "@liveblocks/client": "^1.4.5",
     "@liveblocks/node": "^1.4.5",
     "@liveblocks/react": "^1.4.5",

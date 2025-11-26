@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
-import Hotjar from "@hotjar/browser";
+
 
 import { cn } from "@/lib/utils";
 import { themes } from "@/lib/themes-options";
@@ -50,12 +50,7 @@ export const Home = () => {
     },
   });
 
-  useEffect(() => {
-    const siteId = Number(process.env.NEXT_PUBLIC_HOTJAR_SITE_ID);
-    const hotjarVersion = 6;
 
-    Hotjar.init(siteId, hotjarVersion);
-  }, []);
 
   useEffect(() => {
     useEditorStore.setState({
@@ -106,10 +101,10 @@ export const Home = () => {
       try {
         // Reset editors to clear any persisted state for unauthenticated users
         resetEditors();
-        
+
         // Get the new active tab ID after reset
         const newActiveTabId = useEditorStore.getState().activeEditorTabId;
-        
+
         const decodedCode = atob(codeParam);
         updateEditor(newActiveTabId, {
           code: decodedCode,
