@@ -99,14 +99,16 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
                 </div>
 
                 {tabs.length > 1 && !presentational && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="-mr-2.5 ml-px transition-opacity opacity-0 group-hover/tab:opacity-100 !w-4 !h-4"
-                    onClick={handleRemoveTab}
+                  <span
+                    role="button"
+                    className="-mr-2.5 ml-px transition-opacity opacity-0 group-hover/tab:opacity-100 inline-flex items-center justify-center w-4 h-4 rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveTab();
+                    }}
                   >
                     <i className="ri-close-line" />
-                  </Button>
+                  </span>
                 )}
               </TabsTrigger>
             ))}

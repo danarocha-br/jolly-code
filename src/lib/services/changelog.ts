@@ -3,7 +3,13 @@ export async function getChangelog() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch("/api/changelog", {
+    // Use absolute URL for server-side, relative for client-side
+    const baseUrl = typeof window === 'undefined' 
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      : '';
+    const url = `${baseUrl}/api/changelog`;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
