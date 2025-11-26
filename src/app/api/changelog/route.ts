@@ -1,23 +1,37 @@
-import { NextApiResponse } from "next";
 import { NextRequest, NextResponse } from "next/server";
+
+const CANNY_ENTRIES_URL = "https://canny.io/api/v1/entries/list";
 
 export async function POST(req: NextRequest | Request) {
   try {
-    const response = await fetch("https://canny.io/api/v1/entries/list", {
+    const apiKey = process.env.CANNY_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Canny API key is not configured." },
+        { status: 500 }
+      );
+    }
+
+    const upstream = await fetch(CANNY_ENTRIES_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        apiKey: process.env.NEXT_PUBLIC_CANNY_API_KEY,
-      }),
+      body: JSON.stringify({ apiKey }),
+      cache: "no-store",
     });
-    const result = await response.json();
 
-    return NextResponse.json({
-      status: 200,
-      result,
-    });
+    if (!upstream.ok) {
+      return NextResponse.json(
+        { error: `Canny responded with ${upstream.status}` },
+        { status: upstream.status }
+      );
+    }
+
+    const result = await upstream.json();
+
+    return NextResponse.json({ result }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       { error: "An error occurred during the fetch operation." },
