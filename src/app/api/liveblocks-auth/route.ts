@@ -1,35 +1,54 @@
-import { Liveblocks } from "@liveblocks/node";
+import { applyRequestContextToSentry, applyResponseContextToSentry } from "@/lib/sentry-context";
 import { createClient } from "@/utils/supabase/server";
-import { NextResponse } from "next/server";
+import { Liveblocks } from "@liveblocks/node";
+import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
+import { NextRequest, NextResponse } from "next/server";
 
 const API_KEY = process.env.LIVEBLOCKS_SECRET_KEY!;
 
 const liveblocks = new Liveblocks({ secret: API_KEY });
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
+export const POST = wrapRouteHandlerWithSentry(
+  async function POST(request: NextRequest) {
+    applyRequestContextToSentry({ request });
 
-  // Get the session from Supabase
+    const supabase = await createClient();
 
-  const { data } = await supabase.auth.getSession();
+    // Get the session from Supabase
 
-  let userId = "anonymous";
-  if (data && data.session?.user?.id) {
-    userId = data.session?.user.id;
-  }
+    const { data } = await supabase.auth.getSession();
 
-  const session = liveblocks.prepareSession(userId, {
-    userInfo: data?.session?.user?.user_metadata || {},
-  });
+    let userId = "anonymous";
+    if (data && data.session?.user?.id) {
+      userId = data.session?.user.id;
+    }
 
-  const { room } = await request.json();
-  if (room) session.allow(room, session.FULL_ACCESS);
+    applyRequestContextToSentry({
+      request,
+      userId,
+      featureFlags: data?.session?.user?.user_metadata?.feature_flags,
+      locale: data?.session?.user?.user_metadata?.locale,
+    });
 
-  // Authorize the user and return the result
-  try {
-    const { status, body } = await session.authorize();
-    return new NextResponse(body, { status });
-  } catch (e) {
-    console.error("Error authorizing session:", e);
-  }
-}
+    const session = liveblocks.prepareSession(userId, {
+      userInfo: data?.session?.user?.user_metadata || {},
+    });
+
+    const { room } = await request.json();
+    if (room) session.allow(room, session.FULL_ACCESS);
+
+    // Authorize the user and return the result
+    try {
+      const { status, body } = await session.authorize();
+      applyResponseContextToSentry(status);
+      return new NextResponse(body, { status });
+    } catch (e) {
+      console.error("Error authorizing session:", e);
+      applyResponseContextToSentry(500);
+    }
+  },
+  {
+    method: "POST",
+    parameterizedRoute: "/api/liveblocks-auth",
+  },
+);
