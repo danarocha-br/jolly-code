@@ -1,41 +1,41 @@
-import { applyRequestContextToSentry, applyResponseContextToSentry } from "@/lib/sentry-context";
-import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
-export const POST = wrapRouteHandlerWithSentry(
-  async function POST(req: NextRequest | Request) {
-    if (req instanceof NextRequest) {
-      applyRequestContextToSentry({ request: req });
-    }
+const CANNY_ENTRIES_URL = "https://canny.io/api/v1/entries/list";
 
-    try {
-      const response = await fetch("https://canny.io/api/v1/entries/list", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey: process.env.NEXT_PUBLIC_CANNY_API_KEY,
-        }),
-      });
-      const result = await response.json();
+export async function POST(req: NextRequest | Request) {
+  try {
+    const apiKey = process.env.CANNY_API_KEY;
 
-      applyResponseContextToSentry(200);
-
-      return NextResponse.json({
-        status: 200,
-        result,
-      });
-    } catch (error) {
-      applyResponseContextToSentry(500);
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "An error occurred during the fetch operation." },
+        { error: "Canny API key is not configured." },
         { status: 500 }
       );
     }
-  },
-  {
-    method: "POST",
-    parameterizedRoute: "/api/changelog",
-  },
-);
+
+    const upstream = await fetch(CANNY_ENTRIES_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ apiKey }),
+      cache: "no-store",
+    });
+
+    if (!upstream.ok) {
+      return NextResponse.json(
+        { error: `Canny responded with ${upstream.status}` },
+        { status: upstream.status }
+      );
+    }
+
+    const result = await upstream.json();
+
+    return NextResponse.json({ result }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "An error occurred during the fetch operation." },
+      { status: 500 }
+    );
+  }
+}
