@@ -1,13 +1,13 @@
 export const themes = {
   hyper: {
     background:
-      "bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-indigo-400 via-violet-800 to-sky-900",
+      "bg-theme-hyper",
     theme:
       "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css",
   },
   "github-dark": {
     background:
-      "bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-400 via-rose-500 to-orange-700",
+      "bg-theme-github",
     theme:
       "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css",
   },
@@ -23,7 +23,7 @@ export const themes = {
   },
   monokai: {
     background:
-      "bg-[radial-gradient(ellipse_at_right,_var(--tw-gradient-stops))] from-blue-400 via-violet-200 to-orange-300",
+      "bg-theme-monokai",
     theme:
       "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/monokai-sublime.min.css",
   },

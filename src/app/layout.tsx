@@ -66,9 +66,6 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <head>
-
-      </head>
       <body className={sen.className}>
         <CSPostHogProvider user={user}>
           <SessionSync user={user as any} />
