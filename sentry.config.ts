@@ -1,4 +1,4 @@
-import type { Options } from "@sentry/types";
+import type * as Sentry from "@sentry/nextjs";
 
 const parseRate = (value: string | undefined, fallback: number) => {
   const parsed = Number(value);
@@ -42,7 +42,7 @@ const replaysOnErrorSampleRate = parseRate(
   replayOnErrorFallback,
 );
 
-export const sentrySharedConfig: Options = {
+export const sentrySharedConfig: Parameters<typeof Sentry.init>[0] = {
   dsn: process.env.SENTRY_DSN,
   environment,
   release,
