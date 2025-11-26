@@ -1,4 +1,4 @@
-import React from "react";
+"use client";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import { useEditorStore } from "@/app/store";
@@ -21,7 +21,7 @@ export const BackgroundSwitch = () => {
   const hotKey =
     toggleBackground.length > 0 ? toggleBackground[0].hotKey : null;
 
-  useHotkeys(hotKey || "", hotKey ? handleToggleBackground : () => {});
+  useHotkeys(hotKey || "", hotKey ? handleToggleBackground : () => { });
 
   return (
     <SettingsPanelItem value={showBackground ? "On" : "Off"}>

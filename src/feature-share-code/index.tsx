@@ -1,7 +1,9 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+"use client";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
+import { useShallow } from "zustand/shallow";
 
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -16,18 +18,20 @@ export const CopyURLToClipboard = () => {
   const currentEditorState = useEditorStore(
     (state) => state.currentEditorState
   );
-  const { code } = useEditorStore((state) => {
-    const editor = state.editors.find(
-      (editor) => editor.id === currentEditorState?.id
-    );
-    return editor
-      ? {
+  const { code } = useEditorStore(
+    useShallow((state) => {
+      const editor = state.editors.find(
+        (editor) => editor.id === currentEditorState?.id
+      );
+      return editor
+        ? {
           code: editor.code,
         }
-      : {
+        : {
           code: "",
         };
-  });
+    })
+  );
 
   useEffect(() => {
     const urlObj = new URL(window.location.href);

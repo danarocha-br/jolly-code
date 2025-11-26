@@ -1,7 +1,9 @@
+"use client";
 import React from "react";
 import { toBlob, toJpeg, toPng, toSvg } from "html-to-image";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
+import { useShallow } from "zustand/shallow";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,20 +32,22 @@ export const ExportMenu = () => {
   const currentEditorState = useEditorStore(
     (state) => state.currentEditorState
   );
-  const { code, title } = useEditorStore((state) => {
-    const editor = state.editors.find(
-      (editor) => editor.id === currentEditorState?.id
-    );
-    return editor
-      ? {
+  const { code, title } = useEditorStore(
+    useShallow((state) => {
+      const editor = state.editors.find(
+        (editor) => editor.id === currentEditorState?.id
+      );
+      return editor
+        ? {
           code: editor.code,
           title: editor.title,
         }
-      : {
+        : {
           code: "",
           title: "Untitled",
         };
-  });
+    })
+  );
 
   const editor = React.useRef<HTMLElement | null>(null);
 

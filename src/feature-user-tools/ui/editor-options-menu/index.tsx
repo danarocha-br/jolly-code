@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+"use client";
+import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useShallow } from "zustand/shallow";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,18 +34,20 @@ export const EditorOptionsMenu = () => {
   const [editorPreference, setEditorPreference] =
     useState<EditorViewPreference>(editor);
 
-  const { editorShowLineNumbers } = useEditorStore((state) => {
-    const editor = state.editors.find(
-      (editor) => editor.id === currentState?.id
-    );
-    return editor
-      ? {
+  const { editorShowLineNumbers } = useEditorStore(
+    useShallow((state) => {
+      const editor = state.editors.find(
+        (editor) => editor.id === currentState?.id
+      );
+      return editor
+        ? {
           editorShowLineNumbers: editor.editorShowLineNumbers,
         }
-      : {
+        : {
           editorShowLineNumbers: false,
         };
-  });
+    })
+  );
 
   function changeEditorViewPreference(value: EditorViewPreference) {
     const userSettings = useEditorStore.getState();

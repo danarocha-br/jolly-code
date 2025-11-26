@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState, useRef } from "react";
+"use client";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -80,7 +81,7 @@ const useSidebarMouseEvents = () => {
     if (hasOpenPortals.current) {
       return;
     }
-    
+
     // Start a timeout before collapsing
     collapseTimeout.current = setTimeout(() => {
       // Double-check portals before collapsing

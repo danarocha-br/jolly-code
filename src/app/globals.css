@@ -3,21 +3,15 @@
 /* Specify content sources for class detection */
 @source "../../src/**/*.{ts,tsx}";
 
-/* Safelist ALL gradient combinations exactly as they appear in themes-options.ts */
+/* Safelist gradient colors and ensure animation utilities are available */
 @source inline("
-  bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-indigo-400 via-violet-800 to-sky-900
-  bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-400 via-rose-500 to-orange-700
-  bg-gradient-to-br from-amber-100 via-blue-400 to-orange-300
-  bg-gradient-to-br from-rose-400 via-fuchsia-500 to-indigo-500
-  bg-[radial-gradient(ellipse_at_right,_var(--tw-gradient-stops))] from-blue-400 via-violet-200 to-orange-300
-  bg-gradient-to-r from-emerald-300 via-blue-400 to-purple-600
-  bg-gradient-to-br from-rose-200 to-orange-300
-  bg-gradient-to-tl from-teal-500 to-teal-900
-  bg-gradient-to-br from-rose-500 via-rose-600 to-[#EA6E51]
-  bg-gradient-to-br from-[#8baaaa] via-[#ae8b9c] to-stone-500
-  bg-gradient-to-tr from-[#29323c]/50 via-[#485563] to-slate-800
-  bg-gradient-to-br from-rose-100 to-teal-200
-  bg-gradient-to-br from-blue-400 via-sky-400 to-blue-700
+  bg-gradient-to-br bg-gradient-to-r bg-gradient-to-tl bg-gradient-to-tr
+  from-amber-100 from-rose-400 from-rose-500 from-rose-200 from-rose-100 from-blue-400 from-emerald-300 from-teal-500
+  via-blue-400 via-fuchsia-500 via-violet-200 via-rose-500 via-rose-600 via-sky-400 via-[#ae8b9c] via-[#485563]
+  to-orange-300 to-indigo-500 to-purple-600 to-teal-900 to-teal-200 to-blue-700 to-[#EA6E51] to-stone-500 to-slate-800 to-orange-700
+  from-[#8baaaa] from-[#29323c]/50
+  animate-in animate-out fade-in-0 fade-out-0 zoom-in-95 zoom-out-0
+  slide-in-from-top-2 slide-in-from-bottom-2 slide-in-from-left-2 slide-in-from-right-2
 ");
 
 /* Configure dark mode with class-based toggling */

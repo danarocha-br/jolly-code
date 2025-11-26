@@ -1,7 +1,9 @@
+"use client";
 import React, { useState } from "react";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import { CommandEmpty } from "cmdk";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useShallow } from "zustand/shallow";
 
 import { useEditorStore, useUserStore } from "@/app/store";
 import { LanguageProps, languages } from "@/lib/language-options";
@@ -40,20 +42,22 @@ export const LanguageSelector = () => {
   const queryClient = useQueryClient();
   const queryKey = ["collections"];
 
-  const { language, autoDetectLanguage } = useEditorStore((state) => {
-    const editor = state.editors.find(
-      (editor) => editor.id === currentState?.id
-    );
-    return editor
-      ? {
+  const { language, autoDetectLanguage } = useEditorStore(
+    useShallow((state) => {
+      const editor = state.editors.find(
+        (editor) => editor.id === currentState?.id
+      );
+      return editor
+        ? {
           language: editor.language,
           autoDetectLanguage: editor.autoDetectLanguage,
         }
-      : {
+        : {
           language: "plain-text",
           autoDetectLanguage: true,
         };
-  });
+    })
+  );
 
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(language);

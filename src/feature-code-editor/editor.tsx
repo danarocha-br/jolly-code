@@ -6,6 +6,7 @@ import flourite from "flourite";
 import { useTheme } from "next-themes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useShallow } from "zustand/shallow";
 
 import { cn } from "@/lib/utils";
 import { codeSnippets } from "@/lib/code-snippets-options";
@@ -97,12 +98,13 @@ export const Editor = forwardRef<any, EditorProps>(
       language,
       autoDetectLanguage,
       editorShowLineNumbers,
-    } = useEditorStore((state) => {
-      const editor = state.editors.find(
-        (editor) => editor.id === currentEditor?.id
-      );
-      return editor
-        ? {
+    } = useEditorStore(
+      useShallow((state) => {
+        const editor = state.editors.find(
+          (editor) => editor.id === currentEditor?.id
+        );
+        return editor
+          ? {
             code: editor.code,
             title: editor.title,
             userHasEditedCode: editor.userHasEditedCode,
@@ -111,7 +113,7 @@ export const Editor = forwardRef<any, EditorProps>(
             autoDetectLanguage: editor.autoDetectLanguage,
             editorShowLineNumbers: editor.editorShowLineNumbers,
           }
-        : {
+          : {
             code: "",
             title: "Untitled",
             userHasEditedCode: false,
@@ -120,7 +122,8 @@ export const Editor = forwardRef<any, EditorProps>(
             autoDetectLanguage: true,
             editorShowLineNumbers: false,
           };
-    });
+      })
+    );
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
     const [isMounted, setIsMounted] = useState(false);
@@ -348,8 +351,8 @@ export const Editor = forwardRef<any, EditorProps>(
           className={cn(
             S.background(),
             showBackground &&
-              !presentational &&
-              themes[backgroundTheme!].background
+            !presentational &&
+            themes[backgroundTheme!].background
           )}
           style={{ padding }}
           ref={ref}

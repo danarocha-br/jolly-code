@@ -1,4 +1,5 @@
-import React, { useCallback } from "react";
+"use client";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import { ThemeSelector } from "./theme-selector";

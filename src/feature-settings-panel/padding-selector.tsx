@@ -1,4 +1,4 @@
-import React from "react";
+"use client";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import { Slider } from "@/components/ui/slider";
