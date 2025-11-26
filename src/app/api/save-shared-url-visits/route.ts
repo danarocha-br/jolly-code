@@ -1,3 +1,5 @@
+import { applyRequestContextToSentry, applyResponseContextToSentry } from "@/lib/sentry-context";
+import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
@@ -13,11 +15,16 @@ const supabase: SupabaseClient = createClient<Database>(
  * @param {NextRequest} request - The incoming request object.
  * @return {Promise<NextResponse>} - A promise that resolves to the response object.
  */
-export async function POST(request: NextRequest) {
+export const POST = wrapRouteHandlerWithSentry(async function POST(
+  request: NextRequest,
+) {
+  applyRequestContextToSentry({ request });
+
   try {
     const { id } = await await validateContentType(request).json();
 
     if (!id) {
+      applyResponseContextToSentry(400);
       return NextResponse.json(
         { message: "No link found in the database." },
         { status: 400 }
@@ -35,6 +42,7 @@ export async function POST(request: NextRequest) {
       !getVisitsResult.data[0]
     ) {
       console.error(getVisitsResult.error);
+      applyResponseContextToSentry(500);
       return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
 
@@ -56,16 +64,20 @@ export async function POST(request: NextRequest) {
 
     if (result.error) {
       console.error(result.error);
+      applyResponseContextToSentry(500);
       return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
 
     data = result.data;
+
+    applyResponseContextToSentry(200);
 
     return NextResponse.json({
       status: 200,
       visits: data[0].visits,
     });
   } catch (error) {
+    applyResponseContextToSentry(500);
     return NextResponse.json(error, { status: 500 });
   }
-}
+});
