@@ -23,9 +23,9 @@ import {
 } from "@/components/ui/command/index";
 import { Tooltip } from "@/components/ui//tooltip";
 import { SettingsPanelItem } from "./ui/item";
-import { updateSnippet } from "@/feature-snippets/queries";
+import { updateSnippet } from "@/features/snippets/queries";
 import { Snippet } from "@/lib/services/database/types";
-import { Collection } from "@/feature-snippets/dtos";
+import { Collection } from "@/features/snippets/dtos";
 
 const languagesArray = Object.entries(languages).map(([key, label]) => ({
   label: label,

@@ -13,9 +13,9 @@ import { fonts } from "@/lib/fonts-options";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Logo } from "@/components/ui/logo";
-import { SettingsPanel } from "@/feature-settings-panel";
-import { UserTools } from "@/feature-user-tools";
-import { CodeEditor } from "@/feature-code-editor";
+import { SettingsPanel } from "@/features/settings-panel";
+import { UserTools } from "@/features/user-tools";
+import { CodeEditor } from "@/features/code-editor";
 import { useEditorStore, useUserStore } from "@/app/store";
 import { analytics } from "@/lib/services/analytics";
 

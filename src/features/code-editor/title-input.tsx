@@ -5,7 +5,7 @@ import { UseMutateFunction } from "@tanstack/react-query";
 import { useEditorStore } from "@/app/store";
 import { languagesLogos } from "@/lib/language-logos";
 import { debounce } from "@/lib/utils/debounce";
-import { UpdateSnippetProps } from "@/feature-snippets/queries";
+import { UpdateSnippetProps } from "@/features/snippets/queries";
 import { input } from "./styles";
 
 type TitleInputProps = {

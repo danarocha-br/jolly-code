@@ -1,4 +1,4 @@
-import { LoginDialog } from "@/feature-login";
+import { LoginDialog } from "@/features/login";
 import * as S from "./styles";
 
 export function SnippetCallout() {

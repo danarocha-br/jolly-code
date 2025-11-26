@@ -1,5 +1,5 @@
 import { Room } from "./room";
-import { Home } from "@/feature-home";
+import { Home } from "@/features/home";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/react-query/query-client";
 import { getCollections } from "@/actions";

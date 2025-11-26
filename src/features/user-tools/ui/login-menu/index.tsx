@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { LoginDialog } from '@/feature-login';
+import { LoginDialog } from '@/features/login';
 
 export const LoginMenu = () => {
   return (

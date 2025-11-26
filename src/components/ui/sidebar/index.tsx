@@ -11,9 +11,9 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "../hover-card";
 import { Separator } from "../separator";
 import { Tooltip } from "../tooltip";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { LoginDialog } from "@/feature-login";
-import { CreateCollectionDialog } from '@/feature-snippets/create-collection-dialog';
-import { Snippets } from '@/feature-snippets';
+import { LoginDialog } from "@/features/login";
+import { CreateCollectionDialog } from '@/features/snippets/create-collection-dialog';
+import { Snippets } from '@/features/snippets';
 import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {

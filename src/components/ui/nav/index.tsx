@@ -11,7 +11,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { ExportMenu } from "@/feature-export/export-menu";
+import { ExportMenu } from "@/features/export/export-menu";
 import UsersPresence from "./users-presence";
 import {
   DropdownMenu,
@@ -21,8 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu";
 import { Avatar } from "../avatar";
-import { LoginDialog } from "@/feature-login";
-import { CopyURLToClipboard } from "@/feature-share-code";
+import { LoginDialog } from "@/features/login";
+import { CopyURLToClipboard } from "@/features/share-code";
 import { Tooltip } from "@/components/ui/tooltip";
 
 export const Nav = () => {

@@ -3,7 +3,7 @@
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { getUsersCollectionList } from '@/lib/services/database/collections'
-import type { Collection } from '@/feature-snippets/dtos'
+import type { Collection } from '@/features/snippets/dtos'
 
 /**
  * Server Action: Get all collections for the authenticated user

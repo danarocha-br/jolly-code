@@ -19,12 +19,12 @@ import { debounce } from "@/lib/utils/debounce";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LoginDialog } from "@/feature-login";
+import { LoginDialog } from "@/features/login";
 import {
   createSnippet,
   removeSnippet,
   updateSnippet,
-} from "@/feature-snippets/queries";
+} from "@/features/snippets/queries";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import { analytics } from "@/lib/services/analytics";

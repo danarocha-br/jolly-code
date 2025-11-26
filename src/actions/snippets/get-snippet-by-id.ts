@@ -3,7 +3,7 @@
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { getSnippetById as getSnippetByIdFromDb } from '@/lib/services/database/snippets'
-import type { Snippet } from '@/feature-snippets/dtos'
+import type { Snippet } from '@/features/snippets/dtos'
 
 /**
  * Server Action: Get a single snippet by ID
