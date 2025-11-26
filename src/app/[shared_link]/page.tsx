@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSharedLink, trackSharedLinkVisit } from "@/lib/services/shared-link";
+import { captureServerEvent } from "@/lib/services/analytics-server";
 
 type SharedLinkPageProps = {
   params: Promise<{
@@ -25,14 +26,15 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
   // Track visit asynchronously (fire and forget)
   trackSharedLinkVisit(data.id);
 
-  // Track in PostHog
-  const posthog = await import('posthog-js').then(m => m.default);
-  if (posthog) {
-    posthog.capture('view_shared_link', {
+  // Track in PostHog from the server to avoid client bundle on redirect
+  void captureServerEvent('view_shared_link', {
+    properties: {
       short_url: shared_link,
       link_id: data.id,
-    });
-  }
+      destination: data.url,
+    },
+    distinctId: data.id,
+  })
 
   redirect(data.url);
 }
