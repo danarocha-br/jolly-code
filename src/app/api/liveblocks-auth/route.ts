@@ -14,24 +14,24 @@ export const POST = wrapRouteHandlerWithSentry(
 
     const supabase = await createClient();
 
-    // Get the session from Supabase
+    // Get the user from Supabase (authenticated)
 
-    const { data } = await supabase.auth.getSession();
+    const { data } = await supabase.auth.getUser();
 
     let userId = "anonymous";
-    if (data && data.session?.user?.id) {
-      userId = data.session?.user.id;
+    if (data && data.user?.id) {
+      userId = data.user.id;
     }
 
     applyRequestContextToSentry({
       request,
       userId,
-      featureFlags: data?.session?.user?.user_metadata?.feature_flags,
-      locale: data?.session?.user?.user_metadata?.locale,
+      featureFlags: data?.user?.user_metadata?.feature_flags,
+      locale: data?.user?.user_metadata?.locale,
     });
 
     const session = liveblocks.prepareSession(userId, {
-      userInfo: data?.session?.user?.user_metadata || {},
+      userInfo: data?.user?.user_metadata || {},
     });
 
     const { room } = await request.json();

@@ -10,10 +10,10 @@ export default async function Index() {
   const queryClient = getQueryClient();
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (session) {
+  if (user) {
     await queryClient.prefetchQuery({
       queryKey: ["collections"],
       queryFn: async () => {
@@ -36,7 +36,7 @@ export default async function Index() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <Room user={session?.user ?? null}>
+      <Room user={user ?? null}>
         <div>
           <Home />
         </div>
