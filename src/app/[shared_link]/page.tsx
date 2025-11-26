@@ -25,5 +25,14 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
   // Track visit asynchronously (fire and forget)
   trackSharedLinkVisit(data.id);
 
+  // Track in PostHog
+  const posthog = await import('posthog-js').then(m => m.default);
+  if (posthog) {
+    posthog.capture('view_shared_link', {
+      short_url: shared_link,
+      link_id: data.id,
+    });
+  }
+
   redirect(data.url);
 }

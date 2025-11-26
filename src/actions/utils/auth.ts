@@ -22,7 +22,7 @@ export async function requireAuth(): Promise<AuthResult> {
 
     if (error) {
         console.error('Auth error:', error)
-        throw new Error('Authentication failed')
+        throw new Error(`Authentication failed: ${error.message}`)
     }
 
     if (!user) {

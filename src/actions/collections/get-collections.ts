@@ -31,6 +31,7 @@ export async function getCollections(): Promise<ActionResult<Collection[]>> {
             return error('User must be authenticated')
         }
 
-        return error('Failed to fetch collections. Please try again later.')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch collections. Please try again later.';
+        return error(errorMessage)
     }
 }

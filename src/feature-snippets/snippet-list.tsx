@@ -23,6 +23,7 @@ import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
+import { analytics } from "@/lib/services/analytics";
 
 type SnippetsListProps = {
   collections: Collection[] | [];
@@ -84,6 +85,11 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleDeleteCollection } = useMutation({
     mutationFn: removeCollection,
+    onSuccess: (data, variables) => {
+      analytics.track("delete_collection", {
+        collection_id: variables.collection_id,
+      });
+    },
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey });
       const previousState = queryClient.getQueryData<Collection[]>(queryKey);
@@ -110,6 +116,12 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateCollectionTitle,
+    onSuccess: (data, variables) => {
+      analytics.track("update_collection", {
+        collection_id: variables.id,
+        new_title: variables.title,
+      });
+    },
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey });
       const previousState = queryClient.getQueryData<Collection[]>(queryKey);
@@ -138,6 +150,11 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleDeleteSnippet } = useMutation({
     mutationFn: removeSnippet,
+    onSuccess: (data, variables) => {
+      analytics.track("delete_snippet", {
+        snippet_id: variables.snippet_id,
+      });
+    },
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey });
       const previousState = queryClient.getQueryData<Collection[]>(queryKey);

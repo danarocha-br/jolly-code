@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createCollection } from "../queries";
 import { Collection } from "../dtos";
+import { analytics } from "@/lib/services/analytics";
 
 export function CreateCollectionDialog({
   children,
@@ -34,6 +35,11 @@ export function CreateCollectionDialog({
 
   const { mutate: handleCreateCollection } = useMutation({
     mutationFn: createCollection,
+    onSuccess: (data, variables) => {
+      analytics.track("create_collection", {
+        title: variables.title,
+      });
+    },
     onError: (err, variables, context) => {
       const { previousState } = context as { previousState: Collection[] };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import { SettingsPanel } from "@/feature-settings-panel";
 import { UserTools } from "@/feature-user-tools";
 import { CodeEditor } from "@/feature-code-editor";
 import { useEditorStore, useUserStore } from "@/app/store";
+import { analytics } from "@/lib/services/analytics";
 
 export const Home = () => {
   const supabase = createClient();
@@ -31,17 +32,20 @@ export const Home = () => {
     queryKey: ["user"],
     queryFn: async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getUser();
 
-        if (data?.session) {
+        if (data?.user) {
           useUserStore.setState({
-            user: data.session.user,
+            user: data.user,
           });
+        } else {
+          useUserStore.setState({ user: null });
         }
 
-        return data.session?.user;
+        return data.user;
       } catch (error) {
         toast.error("Sorry, something went wrong.");
+        useUserStore.setState({ user: null });
       }
     },
   });
@@ -58,6 +62,11 @@ export const Home = () => {
       presentational: shared === "true" ? true : false,
       showBackground: shared === "true" ? false : true,
     });
+
+    // Track shared URL view
+    if (shared === "true") {
+      analytics.track("view_shared_snippet");
+    }
   }, [shared]);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -123,16 +132,7 @@ export const Home = () => {
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen w-full flex justify-center items-center">
-          <Logo
-            variant="short"
-            className="animate-pulse grayscale duration-[0.75s]"
-          />
-        </div>
-      }
-    >
+    <>
       <link
         rel="stylesheet"
         href={themes[backgroundTheme].theme}
@@ -167,6 +167,6 @@ export const Home = () => {
           </main>
         </div>
       </div>
-    </Suspense>
+    </>
   );
 };

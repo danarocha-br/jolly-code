@@ -45,7 +45,7 @@ export function Room({
           </div>
         }
       >
-        {() => children}
+        {() => <>{children}</>}
       </ClientSideSuspense>
     </RoomProvider>
   );

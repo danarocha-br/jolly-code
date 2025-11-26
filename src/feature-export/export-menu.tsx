@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore } from "@/app/store";
+import { analytics } from "@/lib/services/analytics";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
 
@@ -85,6 +86,7 @@ export const ExportMenu = () => {
       const image = new ClipboardItem({ "image/png": imageBlob });
       await navigator.clipboard.write([image]);
       toast.success("Image copied to clipboard!");
+      analytics.track("copy_image");
     } catch (error) {
       toast.error("Something went wrong! Please try again.");
     }
@@ -100,6 +102,7 @@ export const ExportMenu = () => {
       if (code) {
         await navigator.clipboard.writeText(code);
         toast.success("Code copied to clipboard!");
+        analytics.track("copy_code");
       } else {
         toast.error("Code was not copied! Please try again.");
       }
@@ -172,6 +175,7 @@ export const ExportMenu = () => {
             success: "Successfully exported!",
             error: "Sorry. Something went wrong.",
           });
+          analytics.track("export_image", { format: "SVG" });
           break;
 
         case "PNG":
@@ -180,6 +184,7 @@ export const ExportMenu = () => {
             success: "Successfully exported!",
             error: "Sorry. Something went wrong.",
           });
+          analytics.track("export_image", { format: "PNG" });
           break;
 
         case "JPG":
@@ -188,6 +193,7 @@ export const ExportMenu = () => {
             success: "Successfully exported!",
             error: "Sorry. Something went wrong.",
           });
+          analytics.track("export_image", { format: "JPG" });
           break;
 
         default:

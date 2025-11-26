@@ -21,8 +21,10 @@ const UsersPresence = () => {
     return randomColor;
   }
 
-  const avatarBackgroundColorRef = useRef<string | null>(generateRandomColor());
+  // Initialize as null to avoid hydration mismatch
+  const avatarBackgroundColorRef = useRef<string | null>(null);
 
+  // Generate color only on client side after mount
   useEffect(() => {
     if (!avatarBackgroundColorRef.current) {
       avatarBackgroundColorRef.current = generateRandomColor();

@@ -12,6 +12,7 @@ import { themes } from "@/lib/themes-options";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/app/store";
 import { SettingsPanelItem } from "./ui/item";
+import { analytics } from "@/lib/services/analytics";
 
 export const ThemeSelector = () => {
   const backgroundTheme = useEditorStore(
@@ -26,6 +27,7 @@ export const ThemeSelector = () => {
           useEditorStore.setState({
             backgroundTheme: theme as typeof backgroundTheme,
           });
+          analytics.track("change_theme", { theme_name: theme });
         }}
       >
         <Tooltip content="Change theme">

@@ -172,10 +172,8 @@ export async function getUsersCollectionList({
             throw new Error("No collections found.");
         }
     } catch (error) {
-        console.error(error);
-        return Promise.reject(
-            new Error("An error occurred. Please try again later.")
-        );
+        console.error('Error in getUsersCollectionList:', error);
+        throw error;
     }
 }
 

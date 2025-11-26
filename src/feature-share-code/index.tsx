@@ -7,6 +7,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserStore, useEditorStore } from "@/app/store";
+import { analytics } from "@/lib/services/analytics";
 
 export const CopyURLToClipboard = () => {
   const user = useUserStore((state) => state.user);
@@ -80,6 +81,10 @@ export const CopyURLToClipboard = () => {
     const url = `${currentUrl}?${queryParams}&shared=true`;
 
     postLinkDataToDatabase.mutate(url);
+
+    analytics.track("copy_link", {
+      snippet_id: currentEditorState?.id,
+    });
 
     toast.success("Link copied to clipboard.");
   }, [postLinkDataToDatabase, currentUrl, code, currentEditorState]);

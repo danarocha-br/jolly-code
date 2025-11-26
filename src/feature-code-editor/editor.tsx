@@ -26,6 +26,7 @@ import {
 } from "@/feature-snippets/queries";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
+import { analytics } from "@/lib/services/analytics";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -122,10 +123,19 @@ export const Editor = forwardRef<any, EditorProps>(
     });
 
     const [lineNumbers, setLineNumbers] = useState<number[]>([]);
+    const [isMounted, setIsMounted] = useState(false);
 
     //TODO: beautify and format the code according to the language
 
+    // Only run on client after mount to avoid hydration mismatch
     useEffect(() => {
+      setIsMounted(true);
+    }, []);
+
+    useEffect(() => {
+      // Only select random snippet on client side after mount
+      if (!isMounted) return;
+
       const randomSnippet =
         codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
@@ -143,7 +153,7 @@ export const Editor = forwardRef<any, EditorProps>(
           }),
         });
       }
-    }, [code, currentEditor, editors, userHasEditedCode]);
+    }, [code, currentEditor, editors, userHasEditedCode, isMounted]);
 
     useEffect(() => {
       if (autoDetectLanguage) {
@@ -229,6 +239,12 @@ export const Editor = forwardRef<any, EditorProps>(
       },
 
       onSettled: (data, error, variables, context) => {
+        if (data) {
+          analytics.track("create_snippet", {
+            snippet_id: data.data.id,
+            language: variables.language,
+          });
+        }
         queryClient.invalidateQueries({ queryKey });
       },
     });
