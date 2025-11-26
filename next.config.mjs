@@ -1,6 +1,5 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
@@ -38,6 +37,13 @@ const nextConfig = {
     ];
   },
   turbopack: {},
+  sentry: {
+    widenClientFileUpload: true,
+    transpileClientSDK: true,
+    tunnelRoute: "/monitoring",
+    hideSourceMaps: true,
+    disableLogger: true,
+  },
 };
 
 export default withSentryConfig(
@@ -50,20 +56,5 @@ export default withSentryConfig(
     silent: true,
     org: "compasso-9c",
     project: "jolly-code",
-  },
-  {
-    // For all available options, see:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-    widenClientFileUpload: true,
-
-    transpileClientSDK: true,
-
-    // Routes browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers (increases server load)
-    tunnelRoute: "/monitoring",
-
-    hideSourceMaps: true,
-
-    disableLogger: true,
   }
 );
