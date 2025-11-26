@@ -7,7 +7,7 @@ import React, {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useUserStore } from "@/app/store";
 import { fetchCollections, updateCollection } from "../queries";
 import { Collection, Snippet } from "../dtos";
@@ -81,7 +81,7 @@ export const DialogChooseCollection = forwardRef(
         if (context?.previousCollections) {
           queryClient.setQueryData(queryKey, context.previousCollections);
         }
-        
+
         setMovingToCollectionId(null);
         toast.error("Failed to move snippet. Please try again.");
       },
@@ -89,7 +89,7 @@ export const DialogChooseCollection = forwardRef(
         // Show success message
         const targetCollection = collections?.find((c) => c.id === variables.id);
         toast.success(`Snippet moved to "${targetCollection?.title || 'collection'}" successfully!`);
-        
+
         // Close the dialog after a brief delay to show the success state
         setTimeout(() => {
           closeDialog();
@@ -125,14 +125,16 @@ export const DialogChooseCollection = forwardRef(
           onEscapeKeyDown={movingToCollectionId ? undefined : closeDialog}
         >
           <DialogHeader>
-            {movingToCollectionId ? (
-              <div className="flex items-center gap-2">
-                <i className="ri-loader-4-fill animate-spin text-primary" />
-                <span>Moving snippet...</span>
-              </div>
-            ) : (
-              "Choose a collection"
-            )}
+            <DialogTitle>
+              {movingToCollectionId ? (
+                <div className="flex items-center gap-2">
+                  <i className="ri-loader-4-fill animate-spin text-primary" />
+                  <span>Moving snippet...</span>
+                </div>
+              ) : (
+                "Choose a collection"
+              )}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="w-full">

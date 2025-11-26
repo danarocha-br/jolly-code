@@ -1,15 +1,21 @@
 import React from "react";
 import { type VariantProps } from "class-variance-authority";
+import { Slot } from "@radix-ui/react-slot"
 
 import { cn } from "@/lib/utils";
 import * as S from "./styles";
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof S.badgeVariants> {}
-
-export function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({
+  className,
+  variant,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"span"> &
+  VariantProps<typeof S.badgeVariants> & { asChild?: boolean }) {
+  const Comp = asChild ? Slot : "span"
   return (
-    <div className={cn(S.badgeVariants({ variant }), className)} {...props} />
+    <Comp data-slot="badge" className={cn(S.badgeVariants({ variant }), className)} {...props} />
   );
 }
+
+export { Badge }

@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CtaButton } from "@/components/ui/cta-button";
@@ -59,6 +60,7 @@ export const LoginDialog = ({ children }: LoginProps) => {
 
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
+          <DialogTitle className="sr-only">Sign in to Jolly Code</DialogTitle>
           <div className="text-center flex justify-center">
             <Logo variant="short" />
           </div>

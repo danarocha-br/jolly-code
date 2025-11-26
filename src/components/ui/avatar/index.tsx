@@ -21,26 +21,28 @@ type AvatarProps = {
   color?: string;
 };
 
-const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
-    ref={ref}
-    className={cn(S.image(), className)}
-    {...props}
-  />
-));
-AvatarImage.displayName = AvatarPrimitive.Image.displayName;
+function AvatarImage({
+  className,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+  return (
+    <AvatarPrimitive.Image
+      data-slot="avatar-image"
+      className={cn(S.image(), className)}
+      {...props}
+    />
+  );
+}
 
-const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, color, ...props }, ref) => {
+function AvatarFallback({
+  className,
+  color,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
   const isValidColor = /^#([0-9A-F]{3}){1,2}$/i.test(color || "");
   return (
     <AvatarPrimitive.Fallback
-      ref={ref}
+      data-slot="avatar-fallback"
       className={cn(S.fallback(), className)}
       style={{
         color: isValidColor
@@ -51,27 +53,20 @@ const AvatarFallback = React.forwardRef<
       {...props}
     />
   );
-});
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
+}
 
-const Avatar = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Root>,
-  AvatarProps
->(
-  (
-    {
-      className,
-      alt,
-      imageSrc,
-      username,
-      variant = "current-user",
-      size = "sm",
-      color,
-    },
-    ref
-  ) => (
+function Avatar({
+  className,
+  alt,
+  imageSrc,
+  username,
+  variant = "current-user",
+  size = "sm",
+  color,
+}: AvatarProps,
+) {
+  return (
     <AvatarPrimitive.Root
-      ref={ref}
       className={cn(S.avatar({ variant, size }), className)}
     >
       <AvatarImage src={imageSrc} alt={alt} />
@@ -79,9 +74,8 @@ const Avatar = React.forwardRef<
         <AvatarFallback color={color}>{getInitials(username)}</AvatarFallback>
       )}
     </AvatarPrimitive.Root>
-  )
-);
-Avatar.displayName = AvatarPrimitive.Root.displayName;
+  );
+}
 
 export { Avatar };
 

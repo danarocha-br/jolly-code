@@ -19,15 +19,18 @@ export const Tooltip = ({
   ...props
 }: TooltipProps) => {
   return (
-    <TooltipPrimitive.Provider>
-      <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+    <TooltipPrimitive.Provider data-slot="tooltip-provider">
+      <TooltipPrimitive.Root data-slot="tooltip" >
+        <TooltipPrimitive.Trigger asChild data-slot="tooltip-trigger">
+          <span>{children}</span>
+        </TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             className={cn(
               S.content(),
               className
             )}
+            data-slot="tooltip-content"
           sideOffset={8}
             {...props}
           >

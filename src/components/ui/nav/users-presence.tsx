@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { useOthers, useSelf } from "../../../../liveblocks.config";
 import { Tooltip } from "../tooltip";

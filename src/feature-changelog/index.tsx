@@ -2,7 +2,6 @@
 
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import dayjs from "dayjs";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
@@ -71,6 +70,7 @@ export const Changelog = ({ children }: ChangelogProps) => {
               data &&
               data.result?.entries &&
               Array.isArray(data.result.entries) &&
+              data.result.entries.length > 0 &&
               data.result.entries.map((entry: ChangeLog, index: number) => (
                 <React.Fragment key={entry.id}>
                   <div className="w-full pt-4">
@@ -90,11 +90,11 @@ export const Changelog = ({ children }: ChangelogProps) => {
 
                     <ReactMarkdown className="mb-3 text-xs w-full [&_p]:last-child:truncate">
                       {entry.markdownDetails !== null &&
-                      entry.markdownDetails !== undefined
+                        entry.markdownDetails !== undefined
                         ? entry.markdownDetails
-                            .split("\n")
-                            .slice(0, 3)
-                            .join("\n")
+                          .split("\n")
+                          .slice(0, 3)
+                          .join("\n")
                         : ""}
                     </ReactMarkdown>
 
@@ -109,6 +109,18 @@ export const Changelog = ({ children }: ChangelogProps) => {
                   )}
                 </React.Fragment>
               ))}
+
+            {!isLoading &&
+              !error &&
+              data &&
+              (!data.result?.entries || data.result.entries.length === 0) && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <i className="ri-information-line text-3xl text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No updates available yet
+                  </p>
+                </div>
+              )}
 
             <Link
               className={S.link()}

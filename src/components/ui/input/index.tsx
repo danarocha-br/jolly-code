@@ -4,20 +4,17 @@ import { cn } from "@/lib/utils";
 import * as S from "./styles";
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+  extends React.InputHTMLAttributes<HTMLInputElement> { }
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={cn(S.input(), className)}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-Input.displayName = "Input";
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+
+  return (
+    <input
+      type={type}
+      className={cn(S.input(), className)}
+      {...props}
+    />
+  );
+}
 
 export { Input };

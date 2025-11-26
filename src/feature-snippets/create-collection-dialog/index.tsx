@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label/index";
@@ -55,7 +56,9 @@ export function CreateCollectionDialog({
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>Use collections to organize your snippets.</DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Use collections to organize your snippets.</DialogTitle>
+        </DialogHeader>
 
         <div className="flex flex-col w-full gap-2 my-4">
           <Label htmlFor="collection" className="mb-2">

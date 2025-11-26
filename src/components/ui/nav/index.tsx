@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";

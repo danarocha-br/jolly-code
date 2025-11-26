@@ -1,15 +1,13 @@
 import { cn } from "@/lib/utils";
-import React from "react";
-
 type LogoProps = {
   variant?: "long" | "short" | "typographic";
   className?: string;
 };
 
-export const Logo = ({ variant = "long", className = "" }: LogoProps) => {
+export function Logo({ variant = "long", className = "" }: LogoProps) {
   return variant === "long" ? (
     <svg
-      className={className}
+      className={cn(className)}
       width="108"
       height="29"
       fill="none"
@@ -41,7 +39,7 @@ export const Logo = ({ variant = "long", className = "" }: LogoProps) => {
     </svg>
   ) : variant === "short" ? (
     <svg
-      className={className}
+      className={cn(className)}
       width="77"
       height="70"
       fill="none"
@@ -134,3 +132,4 @@ export const Logo = ({ variant = "long", className = "" }: LogoProps) => {
     </svg>
   );
 };
+

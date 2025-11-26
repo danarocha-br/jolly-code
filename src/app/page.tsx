@@ -23,10 +23,16 @@ export default async function Index() {
     });
   }
 
-  await queryClient.prefetchQuery({
-    queryKey: ["changelogs"],
-    queryFn: getChangelog,
-  });
+  // Prefetch changelog, but don't block page render if it fails
+  try {
+    await queryClient.prefetchQuery({
+      queryKey: ["changelogs"],
+      queryFn: getChangelog,
+    });
+  } catch (error) {
+    // Log error but allow page to render
+    console.error("Failed to prefetch changelog during SSR:", error);
+  }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
