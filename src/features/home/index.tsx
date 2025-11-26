@@ -17,7 +17,7 @@ import { SettingsPanel } from "@/features/settings-panel";
 import { UserTools } from "@/features/user-tools";
 import { CodeEditor } from "@/features/code-editor";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { analytics } from "@/lib/services/analytics";
+import { analytics } from "@/lib/services/tracking";
 
 export const Home = () => {
   const supabase = createClient();

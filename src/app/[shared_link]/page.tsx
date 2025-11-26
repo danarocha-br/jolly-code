@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSharedLink, trackSharedLinkVisit } from "@/lib/services/shared-link";
-import { captureServerEvent } from "@/lib/services/analytics-server";
+import { captureServerEvent } from "@/lib/services/tracking/server";
 
 type SharedLinkPageProps = {
   params: Promise<{

@@ -2,7 +2,7 @@
 
 import posthog from 'posthog-js'
 
-import { ensurePostHogClient } from '../posthog'
+import { ensurePostHogClient } from '../../posthog'
 
 export const analytics = {
     identify: (userId: string, traits?: Record<string, any>) => {

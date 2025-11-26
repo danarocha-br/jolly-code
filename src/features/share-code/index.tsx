@@ -9,7 +9,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserStore, useEditorStore } from "@/app/store";
-import { analytics } from "@/lib/services/analytics";
+import { analytics } from "@/lib/services/tracking";
 
 export const CopyURLToClipboard = () => {
   const user = useUserStore((state) => state.user);

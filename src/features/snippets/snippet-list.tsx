@@ -23,7 +23,7 @@ import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
-import { analytics } from "@/lib/services/analytics";
+import { analytics } from "@/lib/services/tracking";
 
 type SnippetsListProps = {
   collections: Collection[] | [];
@@ -206,8 +206,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                 <AccordionItem key={collection.id} value={collection.id}>
                   <CollectionTrigger
                     title={collection.title}
-                    onRemove={() =>
-                    {
+                    onRemove={() => {
                       useEditorStore.setState({
                         editors: editors.map((editor) => {
                           if (
@@ -226,7 +225,8 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                       handleDeleteCollection({
                         collection_id: collection.id,
                         user_id: collection.user_id,
-                      })}
+                      })
+                    }
                     }
                     onUpdate={() => {
                       collectionTitleInputRef.current?.focus();
@@ -283,15 +283,15 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                     <ul className="w-full grid grid-cols-1 gap-2">
                       {collection.snippets?.length
                         ? collection.snippets.map((snippet_id) => (
-                            <CollectionItem
-                              key={snippet_id}
-                              id={snippet_id}
-                              collectionId={collection.id}
-                              onItemSelect={handleSnippetClick}
-                              onDelete={handleDeleteSnippet}
-                              onMoveToCollection={handleOpenMoveToFolderDialog}
-                            />
-                          ))
+                          <CollectionItem
+                            key={snippet_id}
+                            id={snippet_id}
+                            collectionId={collection.id}
+                            onItemSelect={handleSnippetClick}
+                            onDelete={handleDeleteSnippet}
+                            onMoveToCollection={handleOpenMoveToFolderDialog}
+                          />
+                        ))
                         : null}
                     </ul>
                   </AccordionContent>

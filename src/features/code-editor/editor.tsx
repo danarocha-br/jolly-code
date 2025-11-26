@@ -27,7 +27,7 @@ import {
 } from "@/features/snippets/queries";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
-import { analytics } from "@/lib/services/analytics";
+import { analytics } from "@/lib/services/tracking";
 import * as S from "./styles";
 
 type EditorProps = {

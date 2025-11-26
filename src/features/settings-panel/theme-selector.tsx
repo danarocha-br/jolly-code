@@ -12,7 +12,7 @@ import { themes } from "@/lib/themes-options";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/app/store";
 import { SettingsPanelItem } from "./ui/item";
-import { analytics } from "@/lib/services/analytics";
+import { analytics } from "@/lib/services/tracking";
 
 export const ThemeSelector = () => {
   const backgroundTheme = useEditorStore(

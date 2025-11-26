@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore } from "@/app/store";
-import { analytics } from "@/lib/services/analytics";
+import { analytics } from "@/lib/services/tracking";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
 
