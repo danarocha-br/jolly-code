@@ -15,7 +15,7 @@ export const CodeAnnotationMenu = () => {
   return (
     <HoverCard>
       <HoverCardTrigger>
-        <Button size="icon" variant="ghost">
+        <Button size="icon" variant="ghost" className="not-dark:hover:bg-subdued">
           <i className="ri-chat-1-line text-lg" />
         </Button>
       </HoverCardTrigger>

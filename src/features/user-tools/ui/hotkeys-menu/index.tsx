@@ -28,7 +28,7 @@ export const HotKeysPopover = () => {
   return (
     <Popover open={isPopoverOpen} onOpenChange={() => handleOpenPopover()}>
       <PopoverTrigger asChild>
-        <Button size="icon" variant="ghost">
+        <Button size="icon" variant="ghost" className="not-dark:hover:bg-subdued">
           <Tooltip content="Shortcuts" align="end" side="right" sideOffset={10}>
             <i className="ri-keyboard-line text-lg" />
           </Tooltip>

@@ -152,14 +152,14 @@ export const Sidebar = () => {
         <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
 
         {showSidebarContent && (
-          <Tooltip content="Add folder">
-            <div className="absolute right-2 top-3">
+          <div className="absolute right-2 top-3">
+            <Tooltip content="Add folder">
               {user ? (
                 <CreateCollectionDialog>
                   <Button
                     size="icon"
                     variant="secondary"
-                    className="rounded-full"
+                    className="rounded-full not-dark:bg-white not-dark:bg-white/80"
                   >
                     <i className="ri-add-line" />
                   </Button>
@@ -175,8 +175,8 @@ export const Sidebar = () => {
                   </Button>
                 </LoginDialog>
               )}
-            </div>
-          </Tooltip>
+            </Tooltip>
+          </div>
         )}
 
         <motion.div
@@ -242,13 +242,13 @@ export const Sidebar = () => {
           <Logo />
         </div>
 
-        <Tooltip content="Close sidebar">
-          <div className="absolute bottom-6 right-2">
+        <div className="absolute bottom-6 right-2">
+          <Tooltip content="Close sidebar">
             <Button size="icon" variant="ghost" onClick={closeSidebar}>
               <i className="ri-layout-right-2-line text-xl" />
             </Button>
-          </div>
-        </Tooltip>
+          </Tooltip>
+        </div>
       </motion.div>
     </aside>
   );

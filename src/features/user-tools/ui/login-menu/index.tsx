@@ -5,7 +5,7 @@ import { LoginDialog } from '@/features/login';
 export const LoginMenu = () => {
   return (
     <LoginDialog>
-      <Button size="icon" variant="ghost">
+      <Button size="icon" variant="ghost" className="not-dark:hover:bg-subdued">
         <HoverCard>
           <HoverCardTrigger asChild>
             <svg

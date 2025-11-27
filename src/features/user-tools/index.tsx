@@ -73,7 +73,7 @@ export const UserTools = () => {
         <Separator />
 
         <Changelog>
-          <Button size="icon" variant="ghost">
+          <Button size="icon" variant="ghost" className="not-dark:hover:bg-subdued">
             <Tooltip
               content="Feedback & Updates"
               align="end"
