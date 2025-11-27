@@ -364,7 +364,7 @@ export const Editor = forwardRef<any, EditorProps>(
                 size="icon"
                 variant="ghost"
                 className={cn(
-                  S.bookmarkButton(),
+                  S.bookmarkButton({ onDark: isDarkTheme }),
                   padding > 44 ? "top-2 right-2" : "top-0 right-0"
                 )}
               >
@@ -389,7 +389,7 @@ export const Editor = forwardRef<any, EditorProps>(
                     })
                   }
                   className={cn(
-                    S.bookmarkButton(),
+                    S.bookmarkButton({ onDark: isDarkTheme }),
                     padding > 44 ? "top-2 right-2" : "top-1 right-1"
                   )}
                 >
@@ -407,7 +407,7 @@ export const Editor = forwardRef<any, EditorProps>(
                       })
                     }
                     className={cn(
-                      S.bookmarkButton(),
+                      S.bookmarkButton({ onDark: isDarkTheme }),
                       padding > 44 ? "top-2 right-2" : "top-1 right-1"
                     )}
                   >

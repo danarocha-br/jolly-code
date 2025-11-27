@@ -139,14 +139,33 @@ export const widthButton = cva([
   "hover:bg-transparent",
 ]);
 
-export const bookmarkButton = cva([
-  "absolute",
-  "opacity-0",
-  "transition-opacity",
-  "rounded-full",
+export const bookmarkButton = cva(
+  [
+    "absolute",
+    "opacity-0",
+    "transition-opacity",
+    "rounded-full",
+    "backdrop-blur-sm",
+    "focus-visible:outline-none",
+    "focus-visible:ring-2",
+    "focus-visible:ring-ring",
+    "focus-visible:ring-offset-2",
+    "focus-visible:ring-offset-background",
 
-  "group-hover/editor:opacity-100",
-]);
+    "group-hover/editor:opacity-100",
+  ],
+  {
+    variants: {
+      onDark: {
+        true: ["text-white", "bg-black/35", "hover:bg-black/45"],
+        false: ["text-black", "bg-white/50", "hover:bg-white/90"],
+      },
+    },
+    defaultVariants: {
+      onDark: true,
+    },
+  }
+);
 
 export const resizableButton = cva([
   "absolute",
