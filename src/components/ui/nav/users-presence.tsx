@@ -1,14 +1,27 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useOthers, useSelf } from "../../../../liveblocks.config";
 import { Tooltip } from "../tooltip";
 import { Avatar } from "../avatar";
 
 const UsersPresence = () => {
-  const users = useOthers();
-  const userCount = users.length;
   const currentUser = useSelf();
-  const hasMoreUsers = users.length > 3;
+  const users = useOthers();
+
+  const filteredUsers = useMemo(() => {
+    const currentUserId = currentUser?.id;
+
+    // Keep showing all users when the viewer is anonymous so we don't hide others
+    if (!currentUserId || currentUserId === "anonymous") {
+      return users;
+    }
+
+    // Avoid rendering the logged-in user twice when they have multiple connections open
+    return users.filter((user) => user.id !== currentUserId);
+  }, [currentUser?.id, users]);
+
+  const userCount = filteredUsers.length;
+  const hasMoreUsers = filteredUsers.length > 3;
 
   /**
    * Generates a random color.
@@ -33,7 +46,7 @@ const UsersPresence = () => {
 
   return (
     <div className="flex pr-3 space-x-1">
-      {users.slice(0, 3).map(({ connectionId, info }: any) => {
+      {filteredUsers.slice(0, 3).map(({ connectionId, info }: any) => {
         return (
           <Tooltip key={connectionId} content={"Anonymous"}>
             <div>

@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback, memo } from "react";
 import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
+import type { User } from "@supabase/supabase-js";
+import Link from "next/link";
 
 import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
@@ -24,26 +26,104 @@ import { Avatar } from "../avatar";
 import { LoginDialog } from "@/features/login";
 import { CopyURLToClipboard } from "@/features/share-code";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuLink,
+} from "../navigation-menu";
+import { cn } from "@/lib/utils";
+
+const TOGGLE_THEME_HOTKEY = hotKeyList.find((item) => item.label === "Toggle theme")?.hotKey ?? "";
+
+const UserSection = memo(({ user, username, imageUrl }: {
+  user: User | null;
+  username: string | undefined;
+  imageUrl: string | undefined;
+}) => {
+  if (user && username) {
+    return (
+      <div>
+        <div className="flex items-center gap-2">
+          <Avatar
+            username={username}
+            imageSrc={imageUrl}
+            alt={username}
+          />
+          {username}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <LoginDialog>
+      <button className="flex items-center gap-2 text-sm p-2">
+        <svg
+          width="23"
+          height="23"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="fill-foreground scale-[0.75]"
+        >
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M11.452 0h.048c6.307.052 11.404 5.18 11.404 11.5S17.807 22.948 11.5 23h-.096C5.097 22.948 0 17.82 0 11.5S5.097.052 11.404 0h.048Zm.048 6.726v9.765h.013a4.882 4.882 0 0 0 0-9.765H11.5Z"
+          />
+        </svg>
+        Login with Github
+      </button>
+    </LoginDialog>
+  );
+});
+
+UserSection.displayName = "UserSection";
+
+const ThemeToggleButton = memo(({ theme, onToggle }: {
+  theme: string | undefined;
+  onToggle: () => void;
+}) => (
+  <DropdownMenuItem onClick={onToggle}>
+    <div className="flex items-center">
+      {theme === "dark" ? (
+        <>
+          <i className="ri-moon-fill text-lg mr-3" />
+          Toggle Light Mode
+        </>
+      ) : (
+        <>
+          <i className="ri-sun-fill text-lg mr-3" />
+          Toggle Dark Mode
+        </>
+      )}
+    </div>
+  </DropdownMenuItem>
+));
+
+ThemeToggleButton.displayName = "ThemeToggleButton";
 
 export const Nav = () => {
-  const supabase = createClient();
+  // Optimize Supabase client - only create once
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const memoizedTheme = useMemo(() => theme, [theme]);
 
+  // Optimize Zustand selectors - only subscribe to needed values
   const isPresentational = useEditorStore((state) => state.presentational);
-  const { user } = useUserStore();
-  const username = useMemo(() => user?.user_metadata?.full_name, [user]);
-  const imageUrl = useMemo(() => user?.user_metadata?.avatar_url, [user]);
+  const user = useUserStore((state) => state.user);
+
+  const username = user?.user_metadata?.full_name;
+  const imageUrl = user?.user_metadata?.avatar_url;
 
   /**
    * Handles the toggle theme functionality.
-   *
-   * @return {void} No return value.
+   * Using useCallback for stable reference across renders.
    */
-  function handleToggleTheme() {
-    setTheme(memoizedTheme === "dark" ? "light" : "dark");
-  }
+  const handleToggleTheme = useCallback(() => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [theme, setTheme]);
 
   const handleSignOut = useMutation({
     mutationFn: async () => {
@@ -59,22 +139,17 @@ export const Nav = () => {
     },
   });
 
-  const toggleTheme = useMemo(
-    () => hotKeyList.filter((item) => item.label === "Toggle theme"),
-    []
-  );
-
-  useHotkeys(toggleTheme[0].hotKey, () => handleToggleTheme());
+  useHotkeys(TOGGLE_THEME_HOTKEY, handleToggleTheme);
 
   return (
-    <nav className="w-full lg:w-auto fixed top-0 right-0 flex items-center justify-between gap-2 px-3 lg:px-4 py-3 z-50">
+    <header className="w-full fixed top-0 right-0 flex items-center justify-between gap-2 px-3 lg:px-4 py-3 z-50">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             size="icon"
             variant="secondary"
             className="lg:hidden mr-auto"
-            onClick={() => handleToggleTheme()}
+            onClick={handleToggleTheme}
           >
             <i className="ri-menu-fill text-lg" />
           </Button>
@@ -82,56 +157,12 @@ export const Nav = () => {
 
         <DropdownMenuContent align="start" alignOffset={2}>
           <DropdownMenuItem asChild>
-            {!!user && username ? (
-              <div>
-                <div className="flex items-center gap-2">
-                  <Avatar
-                    username={username}
-                    imageSrc={imageUrl}
-                    alt={username}
-                  />
-                  {username}
-                </div>
-              </div>
-            ) : (
-              <LoginDialog>
-                <button className="flex items-center gap-2 text-sm p-2">
-                  <svg
-                    width="23"
-                    height="23"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="fill-foreground scale-[0.75]"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M11.452 0h.048c6.307.052 11.404 5.18 11.404 11.5S17.807 22.948 11.5 23h-.096C5.097 22.948 0 17.82 0 11.5S5.097.052 11.404 0h.048Zm.048 6.726v9.765h.013a4.882 4.882 0 0 0 0-9.765H11.5Z"
-                    />
-                  </svg>
-                  Login with Github
-                </button>
-              </LoginDialog>
-            )}
+            <UserSection user={user} username={username} imageUrl={imageUrl} />
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => handleToggleTheme()}>
-            <div className="flex items-center">
-              {theme === "dark" ? (
-                <>
-                  <i className="ri-moon-fill text-lg mr-3" />
-                  Toggle Light Mode
-                </>
-              ) : (
-                <>
-                  <i className="ri-sun-fill text-lg mr-3" />
-                  Toggle Dark Mode
-                </>
-              )}
-            </div>
-          </DropdownMenuItem>
+          <ThemeToggleButton theme={theme} onToggle={handleToggleTheme} />
 
           <DropdownMenuSeparator />
 
@@ -146,6 +177,38 @@ export const Nav = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <div className="hidden lg:absolute left-1/2 -translate-x-1/2 top-5 lg:flex justify-center z-[999]">
+        {!isPresentational && (
+          <NavigationMenu>
+            <NavigationMenuList className="gap-4">
+              {[
+                { href: "/", label: "Code editor" },
+                { href: "/animate", label: "Code animation" },
+              ].map(({ href, label }) => {
+                const isActive =
+                  (href === "/" && pathname === "/") ||
+                  (href !== "/" && pathname?.startsWith(href));
+                return (
+                  <NavigationMenuItem key={href}>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        href={href}
+                        className={cn(
+                          "flex items-center opacity-30 px-4 py-2 rounded-md text-sm transition hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:outline-1",
+                          isActive && "bg-subdued dark:bg-accent/40 text-accent-foreground opacity-100"
+                        )}
+                      >
+                        <span>{label}</span>
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                );
+              })}
+            </NavigationMenuList>
+          </NavigationMenu>
+        )}
+      </div>
+
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
         {isPresentational && <UsersPresence />}
 
@@ -155,17 +218,21 @@ export const Nav = () => {
 
         <Tooltip content="GitHub repository">
           <Button
+            asChild
             className="hidden md:flex"
             size="icon"
             variant="ghost"
-            onClick={() =>
-              router.push("https://github.com/danarocha-br/jolly-code")
-            }
           >
-            <i className="ri-github-fill text-xl" />
+            <a
+              href="https://github.com/danarocha-br/jolly-code"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i className="ri-github-fill text-xl" />
+            </a>
           </Button>
         </Tooltip>
       </div>
-    </nav>
+    </header>
   );
 };
