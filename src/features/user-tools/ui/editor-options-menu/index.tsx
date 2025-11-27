@@ -83,6 +83,10 @@ export const EditorOptionsMenu = () => {
     handleShowLineNumbers(editorShowLineNumbers === true ? false : true);
   });
 
+  const keepMenuOpen = (event: Event) => {
+    event.preventDefault();
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -102,13 +106,15 @@ export const EditorOptionsMenu = () => {
             handleEditorViewPreferences(value as EditorViewPreference)
           }
         >
-          <DropdownMenuRadioItem value="default">Default</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="minimal">Minimal</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem inset value="default" onSelect={keepMenuOpen}>Default</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem inset value="minimal" onSelect={keepMenuOpen}>Minimal</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
 
         <DropdownMenuCheckboxItem
+          inset
           checked={editorShowLineNumbers}
+          onSelect={keepMenuOpen}
           onCheckedChange={(checked: boolean) => handleShowLineNumbers(checked)}
         >
           Show line numbers

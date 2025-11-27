@@ -36,11 +36,17 @@ const useSidebarMouseEvents = () => {
   const collapseTimeout = useRef<NodeJS.Timeout | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const hasOpenPortals = useRef(false);
+  const setHasOpenPortals = useCallback((value: boolean) => {
+    if (value && collapseTimeout.current) {
+      clearTimeout(collapseTimeout.current);
+      collapseTimeout.current = null;
+    }
+    hasOpenPortals.current = value;
+  }, []);
 
   // Monitor for Radix UI portals being added/removed from the DOM
   React.useEffect(() => {
     const checkForPortals = () => {
-      // Check if any Radix portals are currently in the DOM
       const portals = document.querySelectorAll(
         '[data-radix-popper-content-wrapper], [data-radix-dropdown-menu-content], [data-radix-hover-card-content], [data-radix-portal]'
       );
@@ -101,12 +107,12 @@ const useSidebarMouseEvents = () => {
     setWidth(initialWidth);
   }, []);
 
-  return { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef };
+  return { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef, setHasOpenPortals };
 };
 
 export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
-  const { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef } = useSidebarMouseEvents();
+  const { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef, setHasOpenPortals } = useSidebarMouseEvents();
   const router = useRouter();
 
   const user = useUserStore((state) => state.user);
@@ -185,16 +191,20 @@ export const Sidebar = () => {
         </motion.div>
 
         <div className="absolute bottom-3 left-2">
-          <HoverCard openDelay={0}>
-            <HoverCardTrigger>
-              <div className={S.logoShort({ show: showSidebarContent })}>
+          <HoverCard
+            openDelay={0}
+            closeDelay={120}
+            onOpenChange={setHasOpenPortals}
+          >
+            <HoverCardTrigger asChild>
+              <button type="button" className={S.logoShort({ show: showSidebarContent })}>
                 <Logo variant="short" />
-              </div>
+              </button>
             </HoverCardTrigger>
 
             <HoverCardContent side="top" align="start" alignOffset={12}>
               <div className="flex flex-col items-start relative space-y-2">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between w-full items-center">
                   <span className="scale-95 p-2">
                     <Logo variant="typographic" />
                   </span>

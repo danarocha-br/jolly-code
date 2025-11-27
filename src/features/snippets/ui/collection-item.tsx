@@ -52,7 +52,7 @@ export function CollectionItem({
     <li className={S.snippet()}>
       <Suspense fallback={<Skeleton />}>
         <button
-          className="flex items-center gap-2 w-full"
+          className="flex items-center justify-start text-left gap-2 w-full"
           onClick={() => onItemSelect(snippet)}
         >
           <span className="scale-75">

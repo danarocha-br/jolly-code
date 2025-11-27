@@ -74,8 +74,8 @@ export const logoShort = cva(
   {
     variants: {
       show: {
-        true: ["opacity-70", "dark:opacity-30"],
-        false: ["opacity-0"],
+        true: ["opacity-70", "dark:opacity-30", "pointer-events-auto"],
+        false: ["opacity-0", "pointer-events-none"],
       },
     },
     defaultVariants: {

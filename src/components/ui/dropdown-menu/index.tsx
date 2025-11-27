@@ -13,11 +13,17 @@ function DropdownMenu({
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
 }
 
-function DropdownMenuTrigger({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-  return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />
-}
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+>(({ ...props }, ref) => (
+  <DropdownMenuPrimitive.Trigger
+    ref={ref}
+    data-slot="dropdown-menu-trigger"
+    {...props}
+  />
+));
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
 
 function DropdownMenuPortal({
   ...props
@@ -25,172 +31,170 @@ function DropdownMenuPortal({
   return <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
 }
 
-function DropdownMenuSub({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
-  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />
-}
+const DropdownMenuSub = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Sub>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Sub>
+>(({ ...props }, ref) => (
+  <DropdownMenuPrimitive.Sub ref={ref} data-slot="dropdown-menu-sub" {...props} />
+));
+DropdownMenuSub.displayName = DropdownMenuPrimitive.Sub.displayName;
 
-function DropdownMenuSubTrigger({
-  className,
-  inset,
-  children,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
-  inset?: boolean
-}) {
-  return (
-    <DropdownMenuPrimitive.SubTrigger
-      className={cn(S.subTrigger(), inset && "pl-8", className)}
-      {...props}
-    >
-      {children}
-      <ChevronRightIcon className="ml-auto h-4 w-4" />
-    </DropdownMenuPrimitive.SubTrigger>
-  )
-};
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean
+  }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(S.subTrigger(), inset && "pl-8", className)}
+    {...props}
+  >
+    {children}
+    <ChevronRightIcon className="ml-auto h-4 w-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+));
+DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
 
 
-function DropdownMenuSubContent({
-  className,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
-  return (
-    <DropdownMenuPrimitive.SubContent
-      className={cn(S.subContent(), className)}
-      {...props}
-    />
-  )
-};
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    className={cn(S.subContent(), className)}
+    {...props}
+  />
+));
+DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
-function DropdownMenuContent({
-  className,
-  sideOffset = 4,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
-  return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        sideOffset={sideOffset}
-        className={cn(S.content(), className)}
-        {...props}
-      />
-    </DropdownMenuPrimitive.Portal>
-  )
-};
-
-function DropdownMenuItem({
-  className,
-  inset,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
-  inset?: boolean
-}) {
-  return (
-    <DropdownMenuPrimitive.Item
-      data-slot="dropdown-menu-item"
-      data-inset={inset}
-      className={cn(S.menuItem(), inset && "pl-8", className)}
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(S.content(), className)}
       {...props}
     />
-  )
-};
+  </DropdownMenuPrimitive.Portal>
+));
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-function DropdownMenuCheckboxItem({
-  className,
-  children,
-  checked,
-  inset,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem> & {
-  inset?: boolean
-}) {
-  return (
-    <DropdownMenuPrimitive.CheckboxItem
-      data-slot="dropdown-menu-checkbox-item"
-      data-inset={inset}
-      className={cn(S.menuItem(), inset && "pl-8", className)}
-      {...props}
-    >
-      <span className={S.indicator()}>
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    data-slot="dropdown-menu-item"
+    data-inset={inset}
+    className={cn(S.menuItem(), inset && "pl-8", className)}
+    {...props}
+  />
+));
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
+
+const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem> & {
+    inset?: boolean
+  }
+>(({ className, children, checked, inset, onCheckedChange, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    data-slot="dropdown-menu-checkbox-item"
+    data-inset={inset}
+    className={cn(S.menuItem(), inset && "pl-8", className)}
+    // Radix v1 passes CheckedState (boolean | "indeterminate"); coerce to boolean for consumers
+    onCheckedChange={(state) => onCheckedChange?.(state === true)}
+    checked={checked}
+    {...props}
+  >
+    <span className={S.indicator()}>
+      <DropdownMenuPrimitive.ItemIndicator forceMount>
         {checked ? (
           <i className="ri-toggle-fill text-2xl text-success" />
         ) : (
           <i className="ri-toggle-line text-2xl text-foreground/20 " />
         )}
-      </span>
-      {children}
-    </DropdownMenuPrimitive.CheckboxItem>
-  )
-};
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+));
+DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
 
-function DropdownMenuRadioGroup({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
-  return (
-    <DropdownMenuPrimitive.RadioGroup
-      data-slot="dropdown-menu-radio-group"
-      {...props}
-    />
-  )
-}
+const DropdownMenuRadioGroup = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioGroup>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioGroup>
+>(({ ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioGroup
+    ref={ref}
+    data-slot="dropdown-menu-radio-group"
+    {...props}
+  />
+));
+DropdownMenuRadioGroup.displayName = DropdownMenuPrimitive.RadioGroup.displayName;
 
-function DropdownMenuRadioItem({
-  className,
-  children,
-  inset,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem> & {
-  inset?: boolean
-}) {
-  return (
-    <DropdownMenuPrimitive.RadioItem
-      data-slot="dropdown-menu-radio-item"
-      data-inset={inset}
-      className={cn(S.menuItem(), inset && "pl-8", className)}
-      {...props}
-    >
-      <span className={S.indicator()}>
-        <DropdownMenuPrimitive.ItemIndicator>
-          <i className="ri-radio-button-fill text-success text-lg" />
-        </DropdownMenuPrimitive.ItemIndicator>
-      </span>
-      {children}
-    </DropdownMenuPrimitive.RadioItem>
-  )
-};
-
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> & {
+    inset?: boolean
+  }
+>(({ className, children, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    data-slot="dropdown-menu-radio-item"
+    data-inset={inset}
+    className={cn(S.menuItem(), inset && "pl-8", className)}
+    {...props}
+  >
+    <span className={S.indicator()}>
+      <DropdownMenuPrimitive.ItemIndicator>
+        <i className="ri-radio-button-fill text-success text-lg" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+));
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
 
-function DropdownMenuLabel({
-  className,
-  inset,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
-  inset?: boolean
-}) {
-  return (
-    <DropdownMenuPrimitive.Label
-      data-slot="dropdown-menu-label"
-      data-inset={inset}
-      className={cn(S.label(), inset && "pl-8", className)}
-      {...props}
-    />
-  )
-};
 
-function DropdownMenuSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
-  return (
-    <DropdownMenuPrimitive.Separator
-      data-slot="dropdown-menu-separator"
-      className={cn("-mx-1 my-1 h-px bg-accent dark:bg-accent/40", className)}
-      {...props}
-    />
-  )
-};
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    data-slot="dropdown-menu-label"
+    data-inset={inset}
+    className={cn(S.label(), inset && "pl-8", className)}
+    {...props}
+  />
+));
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
+
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    data-slot="dropdown-menu-separator"
+    className={cn("-mx-1 my-1 h-px bg-accent dark:bg-accent/40", className)}
+    {...props}
+  />
+));
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
 function DropdownMenuShortcut({
   className,
