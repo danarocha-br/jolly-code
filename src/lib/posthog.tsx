@@ -31,11 +31,7 @@ export function ensurePostHogClient() {
 export function CSPostHogProvider({ children, user }: { children: ReactNode, user?: any }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [isReady, setIsReady] = useState(false)
-
-  useEffect(() => {
-    setIsReady(ensurePostHogClient())
-  }, [])
+  const [isReady, setIsReady] = useState(() => ensurePostHogClient())
 
   useEffect(() => {
     if (!isReady) return
@@ -48,14 +44,14 @@ export function CSPostHogProvider({ children, user }: { children: ReactNode, use
     } else {
       posthog.reset()
     }
-  }, [user])
+  }, [user, isReady])
 
   useEffect(() => {
     if (!isReady) return
     if (!pathname) return
 
     posthog.capture('$pageview')
-  }, [pathname, searchParams])
+  }, [pathname, searchParams, isReady])
 
   if (!isReady) return children
 

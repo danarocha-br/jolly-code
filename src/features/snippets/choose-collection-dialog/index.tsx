@@ -57,7 +57,7 @@ export const DialogChooseCollection = forwardRef(
             if (collection.id === previousCollectionId) {
               return {
                 ...collection,
-                snippets: collection.snippets?.filter((id) => id !== snippet.id) || [],
+                snippets: collection.snippets?.filter((s) => s.id !== snippet.id) || [],
               };
             }
             // Add snippet to new collection
@@ -173,7 +173,7 @@ export const DialogChooseCollection = forwardRef(
                       key={collection.id}
                       id={collection.id}
                       title={collection.title}
-                      snippets={collection.snippets}
+                      snippets={collection.snippets?.map((s) => s.id)}
                       isLoading={movingToCollectionId === collection.id}
                       disabled={movingToCollectionId !== null}
                       onSelect={() =>
