@@ -155,6 +155,7 @@ export const Nav = () => {
 
         <Tooltip content="GitHub repository">
           <Button
+            className="hidden md:flex"
             size="icon"
             variant="ghost"
             onClick={() =>

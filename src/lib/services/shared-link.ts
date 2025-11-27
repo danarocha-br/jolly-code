@@ -11,7 +11,7 @@ export async function getSharedLink(slug: string) {
     try {
         const { data, error } = await supabase
             .from("links")
-            .select("id, url")
+            .select("id, url, snippet_id")
             .eq("short_url", slug)
             .single();
 

@@ -221,7 +221,7 @@ export const ExportMenu = () => {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent>
+      <DropdownMenuContent align="end">
         <DropdownMenuItem
           className="gap-8"
           onClick={copyCodeToClipboard}

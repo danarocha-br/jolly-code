@@ -63,6 +63,7 @@
     "react-markdown": "^9.0.0",
     "react-simple-code-editor": "^0.13.1",
     "remixicon": "^3.5.0",
+    "schema-dts": "^1.1.5",
     "sonner": "^1.0.3",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
@@ -70,11 +71,11 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "24.10.1",
     "@types/react": "19.2.6",
     "@types/react-dom": "19.2.3",
     "@types/uuid": "^9.0.6",
-    "@tailwindcss/postcss": "^4.1.17",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
     "encoding": "^0.1.13",

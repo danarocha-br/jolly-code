@@ -1,7 +1,6 @@
-
-
 export const siteConfig = {
   title: "Jolly Code",
+  url: "https://jollycode.dev",
   imageUrl: "https://res.cloudinary.com/danarocha/image/upload/v1713205993/jollycode-og_u0cefa.jpg",
   description:
     "Beautify, share, and improve your code. A multi-language, visually-appealing code sharing platform.",
@@ -14,8 +13,24 @@ export const siteConfig = {
   keywords: [
     "Code beautify",
     "Code Snippets",
-    "Code Highlight",
-    "Server Components",
+    "Code image generator with syntax highlighting",
     "Beautifier",
+    "Code snippet generator online",
+    "Create code screenshot online",
+    "Share code snippet as image",
+    "Free code snippet generator for developers",
+    "How to share code on social media beautifully",
+    "Best code screenshot tool 2025",
+    "Ray.so alternatives",
+    "Carbon.sh alternatives",
+    "Snappify alternative",
+    "Code snippet image tool",
+    "Online tool to beautify code for blog / social media",
+    "Code presentation tool online",
+    "Create code visuals / code visuals generator",
+    "Generate code preview for shareable link",
+    "Code snippet generator for educators / tutorials",
+    "Present code in elegant way for talks / slides / presentations",
+    "Best way to share code on Twitter / LinkedIn / dev blog",
   ],
 };

@@ -41,11 +41,13 @@ export const metadata: Metadata = {
   icons: {
     icon: ["./favicon.ico"],
   },
+  metadataBase: new URL(siteConfig.url),
 };
 
 import { dehydrate } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/react-query/query-client";
 import { createClient } from "@/utils/supabase/server";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export default async function RootLayout({
   children,
@@ -67,6 +69,19 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body className={sen.className}>
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: siteConfig.title,
+            url: siteConfig.url,
+            description: siteConfig.description,
+            author: {
+              "@type": "Person",
+              name: "Dana Rocha",
+            },
+          }}
+        />
         <CSPostHogProvider user={user}>
           <SessionSync user={user as any} />
           <Providers state={dehydrate(queryClient)}>{children}</Providers>

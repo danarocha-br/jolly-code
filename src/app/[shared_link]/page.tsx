@@ -1,6 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { getSharedLink, trackSharedLinkVisit } from "@/lib/services/shared-link";
 import { captureServerEvent } from "@/lib/services/tracking/server";
+import { createClient } from "@/utils/supabase/server";
+import { JsonLd } from "@/components/seo/json-ld";
+import { siteConfig } from "@/lib/utils/site-config";
+import Link from "next/link";
+import { Metadata } from "next";
 
 type SharedLinkPageProps = {
   params: Promise<{
@@ -8,12 +13,39 @@ type SharedLinkPageProps = {
   }>;
 };
 
-/**
- * Redirects to the original URL of the shared link.
- *
- * @param params - The props object containing the parameters.
- * @return {JSX.Element} Redirects to the original URL of the shared link.
- */
+export async function generateMetadata({ params }: SharedLinkPageProps): Promise<Metadata> {
+  const { shared_link } = await params;
+  const data = await getSharedLink(shared_link);
+
+  if (!data || !data.snippet_id) {
+    return {};
+  }
+
+  const supabase = await createClient();
+  const { data: snippet } = await supabase
+    .from("snippet")
+    .select("title, code")
+    .eq("id", data.snippet_id)
+    .single();
+
+  if (!snippet) return {};
+
+  return {
+    title: `${snippet.title} - ${siteConfig.title}`,
+    description: `Check out this code snippet: ${snippet.title}`,
+    openGraph: {
+      title: snippet.title || 'Untitled Snippet',
+      description: `Check out this code snippet: ${snippet.title || 'Untitled'}`,
+      type: "article",
+      images: [
+        {
+          url: siteConfig.imageUrl,
+        },
+      ],
+    },
+  };
+}
+
 export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
   const { shared_link } = await params;
 
@@ -36,5 +68,57 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
     distinctId: data.id,
   })
 
-  redirect(data.url);
+  // If it's a snippet, render the preview page
+  if (data.snippet_id) {
+    const supabase = await createClient();
+    const { data: snippet } = await supabase
+      .from("snippet")
+      .select("*")
+      .eq("id", data.snippet_id)
+      .single();
+
+    if (snippet) {
+      return (
+        <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4">
+          <JsonLd
+            data={{
+              "@context": "https://schema.org",
+              "@type": "SoftwareSourceCode",
+              name: snippet.title || 'Untitled Snippet',
+              programmingLanguage: snippet.language || 'plaintext',
+              text: snippet.code || '',
+              author: {
+                "@type": "Person",
+                name: "Jolly Code User",
+              },
+              dateCreated: snippet.created_at,
+            }}
+          />
+          <div className="max-w-4xl w-full space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-bold">{snippet.title}</h1>
+              <p className="text-gray-400">Shared via Jolly Code</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-[#0c0c0e] p-6 overflow-x-auto">
+              <pre className="font-mono text-sm">
+                <code>{snippet.code}</code>
+              </pre>
+            </div>
+
+            <div className="flex justify-center">
+              <a
+                href={data.url || "/"}
+                className="px-6 py-3 bg-white text-black font-medium rounded-full hover:bg-gray-200 transition-colors"
+              >
+                Open in Editor
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  redirect(data.url || "/");
 }
