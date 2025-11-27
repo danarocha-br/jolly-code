@@ -12,7 +12,7 @@ export interface Collection {
   id: string;
   user_id: string;
   title: string;
-  snippets?: string[];
+  snippets?: Snippet[];
   created_at?: string;
   updated_at?: string;
 }

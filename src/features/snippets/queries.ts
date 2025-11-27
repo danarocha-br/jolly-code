@@ -231,14 +231,14 @@ export const removeSnippetFromPreviousCollection = async (
         : [];
 
     // Check if snippet_id exists in currentSnippets and remove it
-    if (currentSnippets.includes(snippet_id)) {
+    if (currentSnippets.some((s) => s.id === snippet_id)) {
       const updatedSnippets = currentSnippets.filter(
-        (id: string) => id !== snippet_id
+        (s) => s.id !== snippet_id
       );
 
       const result = await updateCollectionAction({
         id: previous_collection_id,
-        snippets: updatedSnippets as any,
+        snippets: updatedSnippets.map((s) => s.id) as any,
       });
 
       if (result.error) {
@@ -294,13 +294,25 @@ export const updateCollection = async ({
         : [];
 
     // Check if snippet_id already exists in currentSnippets
-    if (!currentSnippets.includes(snippet_id)) {
-      const updatedSnippets = [...currentSnippets, snippet_id];
+    if (!currentSnippets.some((s) => s.id === snippet_id)) {
+      // We need to fetch the snippet to add it to the collection locally if we want to return the full object
+      // But updateCollectionAction likely expects IDs.
+      // And we need to return the updated collection with Snippet objects.
+
+      // Fetch the snippet first
+      const snippetResult = await getSnippetById(snippet_id);
+      if (snippetResult.error || !snippetResult.data) {
+        toast.error("Failed to fetch snippet details");
+        return undefined;
+      }
+      const snippet = snippetResult.data;
+
+      const updatedSnippets = [...currentSnippets, snippet];
 
       const result = await updateCollectionAction({
         id,
         title,
-        snippets: updatedSnippets as any,
+        snippets: updatedSnippets.map(s => s.id) as any,
       });
 
       if (result.error) {
@@ -308,7 +320,7 @@ export const updateCollection = async ({
         return undefined;
       }
 
-      return result.data;
+      return { ...result.data!, snippets: updatedSnippets };
     } else {
       toast.error("This snippet already belongs to this collection.");
       return undefined;

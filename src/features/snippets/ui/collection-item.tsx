@@ -1,5 +1,7 @@
-import { Suspense } from "react";
+import React, { Suspense } from "react";
 import { UseMutateFunction, useQuery } from "@tanstack/react-query";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 import { languagesLogos } from "@/lib/language-logos";
 import {
@@ -17,7 +19,7 @@ import { Snippet } from "../dtos";
 import * as S from "./styles";
 
 type CollectionItemProps = {
-  id: string;
+  snippet: Snippet;
   collectionId: string;
   onItemSelect: (snippet: Snippet) => void;
   onMoveToCollection: (
@@ -25,35 +27,60 @@ type CollectionItemProps = {
     previous_collection_id: string
   ) => void;
   onDelete: UseMutateFunction<void, Error, RemoveSnippetProps, unknown>;
+  isDragging?: boolean;
+  isPendingMove?: boolean;
 };
 
-export function CollectionItem({
-  id,
+export const CollectionItem = React.memo(function CollectionItem({
+  snippet,
   collectionId,
   onItemSelect,
   onDelete,
   onMoveToCollection,
+  isDragging = false,
+  isPendingMove = false,
 }: CollectionItemProps) {
   const user = useUserStore((state) => state.user);
-
-  const { data: snippet, isLoading, error } = useQuery({
-    queryKey: ["snippet", id],
-    queryFn: () => fetchSnippetById(id),
-    enabled: !!user,
-  });
-
   const editors = useEditorStore((state) => state.editors);
 
-  return isLoading ? (
-    <Skeleton />
-  ) : error ? (
-    null // Don't render anything if there's an error
-  ) : snippet ? (
-    <li className={S.snippet()}>
+  const { attributes, listeners, setNodeRef, transform, isDragging: draggingSelf } =
+    useDraggable({
+      id: snippet.id,
+      data: {
+        snippet,
+        collectionId,
+      },
+    });
+
+  const dragging = isDragging || draggingSelf;
+  const isOriginPlaceholder = draggingSelf;
+  const style = draggingSelf
+    ? { opacity: 0.6 }
+    : transform
+      ? { transform: CSS.Translate.toString(transform) }
+      : undefined;
+
+  return (
+    <li
+      ref={setNodeRef}
+      className={S.snippet({
+        dragging,
+        origin: isOriginPlaceholder,
+        pending: isPendingMove,
+      })}
+      style={style}
+      {...attributes}
+      {...listeners}
+      aria-label={`Drag ${snippet.title} to another collection`}
+      data-pending-move={isPendingMove || undefined}
+    >
       <Suspense fallback={<Skeleton />}>
         <button
           className="flex items-center justify-start text-left gap-2 w-full"
-          onClick={() => onItemSelect(snippet)}
+          onClick={() => {
+            if (dragging) return;
+            onItemSelect(snippet);
+          }}
         >
           <span className="scale-75">
             {snippet &&
@@ -89,7 +116,7 @@ export function CollectionItem({
               onClick={() => {
                 useEditorStore.setState({
                   editors: editors.map((editor) => {
-                    if (editor.id === id) {
+                    if (editor.id === snippet.id) {
                       return {
                         ...editor,
                         isSnippetSaved: false,
@@ -98,7 +125,7 @@ export function CollectionItem({
                     return editor;
                   }),
                 });
-                onDelete({ snippet_id: id, user_id: user?.id });
+                onDelete({ snippet_id: snippet.id, user_id: user?.id });
               }}
             >
               <div>
@@ -110,5 +137,5 @@ export function CollectionItem({
         </DropdownMenu>
       </Suspense>
     </li>
-  ) : null;
-}
+  );
+});

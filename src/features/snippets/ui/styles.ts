@@ -14,16 +14,55 @@ export const snippet = cva([
   "outline-none",
   "flex",
   "gap-2",
+  "relative",
   "px-3",
   "w-full",
   "transition-all",
   "group",
+  "cursor-pointer",
+  "active:cursor-grabbing",
+  "focus:outline-none",
+  "focus-visible:ring-2",
+  "focus-visible:ring-ring",
 
   "hover:bg-indigo-200/30",
   "dark:hover:bg-primary/10",
   "hover:border-indigo-300",
   "dark:hover:border-primary/50",
-]);
+], {
+  variants: {
+    dragging: {
+      true: [
+        "cursor-grabbing",
+        "bg-indigo-200/30",
+        "dark:bg-primary/10",
+        "border-indigo-300",
+        "dark:border-primary/50",
+      ],
+      false: ["cursor-grab"],
+    },
+    origin: {
+      true: [
+        "bg-indigo-200/30",
+        "dark:bg-primary/10",
+        "border-indigo-300",
+        "dark:border-primary/50",
+        "border-dashed",
+        "opacity-90",
+      ],
+      false: [],
+    },
+    pending: {
+      true: ["opacity-60", "cursor-wait"],
+      false: [],
+    },
+  },
+  defaultVariants: {
+    dragging: false,
+    origin: false,
+    pending: false,
+  },
+});
 
 export const addButton = cva([
   "bg-muted/50",

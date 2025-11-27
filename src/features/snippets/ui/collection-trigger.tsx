@@ -9,12 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 type CollectionTriggerProps = {
   children: React.ReactNode;
   title: string;
   onUpdate?: () => void;
   onRemove?: () => void;
+  isDropTarget?: boolean;
+  isBusy?: boolean;
 };
 
 export function CollectionTrigger({
@@ -22,14 +25,28 @@ export function CollectionTrigger({
   title,
   onUpdate,
   onRemove,
+  isDropTarget = false,
+  isBusy = false,
   ...props
 }: CollectionTriggerProps) {
   return (
     <div className="relative w-full group">
-      <AccordionTrigger {...props} className="flex items-center w-full ">
+      <AccordionTrigger
+        {...props}
+        className={cn(
+          "flex items-center w-full focus:outline-none focus-visible:bg-indigo-200/30 dark:focus-visible:bg-primary/5 transition-colors",
+          isDropTarget && "border border-dashed bg-indigo-200/30 border-indigo-200 dark:border-primary/50 dark:bg-primary/5"
+        )}
+      >
         <h2 className="text-foreground text-left text-sm capitalize">
           {children}
         </h2>
+
+        {isBusy && (
+          <span className="absolute right-8 top-1/2 -translate-y-1/2 text-primary">
+            <i className="ri-loader-4-fill animate-spin" />
+          </span>
+        )}
       </AccordionTrigger>
 
       {title !== "Home" && (
