@@ -13,8 +13,8 @@ type TitleInputProps = {
   language: string;
   onUpdateTitle: UseMutateFunction<
     | {
-        data: any;
-      }
+      data: any;
+    }
     | undefined,
     Error,
     UpdateSnippetProps,
@@ -71,9 +71,9 @@ export const TitleInput = ({
 
     if (currentState) {
       updateEditor(currentState.id, { title: newTitle });
-      currentState.isSnippetSaved &&
-        console.log('')
+      if (currentState.isSnippetSaved) {
         debouncedUpdateSnippet(currentState.id, newTitle);
+      }
     }
   };
 

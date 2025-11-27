@@ -42,7 +42,7 @@ export const LanguageSelector = () => {
   const queryClient = useQueryClient();
   const queryKey = ["collections"];
 
-  const { language, autoDetectLanguage } = useEditorStore(
+  const { language, autoDetectLanguage, isSnippetSaved } = useEditorStore(
     useShallow((state) => {
       const editor = state.editors.find(
         (editor) => editor.id === currentState?.id
@@ -51,10 +51,12 @@ export const LanguageSelector = () => {
         ? {
           language: editor.language,
           autoDetectLanguage: editor.autoDetectLanguage,
+          isSnippetSaved: editor.isSnippetSaved,
         }
         : {
           language: "plain-text",
           autoDetectLanguage: true,
+          isSnippetSaved: false,
         };
     })
   );
@@ -116,7 +118,7 @@ export const LanguageSelector = () => {
         });
         setValue(language);
 
-        if (user) {
+        if (user && isSnippetSaved) {
           handleUpdateSnippet({
             user_id: user?.id,
             id: currentState.id,

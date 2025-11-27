@@ -25,6 +25,7 @@ import {
   removeSnippet,
   updateSnippet,
 } from "@/features/snippets/queries";
+import { Collection } from "@/features/snippets/dtos";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import { analytics } from "@/lib/services/tracking";
@@ -286,19 +287,34 @@ export const Editor = forwardRef<any, EditorProps>(
     const { mutate: handleUpdateSnippet } = useMutation({
       mutationFn: updateSnippet,
 
-      onMutate: async () => {
+      onMutate: async (variables) => {
         await queryClient.cancelQueries({
           queryKey: queryKey,
         });
 
-        const previousSnippets = queryClient.getQueryData(queryKey);
+        const previousCollections = queryClient.getQueryData<Collection[]>(queryKey);
 
-        return { previousSnippets };
+        // Optimistically update the collections cache
+        if (previousCollections) {
+          queryClient.setQueryData<Collection[]>(
+            queryKey,
+            previousCollections.map((collection) => ({
+              ...collection,
+              snippets: collection.snippets?.map((snippet) =>
+                snippet.id === variables.id
+                  ? { ...snippet, title: variables.title || snippet.title }
+                  : snippet
+              ),
+            }))
+          );
+        }
+
+        return { previousCollections };
       },
 
       onError: (err, variables, context) => {
-        if (context) {
-          queryClient.setQueryData(queryKey, context.previousSnippets);
+        if (context?.previousCollections) {
+          queryClient.setQueryData(queryKey, context.previousCollections);
         }
       },
 
