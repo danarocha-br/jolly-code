@@ -10,18 +10,18 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useAnimationStore } from "@/app/store";
+import { useAnimationStore, useEditorStore } from "@/app/store";
 import { AnimationSlide } from "@/types/animation";
+import { ThemeProps } from "@/lib/themes-options";
+import { SlideThumbnail } from "@/components/ui/slide-thumbnail";
+import { AddSlideCard } from "@/components/ui/add-slide-card";
 
 type SortableSlideProps = {
   slide: AnimationSlide;
@@ -30,6 +30,7 @@ type SortableSlideProps = {
   onSelect: () => void;
   onRemove: () => void;
   canRemove: boolean;
+  backgroundTheme: ThemeProps;
 };
 
 function SortableSlide({
@@ -39,6 +40,7 @@ function SortableSlide({
   onSelect,
   onRemove,
   canRemove,
+  backgroundTheme,
 }: SortableSlideProps) {
   const {
     attributes,
@@ -49,70 +51,28 @@ function SortableSlide({
     isDragging,
   } = useSortable({ id: slide.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={cn(
-        "relative flex-shrink-0 w-48 h-32 rounded-lg border-2 transition-all",
-        isActive
-          ? "border-primary bg-primary/10"
-          : "border-border bg-card hover:border-primary/50",
-        isDragging && "opacity-50 scale-95"
-      )}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
     >
-      {/* Drag handle area */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute top-2 left-2 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted/50"
-      >
-        <i className="ri-draggable text-muted-foreground" />
-      </div>
-
-      {/* Clickable content area */}
-      <div onClick={onSelect} className="h-full cursor-pointer">
-        <div className="p-3 flex flex-col h-full">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-muted-foreground">
-              Slide {index + 1}
-            </span>
-            {canRemove && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove();
-                }}
-              >
-                <i className="ri-close-line text-sm" />
-              </Button>
-            )}
-          </div>
-
-          <div className="flex-1 bg-muted/30 rounded p-2 overflow-hidden">
-            <pre className="text-[8px] leading-tight overflow-hidden whitespace-pre-wrap break-words">
-              {slide.code || "Empty slide"}
-            </pre>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span className="truncate">{slide.title}</span>
-            <span>{slide.duration}s</span>
-          </div>
-        </div>
-
-        {isActive && (
-          <div className="absolute inset-0 ring-2 ring-primary ring-offset-2 rounded-lg pointer-events-none" />
-        )}
-      </div>
+      <SlideThumbnail
+        index={index}
+        code={slide.code}
+        title={slide.title}
+        duration={slide.duration}
+        isActive={isActive}
+        canRemove={canRemove}
+        onSelect={onSelect}
+        onRemove={onRemove}
+        backgroundTheme={backgroundTheme}
+        dragAttributes={attributes}
+        dragListeners={listeners}
+        isDragging={isDragging}
+      />
     </div>
   );
 }
@@ -124,6 +84,7 @@ export const Timeline = () => {
   const removeSlide = useAnimationStore((state) => state.removeSlide);
   const setActiveSlide = useAnimationStore((state) => state.setActiveSlide);
   const reorderSlides = useAnimationStore((state) => state.reorderSlides);
+  const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -154,15 +115,6 @@ export const Timeline = () => {
             {slides.length}/10
           </span>
         </div>
-        <Button
-          size="sm"
-          onClick={addSlide}
-          disabled={!canAddMore}
-          variant="secondary"
-        >
-          <i className="ri-add-line mr-1" />
-          Add Slide
-        </Button>
       </div>
 
       <ScrollArea className="w-full whitespace-nowrap">
@@ -186,8 +138,10 @@ export const Timeline = () => {
                     onSelect={() => setActiveSlide(index)}
                     onRemove={() => removeSlide(slide.id)}
                     canRemove={canRemove}
+                    backgroundTheme={backgroundTheme}
                   />
                 ))}
+                <AddSlideCard onAdd={addSlide} disabled={!canAddMore} />
               </div>
             </SortableContext>
           </DndContext>
