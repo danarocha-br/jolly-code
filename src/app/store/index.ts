@@ -164,3 +164,5 @@ export const useEditorStore = create<
     { name: "code-store" }
   )
 );
+
+export { useAnimationStore } from "./animation-store";

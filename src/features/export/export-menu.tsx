@@ -20,13 +20,22 @@ import { analytics } from "@/lib/services/tracking";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
 
+interface ExportMenuProps {
+  // Animation mode props (optional)
+  animationMode?: {
+    onExport: () => void;
+    isExporting: boolean;
+    canExport: boolean;
+  };
+}
+
 const exportSVG = hotKeyList.filter((item) => item.label === "Save as SVG");
 const exportPNG = hotKeyList.filter((item) => item.label === "Save as PNG");
 const exportJPG = hotKeyList.filter((item) => item.label === "Save as JPG");
 const copySnippet = hotKeyList.filter((item) => item.label === "Copy snippet");
 const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
 
-export const ExportMenu = () => {
+export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
   const editors = React.useRef<{ [key: string]: HTMLElement | null }>({});
 
   const currentEditorState = useEditorStore(
@@ -212,6 +221,30 @@ export const ExportMenu = () => {
   useHotkeys(copySnippet[0].hotKey, () => copyCodeToClipboard());
   useHotkeys(copyImg[0].hotKey, () => copyImageToClipboard());
 
+  // If in animation mode, show simple export video button
+  if (animationMode) {
+    return (
+      <Button
+        size="sm"
+        onClick={animationMode.onExport}
+        disabled={!animationMode.canExport || animationMode.isExporting}
+      >
+        {animationMode.isExporting ? (
+          <>
+            <i className="ri-loader-4-line animate-spin mr-2" />
+            Exporting...
+          </>
+        ) : (
+          <>
+            <i className="ri-video-download-line mr-2" />
+            Export Video
+          </>
+        )}
+      </Button>
+    );
+  }
+
+  // Regular image export dropdown
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
