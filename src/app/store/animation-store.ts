@@ -2,7 +2,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
-import { AnimationSlide, AnimationSettings } from "@/types/animation";
+import {
+  AnimationSlide,
+  AnimationSettings,
+  AnimationExportFormat,
+  AnimationQualityPreset,
+} from "@/types/animation";
 
 export type AnimationStoreState = {
   slides: AnimationSlide[];
@@ -21,6 +26,15 @@ export type AnimationStoreState = {
   updateSettings: (settings: Partial<AnimationSettings>) => void;
   setPlaybackTime: (time: number) => void;
 };
+
+const createSlide = (index: number, code = "", title?: string): AnimationSlide => ({
+  id: uuidv4(),
+  code,
+  title: title ?? `Slide ${index}`,
+  language: "javascript",
+  autoDetectLanguage: true,
+  duration: 2,
+});
 
 const createInitialSlide = (index: number): AnimationSlide => {
   const sampleCode = [
@@ -42,13 +56,22 @@ const user: User = {
 };`,
   ];
 
-  return {
-    id: uuidv4(),
-    code: sampleCode[index - 1] || sampleCode[0],
-    title: `Slide ${index}`,
-    language: "javascript",
-    duration: 2,
-  };
+  return createSlide(index, sampleCode[index - 1] || sampleCode[0]);
+};
+
+const createEmptySlide = (index: number): AnimationSlide => createSlide(index);
+
+const getDefaultExportFormat = (): AnimationExportFormat => {
+  if (typeof window === "undefined") {
+    return "webm";
+  }
+
+  // Prefer MP4 when WebCodecs is available
+  const hasWebCodecs =
+    typeof VideoEncoder !== "undefined" &&
+    typeof VideoEncoder.isConfigSupported === "function";
+
+  return hasWebCodecs ? "mp4" : "webm";
 };
 
 export const useAnimationStore = create<
@@ -63,14 +86,19 @@ export const useAnimationStore = create<
         fps: 30,
         resolution: "1080p",
         transitionType: "diff",
+        exportFormat: getDefaultExportFormat(),
+        quality: "balanced",
       },
       isPlaying: false,
       currentPlaybackTime: 0,
 
       addSlide: () => {
         const slides = get().slides;
-        const newSlide = createInitialSlide(slides.length + 1);
-        set({ slides: [...slides, newSlide] });
+        const newSlide = createEmptySlide(slides.length + 1);
+        set({
+          slides: [...slides, newSlide],
+          activeSlideIndex: slides.length,
+        });
       },
 
       removeSlide: (id: string) => {

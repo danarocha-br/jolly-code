@@ -1,6 +1,5 @@
 'use client'
 import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
@@ -18,12 +17,19 @@ import { CtaButton } from "@/components/ui/cta-button";
 import { Logo } from "@/components/ui/logo";
 
 type LoginProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 };
 
-export const LoginDialog = ({ children }: LoginProps) => {
+export const LoginDialog = ({
+  children,
+  open,
+  onOpenChange,
+  hideTrigger = false,
+}: LoginProps) => {
   const supabase = createClient();
-  const router = useRouter();
 
   useEffect(() => {
     const previousRoute = window.location.href;
@@ -55,8 +61,10 @@ export const LoginDialog = ({ children }: LoginProps) => {
   });
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!hideTrigger && children && (
+        <DialogTrigger asChild>{children}</DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

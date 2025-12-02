@@ -11,10 +11,15 @@ export type AnimationFrame = {
 /**
  * Orchestrates the animation playback by yielding frames for each slide and transition.
  */
+type PlayAnimationOptions = {
+  skipDelays?: boolean;
+};
+
 export async function* playAnimation(
   slides: AnimationSlide[],
   settings: AnimationSettings,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  options?: PlayAnimationOptions
 ): AsyncGenerator<AnimationFrame> {
   if (slides.length < 2) {
     throw new Error("At least 2 slides are required for animation");
@@ -55,7 +60,9 @@ export async function* playAnimation(
 
       currentFrame++;
       onProgress?.(currentFrame, totalFrames);
-      await new Promise((resolve) => setTimeout(resolve, frameDelay));
+      if (!options?.skipDelays) {
+        await new Promise((resolve) => setTimeout(resolve, frameDelay));
+      }
     }
 
     // Show transition to next slide (if not the last slide)
@@ -75,7 +82,9 @@ export async function* playAnimation(
 
         currentFrame++;
         onProgress?.(currentFrame, totalFrames);
-        await new Promise((resolve) => setTimeout(resolve, frameDelay));
+        if (!options?.skipDelays) {
+          await new Promise((resolve) => setTimeout(resolve, frameDelay));
+        }
         result = generator.next();
       }
     }

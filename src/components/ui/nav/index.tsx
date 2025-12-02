@@ -13,7 +13,6 @@ import Link from "next/link";
 import { Button } from "../button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useEditorStore, useUserStore } from "@/app/store";
-import { ExportMenu } from "@/features/export/export-menu";
 import UsersPresence from "./users-presence";
 import {
   DropdownMenu,
@@ -25,6 +24,7 @@ import {
 import { Avatar } from "../avatar";
 import { LoginDialog } from "@/features/login";
 import { CopyURLToClipboard } from "@/features/share-code";
+import { AnimationShareDialog } from "@/features/animation/share-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   NavigationMenu,
@@ -103,6 +103,8 @@ const ThemeToggleButton = memo(({ theme, onToggle }: {
 
 ThemeToggleButton.displayName = "ThemeToggleButton";
 
+type NavProps = Record<string, never>;
+
 export const Nav = () => {
   // Optimize Supabase client - only create once
   const supabase = useMemo(() => createClient(), []);
@@ -140,6 +142,8 @@ export const Nav = () => {
   });
 
   useHotkeys(TOGGLE_THEME_HOTKEY, handleToggleTheme);
+
+  const isAnimationPage = pathname?.startsWith("/animate");
 
   return (
     <header className="w-full fixed top-0 right-0 flex items-center justify-between gap-2 px-3 lg:px-4 py-3 z-50">
@@ -194,7 +198,7 @@ export const Nav = () => {
                       <Link
                         href={href}
                         className={cn(
-                          "flex items-center opacity-30 px-4 py-2 rounded-md text-sm transition hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:outline-1",
+                          "flex items-center opacity-30 px-4 py-2 rounded-xl text-sm transition hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:outline-1",
                           isActive && "bg-subdued dark:bg-accent/40 text-accent-foreground opacity-100"
                         )}
                       >
@@ -212,9 +216,7 @@ export const Nav = () => {
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
         {isPresentational && <UsersPresence />}
 
-        <ExportMenu />
-
-        <CopyURLToClipboard />
+        {isAnimationPage ? <AnimationShareDialog /> : <CopyURLToClipboard />}
 
         <Tooltip content="GitHub repository">
           <Button

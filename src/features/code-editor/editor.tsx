@@ -465,21 +465,12 @@ export const Editor = forwardRef<any, EditorProps>(
                 </div>
 
                 <div className={S.title({ editorPreferences })}>
-                  <TabsList>
-                    <TabsTrigger
-                      value="initial"
-                      className={cn(
-                        "relative"
-                      )}
-                    >
-                      <TitleInput
-                        onUpdateTitle={handleUpdateSnippet}
-                        language={language}
-                        disabled={presentational}
-                        userId={user_id ?? ""}
-                      />
-                    </TabsTrigger>
-                  </TabsList>
+                  <TitleInput
+                    onUpdateTitle={handleUpdateSnippet}
+                    language={language}
+                    disabled={presentational}
+                    userId={user_id ?? ""}
+                  />
                 </div>
               </header>
 

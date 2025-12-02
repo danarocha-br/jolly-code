@@ -122,7 +122,7 @@ export const AnimationPreview = () => {
         const frame = currentFrame.frame;
         if (!frame) return null;
 
-        if ("fromOpacity" in frame) {
+        if ("fromOpacity" in frame && "toOpacity" in frame) {
           const fadeFrame = frame as FadeTransitionFrame;
           morphProps = {
             fromCode: fadeFrame.fromSlide.code,

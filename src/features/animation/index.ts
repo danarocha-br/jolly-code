@@ -1,8 +1,7 @@
 export { Timeline } from "./timeline";
 
 export { CodeRenderer } from "./code-renderer";
-export { exportAnimation, downloadBlob } from "./export";
-export type { ExportProgress } from "./export";
+// Export functionality removed
 export { playAnimation, calculateTotalDuration } from "./animator";
 export type { AnimationFrame } from "./animator";
 export { UnifiedAnimationCanvas } from "./unified-canvas";

@@ -1,5 +1,8 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { useAnimationStore } from "@/app/store";
+import { cn } from "@/lib/utils";
 
 interface AnimationControlsProps {
   mode: "edit" | "preview";
@@ -11,6 +14,9 @@ interface AnimationControlsProps {
   onReset: () => void;
   onResetSlides: () => void;
   canPlay: boolean;
+  modeLocked?: boolean;
+  hideModeToggle?: boolean;
+  hideSlideControls?: boolean;
 }
 
 export const AnimationControls = ({
@@ -23,42 +29,77 @@ export const AnimationControls = ({
   onReset,
   onResetSlides,
   canPlay,
+  modeLocked = false,
+  hideModeToggle = false,
+  hideSlideControls = false,
 }: AnimationControlsProps) => {
+  const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
+  const slides = useAnimationStore((state) => state.slides);
+  const updateSlide = useAnimationStore((state) => state.updateSlide);
+  const activeSlide = slides[activeSlideIndex];
+
+  const handleDurationChange = (value: string) => {
+    if (!activeSlide) return;
+    const parsed = parseFloat(value);
+    if (!Number.isFinite(parsed)) return;
+    const clamped = Math.max(0.1, Math.min(15, parsed));
+    updateSlide(activeSlide.id, { duration: clamped });
+  };
+
   return (
-    <div className="relative px-6 py-4 border-t overflow-hidden">
+    <div className="relative px-6 pb-2">
       {/* Progress border effect */}
       <div
-        className="absolute top-0 left-0 h-[2px] bg-primary transition-all duration-300 ease-out"
+        className="absolute -top-3 left-0 h-[2px] bg-success dark:bg-primary transition-all duration-300 ease-out"
         style={{ width: `${progress}%` }}
       />
 
-      <div className="flex items-center justify-between">
-        <div className="flex-1 flex items-center justify-center gap-4">
-          <Button
-            size="sm"
-            variant={mode === "edit" ? "secondary" : "ghost"}
-            onClick={onToggleMode}
-            className="h-8"
-          >
-            {mode === "edit" ? (
-              <>
-                <i className="ri-eye-line mr-2" />
-                Preview
-              </>
-            ) : (
-              <>
-                <i className="ri-edit-line mr-2" />
-                Edit
-              </>
-            )}
-          </Button>
+      <div className={cn("flex items-center justify-between md:ml-18", mode === "preview" && "!ml-0")}>
+        <div className="relative flex-1 flex items-center justify-center gap-4">
 
-          <div className="w-px h-6 bg-border" />
+          {!hideModeToggle && (
+            <>
+              <div className="flex gap-1 items-center p-1 bg-card border dark:border-none rounded-full z-50">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onToggleMode}
+                  disabled={modeLocked}
+                  className={cn(
+                    "h-6 text-xs rounded-full border",
+                    mode === "edit" ? "bg-muted" : "border-transparent"
+                  )}
+                >
+                  <>
+                    <i className="ri-pencil-line mr-2" />
+                    Edit
+                  </>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "h-6 text-xs rounded-full border",
+                    mode === "preview" ? "bg-muted" : "border-transparent"
+                  )}
+                  onClick={onToggleMode}
+                  disabled={modeLocked}
+                >
+                  <>
+                    <i className="ri-eye-line mr-2" />
+                    Preview
+                  </>
+                </Button>
+              </div>
+
+              <Separator orientation="vertical" className="h-8 bg-border dark:bg-border/40" />
+            </>
+          )}
 
           <Button
             size="icon"
-            variant="ghost"
-            className="rounded-full h-8 w-8"
+            variant="secondary"
+            className={"rounded-full size-10"}
             onClick={onPlayPause}
             disabled={mode === "edit" || !canPlay}
           >
@@ -72,29 +113,48 @@ export const AnimationControls = ({
           <Button
             size="icon"
             variant="ghost"
-            className="rounded-full h-8 w-8"
+            className="rounded-full size-10"
             onClick={onReset}
             disabled={mode === "edit" || progress === 0}
           >
             <i className="ri-restart-line text-lg" />
           </Button>
 
-          <div className="w-px h-6 bg-border" />
+          {!hideSlideControls && <Separator orientation="vertical" className="h-8 bg-border dark:bg-border/40" />}
 
-          <span className="text-xs text-muted-foreground">
-            {totalDuration.toFixed(1)}s / 15s max
-          </span>
+          {!hideSlideControls && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground hidden md:block">
+                {totalDuration.toFixed(1)}s / 15s max
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Frame duration (s)</span>
+                <Input
+                  type="number"
+                  min={0.1}
+                  max={15}
+                  step={0.1}
+                  value={activeSlide?.duration ?? ""}
+                  onChange={(e) => handleDurationChange(e.target.value)}
+                  className="h-8 w-20 text-xs"
+                  disabled={modeLocked}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        <Button
-          size="icon"
-          variant="ghost"
-          className="rounded-full h-8 w-8"
-          onClick={onResetSlides}
-          title="Reset all slides"
-        >
-          <i className="ri-restart-line text-lg" />
-        </Button>
+        {!hideSlideControls && (
+          <Button
+            variant="ghost"
+            onClick={onResetSlides}
+            title="Reset all slides"
+            disabled={modeLocked}
+          >
+            <i className="ri-close-circle-line text-lg mr-2" />
+            Reset slides
+          </Button>
+        )}
       </div>
     </div>
   );

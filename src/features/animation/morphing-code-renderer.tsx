@@ -41,7 +41,10 @@ export const MorphingCodeRenderer = ({
   const currentFontSize = fontSize || 14;
   const lineHeight = currentFontSize * 1.7;
   const estimatedCharWidth = currentFontSize * 0.6;
-  const delayedProgress = Math.min(Math.max((progress - 0.05) / 0.9, 0), 1); // Hold initial frame briefly
+  const clamped = Math.min(Math.max(progress, 0), 1);
+  const easeInOutCubic = (t: number) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const morphProgress = easeInOutCubic(clamped);
 
   // Measure character width
   const [charWidth, setCharWidth] = React.useState(estimatedCharWidth);
@@ -50,7 +53,8 @@ export const MorphingCodeRenderer = ({
   React.useLayoutEffect(() => {
     const rect = measureRef.current?.getBoundingClientRect();
     const width = rect?.width && rect.width > 0 ? rect.width : estimatedCharWidth;
-    setCharWidth(width);
+    // Fallback to estimated if still 0 (shouldn't happen with estimatedCharWidth > 0)
+    setCharWidth(width || 8);
   }, [currentFontFamily, currentFontSize, estimatedCharWidth]);
 
   // Generate color maps
@@ -63,15 +67,19 @@ export const MorphingCodeRenderer = ({
     return calculateTokenDiff(fromCode, toCode, lineHeight, charWidth);
   }, [fromCode, toCode, lineHeight, charWidth]);
 
-  // Determine container height
   const fromLines = fromCode.split("\n").length;
   const toLines = toCode.split("\n").length;
-  const containerHeight = (fromLines + (toLines - fromLines) * delayedProgress) * lineHeight;
+  // Hold height steady based on the larger slide to avoid layout jumps during morph
+  const minContentHeight = Math.max(fromLines, toLines) * lineHeight;
+  const heightStyle = React.useMemo(() => ({ minHeight: minContentHeight }), [minContentHeight]);
+
+  // Keep tokens fully visible; only added/removed fade based on eased morph
 
   const content = (
     <div
-      className="relative w-full h-full"
+      className="relative w-full"
       style={{
+        ...heightStyle,
         fontFamily: fonts[currentFontFamily].name,
         fontSize: currentFontSize,
         lineHeight: `${lineHeight}px`,
@@ -95,37 +103,36 @@ export const MorphingCodeRenderer = ({
         let colorClass = "";
 
         if (entity.type === "kept" && entity.from && entity.to) {
-          // Move from old to new position
-          left = entity.from.x + (entity.to.x - entity.from.x) * delayedProgress;
-          top = entity.from.y + (entity.to.y - entity.from.y) * delayedProgress;
-          // Delay the color swap to avoid flicker at transition start
-          const colorBlend = Math.min(Math.max((progress - 0.25) / 0.5, 0), 1);
+          // Move from old to new position after a short hold
+          left = entity.from.x + (entity.to.x - entity.from.x) * morphProgress;
+          top = entity.from.y + (entity.to.y - entity.from.y) * morphProgress;
+
           const fromColIndex = Math.round(entity.from.x / charWidth);
           const fromLineIndex = Math.round(entity.from.y / lineHeight);
           const toColIndex = Math.round(entity.to.x / charWidth);
           const toLineIndex = Math.round(entity.to.y / lineHeight);
           const fromColor = fromColorMap[`${fromLineIndex}-${fromColIndex}`] || "";
           const toColor = toColorMap[`${toLineIndex}-${toColIndex}`] || "";
-          colorClass = colorBlend < 0.5 ? fromColor : toColor;
+          colorClass = morphProgress < 0.5 ? fromColor : toColor;
         } else if (entity.type === "removed" && entity.from) {
-          // Fade out at old position
+          // Fade out removed tokens with eased progress
           left = entity.from.x;
           top = entity.from.y;
-          opacity = 1 - delayedProgress;
-          scale = 1 - delayedProgress * 0.2;
-          filter = `blur(${delayedProgress * 2}px)`;
-          // Use source color
+          const effective = morphProgress;
+          opacity = 1 - effective;
+          scale = 1 - effective * 0.15;
+          filter = `blur(${effective * 1.5}px)`;
           const colIndex = Math.round(entity.from.x / charWidth);
           const lineIndex = Math.round(entity.from.y / lineHeight);
           colorClass = fromColorMap[`${lineIndex}-${colIndex}`] || "";
         } else if (entity.type === "added" && entity.to) {
-          // Fade in at new position
+          // Fade in added tokens with eased progress
           left = entity.to.x;
           top = entity.to.y;
-          opacity = delayedProgress;
-          scale = 0.8 + delayedProgress * 0.2;
-          filter = `blur(${(1 - delayedProgress) * 2}px)`;
-          // Use destination color
+          const effective = morphProgress;
+          opacity = effective;
+          scale = 0.9 + effective * 0.1;
+          filter = `blur(${(1 - effective) * 1.5}px)`;
           const colIndex = Math.round(entity.to.x / charWidth);
           const lineIndex = Math.round(entity.to.y / lineHeight);
           colorClass = toColorMap[`${lineIndex}-${colIndex}`] || "";
@@ -139,8 +146,8 @@ export const MorphingCodeRenderer = ({
               opacity,
               transform: `translate3d(${left}px, ${top}px, 0) scale(${scale})`,
               filter,
-              transition: 'transform 33ms linear, opacity 33ms linear, filter 33ms linear', // Smooth transition between frames
-              willChange: 'transform, opacity, filter', // Optimize for animation
+              transition: "transform 33ms linear, opacity 33ms linear, filter 33ms linear",
+              willChange: "transform, opacity, filter",
             }}
           >
             {entity.content}
@@ -152,7 +159,7 @@ export const MorphingCodeRenderer = ({
 
   if (chromeless) {
     return (
-      <div style={{ height: containerHeight + 40 }} className="relative">
+      <div className="relative" style={heightStyle}>
         {content}
       </div>
     );
@@ -236,9 +243,7 @@ export const MorphingCodeRenderer = ({
               ? "brightness-110"
               : "text-stone-800 contrast-200 brightness-[0.65]"
           )}
-          style={{
-            height: containerHeight + 40, // Add padding
-          }}
+          style={heightStyle}
         >
           {content}
         </section>

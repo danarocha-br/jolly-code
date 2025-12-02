@@ -51,6 +51,11 @@ export const SlideThumbnail = React.memo(
         {...dragAttributes}
         {...dragListeners}
         onClick={onSelect}
+        onPointerUpCapture={() => {
+          if (!isDragging) {
+            onSelect();
+          }
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -60,9 +65,7 @@ export const SlideThumbnail = React.memo(
       >
         <div className={S.body()}>
           <div className={S.header()}>
-            <span className={S.slideLabel()}>
-              Slide {index + 1}
-            </span>
+
             {canRemove && (
               <Button
                 size="icon"
@@ -72,6 +75,7 @@ export const SlideThumbnail = React.memo(
                   e.stopPropagation();
                   onRemove();
                 }}
+                onPointerDownCapture={(e) => e.stopPropagation()}
                 aria-label={`Remove slide ${index + 1}`}
               >
                 <i className="ri-close-line text-sm" />
@@ -80,7 +84,7 @@ export const SlideThumbnail = React.memo(
           </div>
 
           <div
-            className={cn(S.preview(), themes[backgroundTheme].background)}
+            className={cn(S.preview(), themes[backgroundTheme].background,)}
           >
             <div className={S.previewOverlay()} aria-hidden="true" />
             <pre className={S.previewCode()}>
@@ -89,13 +93,14 @@ export const SlideThumbnail = React.memo(
           </div>
 
           <div className={S.meta()}>
+            <span className={S.title()} title={title || "Untitled"}>
+              {title || "Untitled"}
+            </span>
             <span className={S.duration()} aria-label={`Duration ${duration} seconds`}>
               {duration}s
             </span>
           </div>
         </div>
-
-
       </div>
     );
   }

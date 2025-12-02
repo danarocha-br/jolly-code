@@ -3,10 +3,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { UseMutateFunction } from "@tanstack/react-query";
 
 import { useEditorStore } from "@/app/store";
-import { languagesLogos } from "@/lib/language-logos";
 import { debounce } from "@/lib/utils/debounce";
 import { UpdateSnippetProps } from "@/features/snippets/queries";
-import { input } from "./styles";
+import { TitleBarInput } from "@/components/ui/title-bar-input";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type TitleInputProps = {
   userId: string;
@@ -65,8 +65,7 @@ export const TitleInput = ({
     [onUpdateTitle, userId]
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTitle = e.target.value;
+  const handleChange = (newTitle: string) => {
     setLocalTitle(newTitle);
 
     if (currentState) {
@@ -78,33 +77,25 @@ export const TitleInput = ({
   };
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
-    if (e.target instanceof HTMLTextAreaElement) {
+    if (e.target instanceof HTMLInputElement) {
       e.target.select();
     }
   }, []);
 
   return (
-    <div
-      key={currentState?.id}
-      className="flex gap-2 items-center justify-center w-full group/tab"
-    >
-      <div className="flex items-center justify-center gap-2 pl-1 rounded-md !w-auto">
-        {editorPreferences === "default" && (
-          <span className="scale-90 flex items-end justify-center -ml-1">
-            {languagesLogos[language as keyof typeof languagesLogos]}
-          </span>
-        )}
-
-        <input
-          className={input()}
-          type="text"
+    <TabsList>
+      <TabsTrigger value="initial" className="relative">
+        <TitleBarInput
+          idKey={currentState?.id}
           value={localTitle}
           onChange={handleChange}
-          spellCheck={false}
+          language={language}
+          editorPreferences={editorPreferences}
+          placeholder="Untitled"
+          disabled={props.disabled}
           onClick={handleClick}
-          {...props}
         />
-      </div>
-    </div>
+      </TabsTrigger>
+    </TabsList>
   );
 };

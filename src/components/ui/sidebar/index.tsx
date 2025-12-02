@@ -21,7 +21,8 @@ const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   light: "dark",
 };
 
-const initialWidth = 50;
+export const SIDEBAR_COLLAPSED_WIDTH = 50;
+export const SIDEBAR_EXPANDED_WIDTH = 300;
 
 /**
  * Generates a custom hook that handles mouse events for the sidebar.
@@ -32,7 +33,7 @@ const initialWidth = 50;
  *   - handleMouseLeave: A callback function to handle mouse leave events.
  */
 const useSidebarMouseEvents = () => {
-  const [width, setWidth] = useState(initialWidth);
+  const [width, setWidth] = useState(SIDEBAR_COLLAPSED_WIDTH);
   const collapseTimeout = useRef<NodeJS.Timeout | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const hasOpenPortals = useRef(false);
@@ -78,7 +79,7 @@ const useSidebarMouseEvents = () => {
       clearTimeout(collapseTimeout.current);
       collapseTimeout.current = null;
     }
-    const newWidth = 300;
+    const newWidth = SIDEBAR_EXPANDED_WIDTH;
     setWidth(newWidth);
   }, []);
 
@@ -92,7 +93,7 @@ const useSidebarMouseEvents = () => {
     collapseTimeout.current = setTimeout(() => {
       // Double-check portals before collapsing
       if (!hasOpenPortals.current) {
-        setWidth(initialWidth);
+        setWidth(SIDEBAR_COLLAPSED_WIDTH);
         collapseTimeout.current = null;
       }
     }, 300);
@@ -104,8 +105,12 @@ const useSidebarMouseEvents = () => {
       clearTimeout(collapseTimeout.current);
       collapseTimeout.current = null;
     }
-    setWidth(initialWidth);
+    setWidth(SIDEBAR_COLLAPSED_WIDTH);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+  }, [width]);
 
   return { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef, setHasOpenPortals };
 };
@@ -118,7 +123,7 @@ export const Sidebar = () => {
   const user = useUserStore((state) => state.user);
   const isPresentational = useEditorStore((state) => state.presentational);
   const memoizedTheme = useMemo(() => theme, [theme]);
-  const showSidebarContent = useMemo(() => initialWidth !== width, [width]);
+  const showSidebarContent = useMemo(() => SIDEBAR_COLLAPSED_WIDTH !== width, [width]);
 
   return (
     <aside className="hidden lg:flex">
@@ -238,7 +243,7 @@ export const Sidebar = () => {
           </HoverCard>
         </div>
 
-        <div className={S.logo({ show: initialWidth === width })}>
+        <div className={S.logo({ show: SIDEBAR_COLLAPSED_WIDTH === width })}>
           <Logo />
         </div>
 

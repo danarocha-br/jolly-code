@@ -17,11 +17,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useAnimationStore, useEditorStore } from "@/app/store";
+import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import { AnimationSlide } from "@/types/animation";
 import { ThemeProps } from "@/lib/themes-options";
 import { SlideThumbnail } from "@/components/ui/slide-thumbnail";
 import { AddSlideCard } from "@/components/ui/add-slide-card";
+import { LoginDialog } from "@/features/login";
 
 type SortableSlideProps = {
   slide: AnimationSlide;
@@ -52,28 +53,25 @@ function SortableSlide({
   } = useSortable({ id: slide.id });
 
   return (
-    <div
-      ref={setNodeRef}
+    <SlideThumbnail
+      setRef={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-    >
-      <SlideThumbnail
-        index={index}
-        code={slide.code}
-        title={slide.title}
-        duration={slide.duration}
-        isActive={isActive}
-        canRemove={canRemove}
-        onSelect={onSelect}
-        onRemove={onRemove}
-        backgroundTheme={backgroundTheme}
-        dragAttributes={attributes}
-        dragListeners={listeners}
-        isDragging={isDragging}
-      />
-    </div>
+      index={index}
+      code={slide.code}
+      title={slide.title}
+      duration={slide.duration}
+      isActive={isActive}
+      canRemove={canRemove}
+      onSelect={onSelect}
+      onRemove={onRemove}
+      backgroundTheme={backgroundTheme}
+      dragAttributes={attributes}
+      dragListeners={listeners}
+      isDragging={isDragging}
+    />
   );
 }
 
@@ -85,9 +83,20 @@ export const Timeline = () => {
   const setActiveSlide = useAnimationStore((state) => state.setActiveSlide);
   const reorderSlides = useAnimationStore((state) => state.reorderSlides);
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
+  const user = useUserStore((state) => state.user);
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (user && isLoginDialogOpen) {
+      setIsLoginDialogOpen(false);
+    }
+  }, [user, isLoginDialogOpen]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6, // allow click-to-select without starting drag immediately
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -104,21 +113,40 @@ export const Timeline = () => {
   };
 
   const canRemove = slides.length > 2;
-  const canAddMore = slides.length < 10;
+  const hasReachedGuestLimit = !user && slides.length >= 3;
+  const hasReachedMaxSlides = slides.length >= 10;
+  const maxSlidesLabel = user ? 10 : 3;
+
+  const handleAddSlide = () => {
+    if (hasReachedGuestLimit) {
+      setIsLoginDialogOpen(true);
+      return;
+    }
+
+    if (hasReachedMaxSlides) return;
+
+    addSlide();
+  };
 
   return (
-    <div className="w-full py-4 bg-card/30 border-t">
-      <div className="flex items-center justify-between mb-3 px-6">
+    <div className="w-full py-3 bg-card/70 dark:bg-card/30 border-t border-border dark:border-border/40">
+      <LoginDialog
+        open={isLoginDialogOpen}
+        onOpenChange={setIsLoginDialogOpen}
+        hideTrigger
+      />
+
+      <div className="flex items-center justify-between mb-3 px-3 sm:px-4">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold">Slides</h3>
           <span className="text-xs text-muted-foreground">
-            {slides.length}/10
+            {slides.length}/{maxSlidesLabel}
           </span>
         </div>
       </div>
 
       <ScrollArea className="w-full whitespace-nowrap">
-        <div className="px-6">
+        <div className="px-3 sm:px-4">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -141,7 +169,10 @@ export const Timeline = () => {
                     backgroundTheme={backgroundTheme}
                   />
                 ))}
-                <AddSlideCard onAdd={addSlide} disabled={!canAddMore} />
+                <AddSlideCard
+                  onAdd={handleAddSlide}
+                  disabled={hasReachedMaxSlides}
+                />
               </div>
             </SortableContext>
           </DndContext>
