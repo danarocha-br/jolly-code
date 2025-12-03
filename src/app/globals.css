@@ -175,4 +175,9 @@
     body {
       @apply text-foreground bg-background;
     }
+
+    /* Ensure code elements have normal letter-spacing */
+    code, pre, [style*="font-family"] {
+      letter-spacing: normal;
+    }
   }

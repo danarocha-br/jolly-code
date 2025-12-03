@@ -7,3 +7,4 @@ export type { AnimationFrame } from "./animator";
 export { UnifiedAnimationCanvas } from "./unified-canvas";
 export { useAnimationController } from "./use-animation-controller";
 export { AnimationControls } from "./animation-controls";
+export { supportsWebCodecsEncoding } from "./utils/capabilities";

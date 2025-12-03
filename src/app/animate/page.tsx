@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Room } from "../room";
 import { Nav } from "@/components/ui/nav";
-import { Sidebar, SIDEBAR_COLLAPSED_WIDTH } from "@/components/ui/sidebar";
+import { Sidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   Timeline,
@@ -167,11 +167,7 @@ export default function AnimatePage() {
 
               {/* Bottom Controls */}
               <div
-                className="fixed inset-x-0 bottom-0 z-40 bg-background/95 backdrop-blur border-t border-border/60 transition-[padding] duration-300 ease-out"
-                style={{
-                  paddingLeft: "var(--sidebar-width, 50px)",
-                  paddingRight: "12px",
-                }}
+                className="fixed inset-x-0 bottom-0 z-40 bg-background/95 backdrop-blur border-t border-border/60 transition-[padding] duration-300 ease-out lg:pl-[var(--sidebar-width,_50px)]"
               >
                 <div className="w-full px-0 py-3">
                   {/* Controls */}

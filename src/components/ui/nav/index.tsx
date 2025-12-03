@@ -24,7 +24,7 @@ import {
 import { Avatar } from "../avatar";
 import { LoginDialog } from "@/features/login";
 import { CopyURLToClipboard } from "@/features/share-code";
-import { AnimationShareDialog } from "@/features/animation/share-dialog";
+import { AnimationShareDialog } from "@/features/animation/enhanced-share-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   NavigationMenu,

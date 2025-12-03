@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo } from "react";
 import { useTheme } from "next-themes";
+
 import { cn } from "@/lib/utils";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
@@ -16,6 +17,8 @@ type MorphingCodeRendererProps = {
   language: string;
   progress: number; // 0 to 1
   className?: string;
+  chromeless?: boolean;
+  scale?: number;
 };
 
 export const MorphingCodeRenderer = ({
@@ -27,7 +30,8 @@ export const MorphingCodeRenderer = ({
   progress,
   className,
   chromeless = false,
-}: MorphingCodeRendererProps & { chromeless?: boolean }) => {
+  scale = 1,
+}: MorphingCodeRendererProps) => {
   const { theme } = useTheme();
   const isDarkTheme = theme === "dark";
 
@@ -52,10 +56,12 @@ export const MorphingCodeRenderer = ({
 
   React.useLayoutEffect(() => {
     const rect = measureRef.current?.getBoundingClientRect();
-    const width = rect?.width && rect.width > 0 ? rect.width : estimatedCharWidth;
-    // Fallback to estimated if still 0 (shouldn't happen with estimatedCharWidth > 0)
-    setCharWidth(width || 8);
-  }, [currentFontFamily, currentFontSize, estimatedCharWidth]);
+    if (rect?.width && rect.width > 0) {
+      setCharWidth(rect.width / scale);
+    } else {
+      setCharWidth(estimatedCharWidth);
+    }
+  }, [currentFontFamily, currentFontSize, estimatedCharWidth, scale]);
 
   // Generate color maps
   const fromColorMap = useMemo(() => generateColorMap(fromCode, language), [fromCode, language]);
@@ -69,9 +75,16 @@ export const MorphingCodeRenderer = ({
 
   const fromLines = fromCode.split("\n").length;
   const toLines = toCode.split("\n").length;
-  // Hold height steady based on the larger slide to avoid layout jumps during morph
-  const minContentHeight = Math.max(fromLines, toLines) * lineHeight;
-  const heightStyle = React.useMemo(() => ({ minHeight: minContentHeight }), [minContentHeight]);
+
+  // Smoothly interpolate height between from and to slides
+  const fromHeight = fromLines * lineHeight;
+  const toHeight = toLines * lineHeight;
+  const animatedHeight = fromHeight + (toHeight - fromHeight) * morphProgress;
+
+  const heightStyle = React.useMemo(
+    () => ({ minHeight: animatedHeight }),
+    [animatedHeight]
+  );
 
   // Keep tokens fully visible; only added/removed fade based on eased morph
 
@@ -83,6 +96,9 @@ export const MorphingCodeRenderer = ({
         fontFamily: fonts[currentFontFamily].name,
         fontSize: currentFontSize,
         lineHeight: `${lineHeight}px`,
+        letterSpacing: 0,
+        fontVariantLigatures: 'none',
+        fontFeatureSettings: '"liga" 0, "calt" 0, "dlig" 0',
       }}
     >
       {/* Hidden measurement span */}
@@ -90,6 +106,7 @@ export const MorphingCodeRenderer = ({
         ref={measureRef}
         className="opacity-0 absolute pointer-events-none"
         aria-hidden="true"
+        style={{ letterSpacing: 0 }}
       >
         M
       </span>
@@ -146,8 +163,8 @@ export const MorphingCodeRenderer = ({
               opacity,
               transform: `translate3d(${left}px, ${top}px, 0) scale(${scale})`,
               filter,
-              transition: "transform 33ms linear, opacity 33ms linear, filter 33ms linear",
               willChange: "transform, opacity, filter",
+              letterSpacing: 0,
             }}
           >
             {entity.content}

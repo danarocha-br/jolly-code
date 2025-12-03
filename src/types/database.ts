@@ -67,27 +67,33 @@ export type Database = {
             links: {
                 Row: {
                     created_at: string
+                    description: string | null
                     id: string
                     short_url: string
                     snippet_id: string | null
+                    title: string | null
                     url: string | null
                     user_id: string | null
                     visits: number | null
                 }
                 Insert: {
                     created_at?: string
+                    description?: string | null
                     id?: string
                     short_url: string
                     snippet_id?: string | null
+                    title?: string | null
                     url?: string | null
                     user_id?: string | null
                     visits?: number | null
                 }
                 Update: {
                     created_at?: string
+                    description?: string | null
                     id?: string
                     short_url?: string
                     snippet_id?: string | null
+                    title?: string | null
                     url?: string | null
                     user_id?: string | null
                     visits?: number | null

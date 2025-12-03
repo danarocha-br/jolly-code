@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { AnimationSlide } from "@/types/animation";
+import { Logo } from "@/components/ui/logo";
 
 export interface UnifiedAnimationCanvasProps {
   mode: "edit" | "preview";
@@ -95,26 +96,26 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
               <TabsTrigger value="slide" className="relative">
                 <TitleBarInput
                   idKey={activeSlide.id}
-                    value={activeSlide.title ?? "Untitled"}
-                    onChange={(value) => updateSlide(activeSlide.id, { title: value })}
-                    language={activeSlide.language}
-                    editorPreferences={editorPreferences}
-                    placeholder="Untitled"
+                  value={activeSlide.title ?? "Untitled"}
+                  onChange={(value) => updateSlide(activeSlide.id, { title: value })}
+                  language={activeSlide.language}
+                  editorPreferences={editorPreferences}
+                  placeholder="Untitled"
                 />
               </TabsTrigger>
             </TabsList>
           </Tabs>
           <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
-              <PopoverTrigger asChild>
+            <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-xs absolute right-0"
-                >
-                  <span className="flex items-center gap-2">
+              >
+                <span className="flex items-center gap-2">
                   {autoDetectEnabled ? (
                     showMagic ? (
-                    <i className="ri-magic-fill text-amber-500 text-base -ml-1" />
+                      <i className="ri-magic-fill text-amber-500 text-base -ml-1" />
                     ) : (
                       <span className="scale-90 -ml-1">
                         {languagesLogos[activeSlide.language as LanguageProps]}
@@ -130,35 +131,35 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
                 <i className="ri-arrow-down-s-line text-sm ml-2" />
               </Button>
             </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0" align="end">
-                <Command>
-                  <CommandInput placeholder="Search language..." />
-                  <CommandEmpty className="px-4">No language found.</CommandEmpty>
-                  <CommandGroup className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-accent scrollbar-corner-accent/40 scrollbar-track-accent/40">
+            <PopoverContent className="w-[220px] p-0" align="end">
+              <Command>
+                <CommandInput placeholder="Search language..." />
+                <CommandEmpty className="px-4">No language found.</CommandEmpty>
+                <CommandGroup className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-accent scrollbar-corner-accent/40 scrollbar-track-accent/40">
+                  <CommandItem
+                    onSelect={() => {
+                      const detected = detectLanguage(activeSlide.code);
+                      updateSlide(activeSlide.id, {
+                        autoDetectLanguage: true,
+                        language: detected,
+                      });
+                      setLanguageOpen(false);
+                    }}
+                  >
+                    <span className="mr-3">
+                      <i className="ri-magic-fill text-amber-500 text-base" />
+                    </span>
+                    <span className="mr-auto">Auto Detect</span>
+                    <i
+                      className={cn(
+                        "ri-checkbox-circle-fill mr-2 h-4 w-4",
+                        autoDetectEnabled ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                  {languageOptions.map((language) => (
                     <CommandItem
-                      onSelect={() => {
-                        const detected = detectLanguage(activeSlide.code);
-                        updateSlide(activeSlide.id, {
-                          autoDetectLanguage: true,
-                          language: detected,
-                        });
-                        setLanguageOpen(false);
-                      }}
-                    >
-                      <span className="mr-3">
-                        <i className="ri-magic-fill text-amber-500 text-base" />
-                      </span>
-                      <span className="mr-auto">Auto Detect</span>
-                      <i
-                        className={cn(
-                          "ri-checkbox-circle-fill mr-2 h-4 w-4",
-                          autoDetectEnabled ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                    </CommandItem>
-                    {languageOptions.map((language) => (
-                      <CommandItem
-                        key={language.value}
+                      key={language.value}
                       onSelect={() => {
                         updateSlide(activeSlide.id, {
                           language: language.value,
@@ -166,9 +167,9 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
                         });
                         setLanguageOpen(false);
                       }}
-                      >
-                        <span className="mr-3">
-                          {languagesLogos[language.value as LanguageProps]}
+                    >
+                      <span className="mr-3">
+                        {languagesLogos[language.value as LanguageProps]}
                       </span>
                       <span className="mr-auto">{language.label}</span>
                       <i
