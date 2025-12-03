@@ -1,10 +1,14 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 import { Room } from "../room";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Timeline,
   UnifiedAnimationCanvas,
@@ -12,10 +16,26 @@ import {
   useAnimationController,
   calculateTotalDuration,
 } from "@/features/animation";
-import { useAnimationStore, useEditorStore } from "@/app/store";
+import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
 import { decodeAnimationSharePayload } from "@/features/animation/share-utils";
+import { AnimationBookmarkButton } from "@/features/animations/ui/animation-bookmark-button";
+import { createAnimation, removeAnimation, updateAnimation } from "@/features/animations/queries";
+import { debounce } from "@/lib/utils/debounce";
+import { LoginDialog } from "@/features/login";
+import { analytics } from "@/lib/services/tracking";
+import { UserTools } from "@/features/user-tools";
+import type { AnimationSlide, AnimationSettings } from "@/types/animation";
+
+type AnimationTab = {
+  id: string;
+  animationId?: string;
+  title: string;
+  saved: boolean;
+  slides: AnimationSlide[];
+  settings: AnimationSettings;
+};
 
 export default function AnimatePage() {
   const searchParams = useSearchParams();
@@ -28,9 +48,29 @@ export default function AnimatePage() {
     handleReset,
     slides,
   } = useAnimationController();
+  const animationSettings = useAnimationStore((state) => state.animationSettings);
+  const animationId = useAnimationStore((state) => state.animationId);
+  const isAnimationSaved = useAnimationStore((state) => state.isAnimationSaved);
+  const createNewAnimation = useAnimationStore((state) => state.createNewAnimation);
+  const setAnimationId = useAnimationStore((state) => state.setAnimationId);
+  const setIsAnimationSaved = useAnimationStore((state) => state.setIsAnimationSaved);
+  const tabs = useAnimationStore((state) => state.tabs);
+  const activeTabId = useAnimationStore((state) => state.activeAnimationTabId);
+  const setActiveTabId = useAnimationStore((state) => state.setActiveAnimationTabId);
+  const updateActiveAnimation = useAnimationStore((state) => state.updateActiveAnimation);
+  const closeTab = useAnimationStore((state) => state.closeTab);
+  const presentational = useEditorStore((state) => state.presentational);
+  const user = useUserStore((state) => state.user);
+  const user_id = user?.id;
+  const queryClient = useQueryClient();
 
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
-  const [isSharedView, setIsSharedView] = useState(false);
+  const sharedFlag = searchParams.get("animation_shared");
+  const sharedData = searchParams.get("animation");
+
+  const [mode, setMode] = useState<"edit" | "preview">(
+    () => (sharedFlag === "true" ? "preview" : "edit")
+  );
+  const [isSharedView, setIsSharedView] = useState(sharedFlag === "true");
   const previewRef = useRef<HTMLDivElement>(null);
   const hasRestoredSharedState = useRef(false);
   const hasStartedSharedPlayback = useRef(false);
@@ -39,7 +79,14 @@ export default function AnimatePage() {
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
   const fontFamily = useEditorStore((state) => state.fontFamily);
 
+  const animationTitle = slides?.[0]?.title || "Untitled animation";
+  const currentUrlOrigin =
+    typeof window !== "undefined" ? window.location.href : "";
   const totalDuration = calculateTotalDuration(slides);
+
+  // Use tabs from store directly
+  const renderTabs = tabs;
+  const tabsValue = activeTabId ?? tabs[0]?.id ?? "";
 
   const toggleMode = useCallback(() => {
     if (isSharedView) return;
@@ -51,8 +98,66 @@ export default function AnimatePage() {
     }
   }, [handlePlayPause, handleReset, isPlaying, isSharedView, mode]);
 
-  const sharedFlag = searchParams.get("animation_shared");
-  const sharedData = searchParams.get("animation");
+  const { mutate: handleCreateAnimation } = useMutation({
+    mutationFn: createAnimation,
+    onSuccess: (result) => {
+      if (result?.data) {
+        updateActiveAnimation(result.data);
+        analytics.track("create_animation", {
+          animation_id: result.data.id,
+          slide_count: slides.length,
+          duration: totalDuration,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
+    },
+  });
+
+  const { mutate: handleUpdateAnimation } = useMutation({
+    mutationFn: updateAnimation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
+    },
+  });
+
+  const { mutate: handleRemoveAnimation } = useMutation({
+    mutationFn: removeAnimation,
+    onSuccess: () => {
+      if (animationId) {
+        analytics.track("delete_animation", {
+          animation_id: animationId,
+        });
+      }
+      setIsAnimationSaved(false);
+      setAnimationId(undefined);
+      queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
+    },
+  });
+
+  const debouncedUpdateAnimation = useMemo(
+    () =>
+      debounce(
+        (id: string, slidesPayload: typeof slides, settingsPayload: typeof animationSettings) => {
+          if (id && isAnimationSaved) {
+            handleUpdateAnimation({
+              id,
+              user_id,
+              title: animationTitle,
+              slides: slidesPayload,
+              settings: settingsPayload,
+            });
+          }
+        },
+        1000
+      ),
+    [animationTitle, handleUpdateAnimation, isAnimationSaved, user_id]
+  );
+
+  useEffect(() => {
+    if (isAnimationSaved && animationId && user_id) {
+      debouncedUpdateAnimation(animationId, slides, animationSettings);
+    }
+  }, [animationId, animationSettings, debouncedUpdateAnimation, isAnimationSaved, slides, user_id]);
 
   useEffect(() => {
     // Ensure edit/preview mode is treated as non-presentational unless explicitly shared
@@ -107,8 +212,6 @@ export default function AnimatePage() {
       presentational: true,
     }));
 
-    setMode("preview");
-    setIsSharedView(true);
     hasRestoredSharedState.current = true;
   }, [sharedData, sharedFlag]);
 
@@ -134,6 +237,89 @@ export default function AnimatePage() {
     handlePlayPause();
   }, [handlePlayPause, handleReset, isPlaying, isSharedView, progress, slides.length]);
 
+  const canSaveAnimation = slides.length >= 2;
+  const bookmarkDisabled = !canSaveAnimation && !isAnimationSaved;
+
+  const handleSaveAnimationClick = useCallback(() => {
+    if (!user_id) {
+      toast.error("You must be logged in to save animations.");
+      return;
+    }
+
+    if (!canSaveAnimation) {
+      toast.error("Add at least two slides to save an animation.");
+      return;
+    }
+
+    const newId = animationId || uuidv4();
+
+    handleCreateAnimation({
+      id: newId,
+      user_id,
+      currentUrl: currentUrlOrigin,
+      title: animationTitle,
+      slides,
+      settings: animationSettings,
+    });
+  }, [
+    animationId,
+    animationSettings,
+    animationTitle,
+    canSaveAnimation,
+    currentUrlOrigin,
+    handleCreateAnimation,
+    slides,
+    user_id,
+  ]);
+
+  const handleRemoveAnimationClick = useCallback(() => {
+    if (!animationId) {
+      return;
+    }
+
+    handleRemoveAnimation({
+      animation_id: animationId,
+      user_id,
+    });
+  }, [animationId, handleRemoveAnimation, user_id]);
+
+  const handleTabChange = useCallback(
+    (nextTabId: string) => {
+      setActiveTabId(nextTabId);
+    },
+    [setActiveTabId]
+  );
+
+  const handleCreateNewAnimationTab = useCallback(() => {
+    createNewAnimation();
+  }, [createNewAnimation]);
+
+  const handleRemoveTab = useCallback(
+    (tabId: string) => {
+      closeTab(tabId);
+    },
+    [closeTab]
+  );
+
+  const bookmarkActionSlot = !user ? (
+    <LoginDialog>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute top-2 right-2 rounded-full bg-white/70 text-black dark:bg-black/50 dark:text-white"
+      >
+        <i className="ri-bookmark-line" />
+      </Button>
+    </LoginDialog>
+  ) : (
+    <AnimationBookmarkButton
+      isAnimationSaved={!!isAnimationSaved}
+      onSave={handleSaveAnimationClick}
+      onRemove={handleRemoveAnimationClick}
+      disabled={bookmarkDisabled}
+    />
+  );
+
   return (
     <>
       <link
@@ -153,14 +339,54 @@ export default function AnimatePage() {
           <div className="flex-1 min-h-screen flex flex-col">
             <Nav />
 
-            <main className="flex-1 pt-16 flex flex-col pb-64">
+            <main className="flex-1 pt-16 flex flex-col justify-center pb-64">
               {/* Main Content - Centered like code editor */}
               <div className="flex-1 flex items-center justify-center overflow-auto py-6 relative">
-                <div className="w-full max-w-6xl px-6">
+                <div className="w-full max-w-6xl px-6 relative group/editor">
+                  <div className="w-full max-w-3xl mx-auto mb-4 flex items-center gap-2">
+                    <Tabs value={tabsValue} onValueChange={handleTabChange}>
+                      <TabsList className="bg-transparent px-0 py-0 text-foreground">
+                        {renderTabs.map((tab) => (
+                          <TabsTrigger
+                            key={tab.id}
+                            value={tab.id}
+                            className="relative group/tab max-w-[220px] capitalize data-[state=active]:bg-foreground/[0.08] data-[state=active]:text-foreground text-foreground/70 hover:text-foreground"
+                          >
+                            <span className="truncate flex items-center gap-2">
+                              {tab.saved ? <i className="ri-bookmark-fill" /> : null}
+                              {tab.title}
+                            </span>
+                            {tabs.length > 1 && !presentational ? (
+                              <span
+                                role="button"
+                                className="-mr-2.5 ml-1 transition-opacity opacity-0 group-hover/tab:opacity-100 inline-flex items-center justify-center w-4 h-4 rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveTab(tab.id);
+                                }}
+                              >
+                                <i className="ri-close-line" />
+                              </span>
+                            ) : null}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="bg-foreground/[0.02]"
+                      onClick={handleCreateNewAnimationTab}
+                    >
+                      <i className="ri-add-line text-lg" />
+                    </Button>
+                  </div>
                   <UnifiedAnimationCanvas
                     ref={previewRef}
                     mode={mode}
                     currentFrame={currentFrame}
+                    actionSlot={bookmarkActionSlot}
                   />
                 </div>
               </div>
@@ -194,6 +420,7 @@ export default function AnimatePage() {
               </div>
 
               {/* <UserTools /> */}
+              <UserTools />
             </main>
 
             {/* Shared CTA */}

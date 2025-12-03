@@ -29,6 +29,82 @@ export type Database = {
                 }
                 Relationships: []
             }
+            animation: {
+                Row: {
+                    created_at: string
+                    id: string
+                    settings: Json
+                    slides: Json
+                    title: string
+                    updated_at: string | null
+                    url: string | null
+                    user_id: string
+                }
+                Insert: {
+                    created_at?: string
+                    id?: string
+                    settings: Json
+                    slides: Json
+                    title: string
+                    updated_at?: string | null
+                    url?: string | null
+                    user_id: string
+                }
+                Update: {
+                    created_at?: string
+                    id?: string
+                    settings?: Json
+                    slides?: Json
+                    title?: string
+                    updated_at?: string | null
+                    url?: string | null
+                    user_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "animation_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            animation_collection: {
+                Row: {
+                    animations: Json[] | null
+                    created_at: string
+                    id: string
+                    title: string
+                    updated_at: string | null
+                    user_id: string
+                }
+                Insert: {
+                    animations?: Json[] | null
+                    created_at?: string
+                    id?: string
+                    title: string
+                    updated_at?: string | null
+                    user_id: string
+                }
+                Update: {
+                    animations?: Json[] | null
+                    created_at?: string
+                    id?: string
+                    title?: string
+                    updated_at?: string | null
+                    user_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "animation_collection_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
             collection: {
                 Row: {
                     created_at: string

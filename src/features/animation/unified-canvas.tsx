@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
 import { AnimationContainer, WindowChrome } from "./layout-components";
@@ -32,10 +32,11 @@ import { Logo } from "@/components/ui/logo";
 export interface UnifiedAnimationCanvasProps {
   mode: "edit" | "preview";
   currentFrame: AnimationFrame | null;
+  actionSlot?: React.ReactNode;
 }
 
-export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAnimationCanvasProps>(({ mode, currentFrame }, ref) => {
-  const [isMounted, setIsMounted] = useState(false);
+export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAnimationCanvasProps>(({ mode, currentFrame, actionSlot }, ref) => {
+  const [isMounted] = useState(true);
   const [languageOpen, setLanguageOpen] = useState(false);
 
   // Store state
@@ -47,10 +48,6 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
   const editorPreferences = useEditorStore((state) => state.editor);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const languageOptions = useMemo(
     () => Object.entries(languages).map(([value, label]) => ({ value, label })),
@@ -280,6 +277,11 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
   return (
     <div ref={ref} className="w-full flex flex-col items-center gap-6">
       <AnimationContainer className="p-[60px] flex flex-col items-center justify-center w-full max-w-3xl transition-all duration-300">
+        {actionSlot ? (
+          <div className="absolute inset-0 z-10 pointer-events-none">
+            <div className="pointer-events-auto">{actionSlot}</div>
+          </div>
+        ) : null}
         <WindowChrome
           headerContent={headerContent}
           className="w-full"

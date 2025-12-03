@@ -28,7 +28,7 @@ type AnimateSharedClientProps = {
 export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
   const router = useRouter();
   const [mode, setMode] = useState<"edit" | "preview">("preview");
-  const [isReady, setIsReady] = useState(false);
+  const [isReady] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const hasStartedSharedPlayback = useRef(false);
   const queryClient = getQueryClient();
@@ -86,7 +86,6 @@ export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
       presentational: true,
     }));
 
-    setIsReady(true);
     return () => {
       useEditorStore.setState((state) => ({
         ...state,

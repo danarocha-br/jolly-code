@@ -2,12 +2,23 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
+import { Animation } from "@/features/animations/dtos";
 import {
   AnimationSlide,
   AnimationSettings,
   AnimationExportFormat,
   AnimationQualityPreset,
 } from "@/types/animation";
+import { title } from "process";
+
+export type AnimationTabState = {
+  id: string;
+  animationId?: string;
+  title: string;
+  saved: boolean;
+  slides: AnimationSlide[];
+  settings: AnimationSettings;
+};
 
 export type AnimationStoreState = {
   slides: AnimationSlide[];
@@ -15,6 +26,11 @@ export type AnimationStoreState = {
   animationSettings: AnimationSettings;
   isPlaying: boolean;
   currentPlaybackTime: number;
+  animationId?: string;
+  isAnimationSaved: boolean;
+  tabs: AnimationTabState[];
+  activeAnimationTabId?: string;
+  createNewAnimation: () => void;
   addSlide: () => void;
   removeSlide: (id: string) => void;
   updateSlide: (id: string, updates: Partial<AnimationSlide>) => void;
@@ -25,6 +41,14 @@ export type AnimationStoreState = {
   reset: () => void;
   updateSettings: (settings: Partial<AnimationSettings>) => void;
   setPlaybackTime: (time: number) => void;
+  setAnimationId: (id?: string) => void;
+  setIsAnimationSaved: (saved: boolean) => void;
+  loadAnimation: (animation: Animation) => void;
+  setTabs: (tabs: AnimationTabState[]) => void;
+  setActiveAnimationTabId: (id?: string) => void;
+  openAnimationInTab: (animation: Animation) => void;
+  updateActiveAnimation: (animation: Animation) => void;
+  closeTab: (tabId: string) => void;
 };
 
 const createSlide = (index: number, code = "", title?: string): AnimationSlide => ({
@@ -74,23 +98,91 @@ const getDefaultExportFormat = (): AnimationExportFormat => {
   return hasWebCodecs ? "mp4" : "webm";
 };
 
+const initialSlides = [createInitialSlide(1), createInitialSlide(2)];
+const initialSettings: AnimationSettings = {
+  fps: 30,
+  resolution: "1080p",
+  transitionType: "diff",
+  exportFormat: getDefaultExportFormat(),
+  quality: "balanced",
+};
+const initialTab: AnimationTabState = {
+  id: uuidv4(),
+  animationId: undefined,
+  title: "Slide 1",
+  saved: false,
+  slides: initialSlides,
+  settings: initialSettings,
+};
+
 export const useAnimationStore = create<
   AnimationStoreState,
   [["zustand/persist", AnimationStoreState]]
 >(
   persist(
     (set, get) => ({
-      slides: [createInitialSlide(1), createInitialSlide(2)],
+      slides: initialSlides,
       activeSlideIndex: 0,
-      animationSettings: {
-        fps: 30,
-        resolution: "1080p",
-        transitionType: "diff",
-        exportFormat: getDefaultExportFormat(),
-        quality: "balanced",
-      },
+      animationSettings: initialSettings,
       isPlaying: false,
       currentPlaybackTime: 0,
+      animationId: undefined,
+      isAnimationSaved: false,
+      tabs: [initialTab],
+      activeAnimationTabId: initialTab.id,
+
+      createNewAnimation: () => {
+        const { tabs, activeAnimationTabId } = get();
+
+        // Sync current state to the active tab before creating a new one
+        const updatedTabs = tabs.map((tab) => {
+          if (tab.id === activeAnimationTabId) {
+            return {
+              ...tab,
+              slides: get().slides,
+              settings: get().animationSettings,
+              animationId: get().animationId,
+              saved: get().isAnimationSaved,
+            };
+          }
+          return tab;
+        });
+
+        const newTabId = uuidv4();
+        const nextIndex = updatedTabs.length + 1;
+        const newTitle = `Slide ${nextIndex}`;
+
+        const slide1 = createInitialSlide(1);
+        slide1.title = newTitle;
+
+        const newTab: AnimationTabState = {
+          id: newTabId,
+          animationId: undefined,
+          title: newTitle,
+          saved: false,
+          slides: [slide1, createInitialSlide(2)],
+          settings: {
+            fps: 30,
+            resolution: "1080p",
+            transitionType: "diff",
+            exportFormat: getDefaultExportFormat(),
+            quality: "balanced",
+          },
+        };
+
+        set({
+          tabs: [...updatedTabs, newTab],
+          activeAnimationTabId: newTabId,
+          // Set active state to the new tab's state
+          slides: newTab.slides,
+          activeSlideIndex: 0,
+          animationSettings: newTab.settings,
+          isPlaying: false,
+          currentPlaybackTime: 0,
+          animationId: undefined,
+          isAnimationSaved: false,
+        });
+      },
 
       addSlide: () => {
         const slides = get().slides;
@@ -116,11 +208,22 @@ export const useAnimationStore = create<
       },
 
       updateSlide: (id: string, updates: Partial<AnimationSlide>) => {
-        const slides = get().slides;
+        const { slides, activeAnimationTabId, tabs } = get();
         const updatedSlides = slides.map((slide) =>
           slide.id === id ? { ...slide, ...updates } : slide
         );
-        set({ slides: updatedSlides });
+
+        // If the first slide's title changed, update the tab title
+        let updatedTabs = tabs;
+        if (slides[0]?.id === id && updates.title) {
+          updatedTabs = tabs.map(tab =>
+            tab.id === activeAnimationTabId
+              ? { ...tab, title: updates.title! }
+              : tab
+          );
+        }
+
+        set({ slides: updatedSlides, tabs: updatedTabs });
       },
 
       reorderSlides: (startIndex: number, endIndex: number) => {
@@ -148,6 +251,213 @@ export const useAnimationStore = create<
       },
 
       setPlaybackTime: (time: number) => set({ currentPlaybackTime: time }),
+
+      setAnimationId: (id?: string) => {
+        const { activeAnimationTabId, tabs } = get();
+        const updatedTabs = tabs.map(tab =>
+          tab.id === activeAnimationTabId
+            ? { ...tab, animationId: id }
+            : tab
+        );
+        set({ animationId: id, tabs: updatedTabs });
+      },
+
+      setIsAnimationSaved: (saved: boolean) => {
+        const { activeAnimationTabId, tabs } = get();
+        const updatedTabs = tabs.map(tab =>
+          tab.id === activeAnimationTabId
+            ? { ...tab, saved }
+            : tab
+        );
+        set({ isAnimationSaved: saved, tabs: updatedTabs });
+      },
+
+      loadAnimation: (animation: Animation) => {
+        // This is kept for backward compatibility or direct loading, 
+        // but openAnimationInTab is preferred for UI interactions
+        set(() => ({
+          slides: animation.slides || [],
+          activeSlideIndex: 0,
+          animationSettings: animation.settings || {
+            fps: 30,
+            resolution: "1080p",
+            transitionType: "diff",
+            exportFormat: getDefaultExportFormat(),
+            quality: "balanced",
+          },
+          isPlaying: false,
+          currentPlaybackTime: 0,
+          animationId: animation.id,
+          isAnimationSaved: true,
+        }));
+      },
+
+      setTabs: (tabs: AnimationTabState[]) => set({ tabs }),
+
+      setActiveAnimationTabId: (id?: string) => {
+        const { tabs, activeAnimationTabId } = get();
+
+        if (id === activeAnimationTabId) return;
+
+        // Sync current state to the OLD active tab
+        const updatedTabs = tabs.map((tab) => {
+          if (tab.id === activeAnimationTabId) {
+            return {
+              ...tab,
+              slides: get().slides,
+              settings: get().animationSettings,
+              animationId: get().animationId,
+              saved: get().isAnimationSaved,
+              // Update title if it's an unsaved/untitled animation to match first slide? 
+              // Or keep it as is. Let's keep it simple for now.
+            };
+          }
+          return tab;
+        });
+
+        const targetTab = updatedTabs.find((t) => t.id === id);
+
+        if (targetTab) {
+          set({
+            tabs: updatedTabs,
+            activeAnimationTabId: id,
+            // Load the NEW tab's state
+            slides: targetTab.slides,
+            activeSlideIndex: 0,
+            animationSettings: targetTab.settings,
+            isPlaying: false,
+            currentPlaybackTime: 0,
+            animationId: targetTab.animationId,
+            isAnimationSaved: targetTab.saved,
+          });
+        } else {
+          // Fallback if tab not found (shouldn't happen usually)
+          set({ activeAnimationTabId: id });
+        }
+      },
+
+      openAnimationInTab: (animation: Animation) => {
+        const { tabs, activeAnimationTabId } = get();
+
+        // Check if animation is already open in a tab
+        const existingTab = tabs.find(t => t.animationId === animation.id);
+
+        if (existingTab) {
+          // If already open, just switch to it
+          get().setActiveAnimationTabId(existingTab.id);
+          return;
+        }
+
+        // Sync current state to the active tab before creating a new one
+        const updatedTabs = tabs.map((tab) => {
+          if (tab.id === activeAnimationTabId) {
+            return {
+              ...tab,
+              slides: get().slides,
+              settings: get().animationSettings,
+              animationId: get().animationId,
+              saved: get().isAnimationSaved,
+            };
+          }
+          return tab;
+        });
+
+        const newTabId = uuidv4();
+        const newTab: AnimationTabState = {
+          id: newTabId,
+          animationId: animation.id,
+          title: animation.title || "Untitled",
+          saved: true,
+          slides: animation.slides || [],
+          settings: animation.settings || initialSettings,
+        };
+
+        set({
+          tabs: [...updatedTabs, newTab],
+          activeAnimationTabId: newTabId,
+          // Set active state to the new tab's state
+          slides: newTab.slides,
+          activeSlideIndex: 0,
+          animationSettings: newTab.settings,
+          isPlaying: false,
+          currentPlaybackTime: 0,
+          animationId: newTab.animationId,
+          isAnimationSaved: newTab.saved,
+        });
+      },
+
+      updateActiveAnimation: (animation: Animation) => {
+        const { activeAnimationTabId, tabs } = get();
+
+        let newSlides = animation.slides || [];
+        // Ensure the first slide's title matches the animation title
+        // This is important because the app uses slides[0].title as the animation title
+        if (newSlides.length > 0 && animation.title && newSlides[0].title !== animation.title) {
+          newSlides = [
+            { ...newSlides[0], title: animation.title },
+            ...newSlides.slice(1)
+          ];
+        }
+
+        const newSettings = animation.settings || initialSettings;
+
+        // Update store state
+        set({
+          slides: newSlides,
+          activeSlideIndex: 0,
+          animationSettings: newSettings,
+          isPlaying: false,
+          currentPlaybackTime: 0,
+          animationId: animation.id,
+          isAnimationSaved: true,
+        });
+
+        // Update active tab
+        const updatedTabs = tabs.map(tab =>
+          tab.id === activeAnimationTabId
+            ? {
+              ...tab,
+              animationId: animation.id,
+              title: animation.title,
+              saved: true,
+              slides: newSlides,
+              settings: newSettings
+            }
+            : tab
+        );
+        set({ tabs: updatedTabs });
+      },
+
+      closeTab: (tabId: string) => {
+        const { tabs, activeAnimationTabId } = get();
+
+        if (tabs.length <= 1) return; // Don't close the last tab
+
+        const newTabs = tabs.filter(t => t.id !== tabId);
+
+        // If we closed the active tab, switch to another one
+        if (tabId === activeAnimationTabId) {
+          const closedTabIndex = tabs.findIndex(t => t.id === tabId);
+          // Try to go to the left, otherwise right
+          const newActiveTab = newTabs[Math.max(0, closedTabIndex - 1)] || newTabs[0];
+
+          set({
+            tabs: newTabs,
+            activeAnimationTabId: newActiveTab.id,
+            // Load the new active tab's state
+            slides: newActiveTab.slides,
+            activeSlideIndex: 0,
+            animationSettings: newActiveTab.settings,
+            isPlaying: false,
+            currentPlaybackTime: 0,
+            animationId: newActiveTab.animationId,
+            isAnimationSaved: newActiveTab.saved,
+          });
+        } else {
+          // Just remove the tab, no need to change active state
+          set({ tabs: newTabs });
+        }
+      }
     }),
     { name: "animation-store" }
   )

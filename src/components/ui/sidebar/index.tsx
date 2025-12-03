@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTheme } from "next-themes";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { Button } from "../button";
 import { Logo } from "../logo";
@@ -14,6 +14,8 @@ import { useEditorStore, useUserStore } from "@/app/store";
 import { LoginDialog } from "@/features/login";
 import { CreateCollectionDialog } from '@/features/snippets/create-collection-dialog';
 import { Snippets } from '@/features/snippets';
+import { Animations } from "@/features/animations";
+import { CreateAnimationCollectionDialog } from "@/features/animations/create-collection-dialog";
 import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
@@ -119,11 +121,14 @@ export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef, setHasOpenPortals } = useSidebarMouseEvents();
   const router = useRouter();
+  const pathname = usePathname();
 
   const user = useUserStore((state) => state.user);
   const isPresentational = useEditorStore((state) => state.presentational);
   const memoizedTheme = useMemo(() => theme, [theme]);
   const showSidebarContent = useMemo(() => SIDEBAR_COLLAPSED_WIDTH !== width, [width]);
+  const isAnimationEditor = useMemo(() => pathname?.startsWith("/animate") ?? false, [pathname]);
+  const sidebarTitle = isAnimationEditor ? "My Animations" : "My Snippets";
 
   return (
     <aside className="hidden lg:flex">
@@ -154,21 +159,33 @@ export const Sidebar = () => {
           )}
         </Button>
 
-        <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
+        <h2 className={S.title({ show: showSidebarContent })}>{sidebarTitle}</h2>
 
         {showSidebarContent && (
           <div className="absolute right-2 top-3">
-            <Tooltip content="Add folder">
+            <Tooltip content={isAnimationEditor ? "Add animation folder" : "Add folder"}>
               {user ? (
-                <CreateCollectionDialog>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="rounded-full not-dark:bg-white not-dark:bg-white/80"
-                  >
-                    <i className="ri-add-line" />
-                  </Button>
-                </CreateCollectionDialog>
+                isAnimationEditor ? (
+                  <CreateAnimationCollectionDialog>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="rounded-full not-dark:bg-white not-dark:bg-white/80"
+                    >
+                      <i className="ri-add-line" />
+                    </Button>
+                  </CreateAnimationCollectionDialog>
+                ) : (
+                  <CreateCollectionDialog>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="rounded-full not-dark:bg-white not-dark:bg-white/80"
+                    >
+                      <i className="ri-add-line" />
+                    </Button>
+                  </CreateCollectionDialog>
+                )
               ) : (
                 <LoginDialog>
                   <Button
@@ -192,7 +209,7 @@ export const Sidebar = () => {
             duration: showSidebarContent ? 0.2 : 0.1,
           }}
         >
-          <Snippets />
+          {isAnimationEditor ? <Animations /> : <Snippets />}
         </motion.div>
 
         <div className="absolute bottom-3 left-2">

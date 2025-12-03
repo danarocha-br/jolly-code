@@ -14,11 +14,7 @@ import { supportsWebCodecsEncoding } from "@/features/animation";
 export const SettingsPanel = () => {
   const animationSettings = useAnimationStore((state) => state.animationSettings);
   const updateSettings = useAnimationStore((state) => state.updateSettings);
-  const [webCodecsSupported, setWebCodecsSupported] = useState(false);
-
-  useEffect(() => {
-    setWebCodecsSupported(supportsWebCodecsEncoding());
-  }, []);
+  const [webCodecsSupported] = useState(() => supportsWebCodecsEncoding());
 
   useEffect(() => {
     if (!webCodecsSupported && animationSettings.exportFormat === "mp4") {
