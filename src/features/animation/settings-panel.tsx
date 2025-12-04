@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -8,19 +8,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAnimationStore } from "@/app/store";
+import { useAnimationStore, useUserStore } from "@/app/store";
 import { supportsWebCodecsEncoding } from "@/features/animation";
+import { trackAnimationEvent } from "@/features/animation/analytics";
+import { AnimationSettings } from "@/types/animation";
+
+const exportFormatExperiment = process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control";
+const transitionExperiment = process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control";
 
 export const SettingsPanel = () => {
   const animationSettings = useAnimationStore((state) => state.animationSettings);
   const updateSettings = useAnimationStore((state) => state.updateSettings);
+  const user = useUserStore((state) => state.user);
   const [webCodecsSupported] = useState(() => supportsWebCodecsEncoding());
+
+  const handleSettingChange = <K extends keyof AnimationSettings>(setting: K, value: AnimationSettings[K]) => {
+    const previous = animationSettings[setting];
+    if (previous === value) return;
+
+    updateSettings({ [setting]: value } as Partial<AnimationSettings>);
+    trackAnimationEvent("animation_settings_changed", user, {
+      setting_name: setting,
+      old_value: previous,
+      new_value: value,
+      export_format_experiment: exportFormatExperiment,
+      transition_experiment: transitionExperiment,
+    });
+
+    if (setting === "exportFormat") {
+      trackAnimationEvent("animation_export_format_selected", user, {
+        format: value,
+        webcodecs_supported: webCodecsSupported,
+        export_format_experiment: exportFormatExperiment,
+      });
+    }
+  };
 
   useEffect(() => {
     if (!webCodecsSupported && animationSettings.exportFormat === "mp4") {
       updateSettings({ exportFormat: "webm" });
+      trackAnimationEvent("animation_settings_changed", user, {
+        setting_name: "exportFormat",
+        old_value: "mp4",
+        new_value: "webm",
+      });
+      trackAnimationEvent("animation_export_format_selected", user, {
+        format: "webm",
+        webcodecs_supported: webCodecsSupported,
+      });
     }
-  }, [animationSettings.exportFormat, updateSettings, webCodecsSupported]);
+  }, [animationSettings.exportFormat, updateSettings, user, webCodecsSupported]);
 
   return (
     <div className="px-6 py-4 border-t">
@@ -32,7 +69,7 @@ export const SettingsPanel = () => {
           <Select
             value={animationSettings.exportFormat}
             onValueChange={(value) =>
-              updateSettings({ exportFormat: value as "mp4" | "webm" })
+              handleSettingChange("exportFormat", value as "mp4" | "webm")
             }
           >
             <SelectTrigger id="format-select" className="h-8 w-[140px]">
@@ -52,7 +89,7 @@ export const SettingsPanel = () => {
           <Select
             value={animationSettings.fps.toString()}
             onValueChange={(value) =>
-              updateSettings({ fps: parseInt(value) as 24 | 30 | 60 })
+              handleSettingChange("fps", parseInt(value) as 24 | 30 | 60)
             }
           >
             <SelectTrigger id="fps-select" className="h-8 w-[100px]">
@@ -71,7 +108,7 @@ export const SettingsPanel = () => {
           <Select
             value={animationSettings.quality}
             onValueChange={(value) =>
-              updateSettings({ quality: value as "fast" | "balanced" | "high" })
+              handleSettingChange("quality", value as "fast" | "balanced" | "high")
             }
           >
             <SelectTrigger id="quality-select" className="h-8 w-[140px]">
@@ -90,7 +127,7 @@ export const SettingsPanel = () => {
           <Select
             value={animationSettings.resolution}
             onValueChange={(value) =>
-              updateSettings({ resolution: value as "720p" | "1080p" })
+              handleSettingChange("resolution", value as "720p" | "1080p")
             }
           >
             <SelectTrigger id="resolution-select" className="h-8 w-[120px]">
@@ -108,7 +145,7 @@ export const SettingsPanel = () => {
           <Select
             value={animationSettings.transitionType}
             onValueChange={(value) =>
-              updateSettings({ transitionType: value as "fade" | "diff" })
+              handleSettingChange("transitionType", value as "fade" | "diff")
             }
           >
             <SelectTrigger id="transition-select" className="h-8 w-[100px]">

@@ -35,7 +35,7 @@ export const container = cva(
 export const body = cva("group relative py-1 px-2 flex flex-col h-full");
 export const header = cva("flex items-center justify-between mt-1 mb-1.5");
 export const slideLabel = cva("text-xs font-medium text-card-foreground truncate");
-export const removeButton = cva("opacity-0 group-hover:opacity-100 z-40 absolute top-1 right-1 h-6 w-6 text-foreground/40 hover:text-destructive transition-colors");
+export const removeButton = cva("opacity-0 group-hover:opacity-100 z-40 absolute top-1 right-1 h-6 w-6 bg-card rounded-full text-foreground/40 hover:text-destructive transition-colors");
 
 export const preview = cva("flex-1 rounded p-1.5 overflow-hidden relative");
 export const previewOverlay = cva("absolute inset-0 dark:bg-black/25");

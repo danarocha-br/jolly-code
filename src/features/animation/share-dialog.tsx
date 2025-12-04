@@ -18,11 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
-import { analytics } from "@/lib/services/tracking";
 import {
   AnimationSharePayload,
   encodeAnimationSharePayload,
 } from "./share-utils";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 export const AnimationShareDialog = () => {
   const user = useUserStore((state) => state.user);
@@ -111,20 +111,27 @@ export const AnimationShareDialog = () => {
       const fullUrl = `${currentUrl}/animate/shared/${shortUrl}`;
 
       setShareUrl(fullUrl);
-      analytics.track("share_animation_link", {
-        slides: serializedSlides.length,
+      trackAnimationEvent("share_animation_link", user, {
+        slide_count: serializedSlides.length,
+        has_title: Boolean(slides[0]?.title?.trim()),
+        has_description: false,
+        url_generated: Boolean(fullUrl),
       });
     } catch (error) {
       console.error("Failed to generate share URL", error);
       toast.error("Oh no, something went wrong. Please try again.");
     }
-  }, [currentUrl, payload, serializedSlides.length, shortenUrlMutation]);
+  }, [currentUrl, payload, serializedSlides.length, shortenUrlMutation, user, slides]);
 
   const handleCopy = useCallback(async () => {
     if (!shareUrl) return;
     setIsCopying(true);
     try {
       await navigator.clipboard.writeText(shareUrl);
+      trackAnimationEvent("copy_link", user, {
+        from: "share_dialog",
+        link_type: "animation",
+      });
       toast.success("Link copied to clipboard.");
     } catch (error) {
       console.error("Failed to copy animation link", error);
@@ -132,7 +139,7 @@ export const AnimationShareDialog = () => {
     } finally {
       setIsCopying(false);
     }
-  }, [shareUrl]);
+  }, [shareUrl, user]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);

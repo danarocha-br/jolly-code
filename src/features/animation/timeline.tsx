@@ -23,6 +23,7 @@ import { ThemeProps } from "@/lib/themes-options";
 import { SlideThumbnail } from "@/components/ui/slide-thumbnail";
 import { AddSlideCard } from "@/components/ui/add-slide-card";
 import { LoginDialog } from "@/features/login";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type SortableSlideProps = {
   slide: AnimationSlide;
@@ -109,6 +110,11 @@ export const Timeline = () => {
       const oldIndex = slides.findIndex((slide) => slide.id === active.id);
       const newIndex = slides.findIndex((slide) => slide.id === over.id);
       reorderSlides(oldIndex, newIndex);
+      trackAnimationEvent("animation_slide_reordered", user, {
+        from_index: oldIndex,
+        to_index: newIndex,
+        total_slides: slides.length,
+      });
     }
   };
 
@@ -119,6 +125,13 @@ export const Timeline = () => {
 
   const handleAddSlide = () => {
     if (hasReachedGuestLimit) {
+      trackAnimationEvent("guest_limit_reached", user, {
+        limit_type: "slides",
+        action_attempted: "add_slide",
+      });
+      trackAnimationEvent("guest_upgrade_prompted", user, {
+        trigger: "slide_limit",
+      });
       setIsLoginDialogOpen(true);
       return;
     }
@@ -126,6 +139,21 @@ export const Timeline = () => {
     if (hasReachedMaxSlides) return;
 
     addSlide();
+    const nextCount = slides.length + 1;
+    trackAnimationEvent("animation_slide_added", user, {
+      slide_count: nextCount,
+      reached_limit: nextCount >= maxSlidesLabel,
+    });
+  };
+
+  const handleRemoveSlide = (slideId: string, index: number) => {
+    if (!canRemove) return;
+    const nextCount = slides.length - 1;
+    removeSlide(slideId);
+    trackAnimationEvent("animation_slide_removed", user, {
+      slide_count_after: nextCount,
+      slide_index: index,
+    });
   };
 
   return (
@@ -164,7 +192,7 @@ export const Timeline = () => {
                     index={index}
                     isActive={index === activeSlideIndex}
                     onSelect={() => setActiveSlide(index)}
-                    onRemove={() => removeSlide(slide.id)}
+                    onRemove={() => handleRemoveSlide(slide.id, index)}
                     canRemove={canRemove}
                     backgroundTheme={backgroundTheme}
                   />

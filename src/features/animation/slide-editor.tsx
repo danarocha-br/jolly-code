@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 import { fonts } from "@/lib/fonts-options";
 import { languages } from "@/lib/language-options";
 import { themes } from "@/lib/themes-options";
-import { useAnimationStore } from "@/app/store";
-import { useEditorStore } from "@/app/store";
+import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 export const SlideEditor = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -27,6 +27,7 @@ export const SlideEditor = () => {
   const slides = useAnimationStore((state) => state.slides);
   const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
   const updateSlide = useAnimationStore((state) => state.updateSlide);
+  const user = useUserStore((state) => state.user);
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
   const showBackground = useEditorStore((state) => state.showBackground);
@@ -38,11 +39,9 @@ export const SlideEditor = () => {
   const activeSlide = slides[activeSlideIndex];
 
   // Calculate line numbers
-  const lineNumbers = useMemo(() => {
-    if (!activeSlide?.code) return [];
-    const lines = activeSlide.code.split("\n").length;
-    return Array.from({ length: lines }, (_, i) => i + 1);
-  }, [activeSlide?.code]);
+  const lineNumbers = activeSlide?.code
+    ? Array.from({ length: activeSlide.code.split("\n").length }, (_, i) => i + 1)
+    : [];
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -151,11 +150,21 @@ export const SlideEditor = () => {
                 min="1"
                 max="10"
                 value={activeSlide.duration}
-                onChange={(e) =>
-                  updateSlide(activeSlide.id, {
-                    duration: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)),
-                  })
-                }
+                onChange={(e) => {
+                  const parsed = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                  if (parsed !== activeSlide.duration) {
+                    updateSlide(activeSlide.id, { duration: parsed });
+                    trackAnimationEvent("animation_slide_duration_changed", user, {
+                      old_duration: activeSlide.duration,
+                      new_duration: parsed,
+                      slide_index: activeSlideIndex,
+                    });
+                    trackAnimationEvent("animation_slide_edited", user, {
+                      field_changed: "duration",
+                      slide_index: activeSlideIndex,
+                    });
+                  }
+                }}
                 className="w-[50px] h-7 bg-transparent border-0 text-stone-500 dark:text-stone-400 text-xs focus-visible:ring-0"
               />
               <span className="text-xs text-stone-500 dark:text-stone-400">s</span>

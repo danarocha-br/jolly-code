@@ -36,9 +36,9 @@ import { AnimationCollection, Animation } from "./dtos";
 import { AnimationCollectionItem } from "./ui/collection-item";
 import { AnimationCollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
-import { analytics } from "@/lib/services/tracking";
 import { cn } from "@/lib/utils";
 import * as AnimationStyles from "./ui/styles";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type CollectionDroppableProps = {
   collectionId: string;
@@ -122,7 +122,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   const { mutate: handleDeleteCollection } = useMutation({
     mutationFn: removeAnimationCollection,
     onSuccess: (data, variables) => {
-      analytics.track("delete_animation_collection", {
+      trackAnimationEvent("delete_animation_collection", user, {
         collection_id: variables.collection_id,
       });
     },
@@ -153,7 +153,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateAnimationCollectionTitle,
     onSuccess: (data, variables) => {
-      analytics.track("update_animation_collection", {
+      trackAnimationEvent("update_animation_collection", user, {
         collection_id: variables.id,
         new_title: variables.title,
       });
@@ -187,7 +187,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   const { mutate: handleDeleteAnimation } = useMutation({
     mutationFn: removeAnimation,
     onSuccess: (data, variables) => {
-      analytics.track("delete_animation", {
+      trackAnimationEvent("delete_animation", user, {
         animation_id: variables.animation_id,
       });
     },
@@ -275,7 +275,12 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
       setPendingMove(null);
     },
     onSuccess: (data, variables) => {
-      analytics.track("move_animation", {
+      trackAnimationEvent("move_animation", user, {
+        animation_id: variables.animation_id,
+        from_collection_id: variables.previous_collection_id,
+        to_collection_id: variables.id,
+      });
+      trackAnimationEvent("animation_moved_to_collection", user, {
         animation_id: variables.animation_id,
         from_collection_id: variables.previous_collection_id,
         to_collection_id: variables.id,

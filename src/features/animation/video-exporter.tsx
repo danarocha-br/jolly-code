@@ -22,6 +22,8 @@ interface VideoExporterProps {
   onProgress: (progress: number) => void;
   onComplete: (blob: Blob) => void;
   onError: (error: Error) => void;
+  cancelled?: boolean;
+  onCancelled?: () => void;
 }
 
 const getResolutionDimensions = (resolution: "720p" | "1080p") => {
@@ -36,11 +38,18 @@ export const VideoExporter = ({
   onProgress,
   onComplete,
   onError,
+  cancelled = false,
+  onCancelled,
 }: VideoExporterProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentFrame, setCurrentFrame] = useState<AnimationFrame | null>(null);
   const frameRenderedResolver = useRef<(() => void) | null>(null);
   const processingRef = useRef(false);
+  const cancelRef = useRef(cancelled);
+
+  useEffect(() => {
+    cancelRef.current = cancelled;
+  }, [cancelled]);
 
   // Notify when the frame has been rendered to the DOM
   useLayoutEffect(() => {
@@ -135,6 +144,9 @@ export const VideoExporter = ({
         const totalFrames = Math.ceil(totalDuration * fps);
 
         for await (const frame of generator) {
+          if (cancelRef.current) {
+            throw new Error("export_cancelled");
+          }
           // 1. Set state to render frame
           setCurrentFrame(frame);
 
@@ -207,12 +219,18 @@ export const VideoExporter = ({
 
       } catch (error) {
         console.error("Export failed", error);
-        onError(error as Error);
+        if ((error as Error)?.message === "export_cancelled") {
+          onCancelled?.();
+        } else {
+          onError(error as Error);
+        }
+      } finally {
+        processingRef.current = false;
       }
     };
 
     processAnimation();
-  }, [settings, slides, editorSettings]); // Added editorSettings to deps
+  }, [settings, slides, editorSettings, onProgress, onComplete, onError, cancelled, onCancelled]); // Added editorSettings to deps
 
   const { width, height } = getResolutionDimensions(settings.resolution);
 

@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { useAnimationStore } from "@/app/store";
+import { useAnimationStore, useUserStore } from "@/app/store";
 import { cn } from "@/lib/utils";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 interface AnimationControlsProps {
   mode: "edit" | "preview";
@@ -37,12 +38,24 @@ export const AnimationControls = ({
   const slides = useAnimationStore((state) => state.slides);
   const updateSlide = useAnimationStore((state) => state.updateSlide);
   const activeSlide = slides[activeSlideIndex];
+  const user = useUserStore((state) => state.user);
 
   const handleDurationChange = (value: string) => {
     if (!activeSlide) return;
     const parsed = parseFloat(value);
     if (!Number.isFinite(parsed)) return;
     const clamped = Math.max(0.1, Math.min(15, parsed));
+    if (clamped !== activeSlide.duration) {
+      trackAnimationEvent("animation_slide_duration_changed", user, {
+        old_duration: activeSlide.duration,
+        new_duration: clamped,
+        slide_index: activeSlideIndex,
+      });
+      trackAnimationEvent("animation_slide_edited", user, {
+        field_changed: "duration",
+        slide_index: activeSlideIndex,
+      });
+    }
     updateSlide(activeSlide.id, { duration: clamped });
   };
 
@@ -120,15 +133,18 @@ export const AnimationControls = ({
             <i className="ri-restart-line text-lg" />
           </Button>
 
-          {!hideSlideControls && <Separator orientation="vertical" className="h-8 bg-border dark:bg-border/40" />}
+          {!hideSlideControls && <Separator orientation="vertical" className="h-8 bg-border dark:bg-border/40 hidden md:block" />}
 
           {!hideSlideControls && (
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground hidden md:block">
                 {totalDuration.toFixed(1)}s / 15s max
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Frame duration (s)</span>
+
+
+              <Separator orientation="vertical" className="hidden md:block h-8 bg-border dark:bg-border/40" />
+              <div className="hidden md:flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Duration:</span>
                 <Input
                   type="number"
                   min={0.1}
@@ -136,9 +152,10 @@ export const AnimationControls = ({
                   step={0.1}
                   value={activeSlide?.duration ?? ""}
                   onChange={(e) => handleDurationChange(e.target.value)}
-                  className="h-8 w-20 text-xs"
+                  className="h-8 w-16 px-2 text-xs shadow-none"
                   disabled={modeLocked}
                 />
+                <span className="text-xs text-muted-foreground">seconds</span>
               </div>
             </div>
           )}
@@ -150,6 +167,7 @@ export const AnimationControls = ({
             onClick={onResetSlides}
             title="Reset all slides"
             disabled={modeLocked}
+            className="hidden md:flex font-normal"
           >
             <i className="ri-close-circle-line text-lg mr-2" />
             Reset slides

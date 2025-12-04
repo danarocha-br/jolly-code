@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
 import { AnimationContainer, WindowChrome } from "./layout-components";
-import { useAnimationStore, useEditorStore } from "@/app/store";
+import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import { languages, LanguageProps } from "@/lib/language-options";
 import { fonts } from "@/lib/fonts-options";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { AnimationSlide } from "@/types/animation";
-import { Logo } from "@/components/ui/logo";
+import { debounce } from "@/lib/utils/debounce";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 export interface UnifiedAnimationCanvasProps {
   mode: "edit" | "preview";
@@ -44,6 +45,17 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
   const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
   const updateSlide = useAnimationStore((state) => state.updateSlide);
   const activeSlide = slides[activeSlideIndex];
+  const user = useUserStore((state) => state.user);
+  const trackSlideEdited = useMemo(
+    () =>
+      debounce((field: "code" | "title" | "language") => {
+        trackAnimationEvent("animation_slide_edited", user, {
+          field_changed: field,
+          slide_index: activeSlideIndex,
+        });
+      }, 800),
+    [activeSlideIndex, user]
+  );
 
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
@@ -71,6 +83,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
       updateSlide(activeSlide.id, { language: detected, autoDetectLanguage: true });
     }
   }, [
+    activeSlide,
     activeSlide?.id,
     activeSlide?.code,
     activeSlide?.autoDetectLanguage,
@@ -79,14 +92,12 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
   ]);
 
   // Calculate line numbers for edit mode
-  const lineNumbers = useMemo(() => {
-    if (!activeSlide?.code) return [];
-    const lines = activeSlide.code.split("\n").length;
-    return Array.from({ length: lines }, (_, i) => i + 1);
-  }, [activeSlide?.code]);
+  const lineNumbers = activeSlide?.code
+    ? Array.from({ length: activeSlide.code.split("\n").length }, (_, i) => i + 1)
+    : [];
 
   // Header Content
-  const headerContent = useMemo(() => {
+  const headerContent = (() => {
     if (!activeSlide) return null;
     const autoDetectEnabled = activeSlide.autoDetectLanguage ?? true;
     const detectedLabel =
@@ -102,7 +113,10 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
                 <TitleBarInput
                   idKey={activeSlide.id}
                   value={activeSlide.title ?? "Untitled"}
-                  onChange={(value) => updateSlide(activeSlide.id, { title: value })}
+                  onChange={(value) => {
+                    updateSlide(activeSlide.id, { title: value });
+                    trackSlideEdited("title");
+                  }}
                   language={activeSlide.language}
                   editorPreferences={editorPreferences}
                   placeholder="Untitled"
@@ -148,6 +162,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
                         autoDetectLanguage: true,
                         language: detected,
                       });
+                      trackSlideEdited("language");
                       setLanguageOpen(false);
                     }}
                   >
@@ -170,6 +185,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
                           language: language.value,
                           autoDetectLanguage: false,
                         });
+                        trackSlideEdited("language");
                         setLanguageOpen(false);
                       }}
                     >
@@ -202,7 +218,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
         </div>
       );
     }
-  }, [mode, activeSlide, updateSlide, currentFrame, slides, editorPreferences, languageOptions, languageOpen]);
+  })();
 
   if (!isMounted || !activeSlide) return null;
 
@@ -231,6 +247,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
               value={activeSlide.code}
               onValueChange={(code) => {
                 updateSlide(activeSlide.id, { code });
+                trackSlideEdited("code");
               }}
               highlight={(code) =>
                 hljs.highlight(code, {

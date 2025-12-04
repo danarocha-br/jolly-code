@@ -10,6 +10,8 @@ export type AnimationSharePayload = {
     fontFamily: FontsProps;
     fontSize: number;
     showBackground: boolean;
+    showLineNumbers: boolean;
+    editor: "default" | "minimal";
   };
 };
 

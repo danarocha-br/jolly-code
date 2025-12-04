@@ -73,5 +73,5 @@ export default async function SharedAnimationPage({ params }: SharedAnimationPag
     return notFound();
   }
 
-  return <AnimateSharedClient payload={payload} />;
+  return <AnimateSharedClient payload={payload} slug={slug} />;
 }

@@ -79,15 +79,15 @@ export const AnimationCollectionItem = React.memo(function AnimationCollectionIt
     >
       <Suspense fallback={<Skeleton />}>
         <button
-          className="flex items-center justify-between text-left gap-2 w-full"
+          className="flex items-center justify-between text-left gap-2 w-full p-1"
           onClick={() => {
             if (dragging) return;
             onItemSelect(animation);
           }}
         >
-          <div className="flex flex-col items-start gap-1">
+          <div className="flex flex-col items-start gap-px w-full">
             <p className="flex-2 truncate capitalize">{animation.title}</p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
               <span className="inline-flex items-center gap-1">
                 <i className="ri-film-line" /> {slidesCount} slides
               </span>
@@ -106,7 +106,7 @@ export const AnimationCollectionItem = React.memo(function AnimationCollectionIt
             <Button
               size="icon"
               variant="ghost"
-              className="opacity-0 group-hover:opacity-100 transition-opacity !-mr-3"
+              className="opacity-0 group-hover:opacity-100 transition-opacity !-mr-2 mt-1.5"
             >
               <i className="ri-more-line text-lg" />
             </Button>

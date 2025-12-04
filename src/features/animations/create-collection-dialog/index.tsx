@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createAnimationCollection } from "../queries";
 import { AnimationCollection } from "../dtos";
-import { analytics } from "@/lib/services/tracking";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 export function CreateAnimationCollectionDialog({
   children,
@@ -37,7 +37,11 @@ export function CreateAnimationCollectionDialog({
   const { mutate: handleCreateCollection } = useMutation({
     mutationFn: createAnimationCollection,
     onSuccess: (data, variables) => {
-      analytics.track("create_animation_collection", {
+      trackAnimationEvent("create_animation_collection", user, {
+        title: variables.title,
+      });
+      trackAnimationEvent("animation_collection_created", user, {
+        collection_id: data?.data?.id,
         title: variables.title,
       });
     },

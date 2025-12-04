@@ -14,23 +14,25 @@ import {
   UnifiedAnimationCanvas,
   useAnimationController,
   calculateTotalDuration,
-  Timeline,
 } from "@/features/animation";
-import { useAnimationStore, useEditorStore } from "@/app/store";
+import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
 import { AnimationSharePayload } from "./share-utils";
+import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type AnimateSharedClientProps = {
   payload: AnimationSharePayload;
+  slug: string;
 };
 
-export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
+export const AnimateSharedClient = ({ payload, slug }: AnimateSharedClientProps) => {
   const router = useRouter();
   const [mode, setMode] = useState<"edit" | "preview">("preview");
   const [isReady] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const hasStartedSharedPlayback = useRef(false);
+  const hasTrackedView = useRef(false);
   const queryClient = getQueryClient();
 
   const {
@@ -44,6 +46,7 @@ export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
   const fontFamily = useEditorStore((state) => state.fontFamily);
+  const user = useUserStore((state) => state.user);
 
   const totalDuration = useMemo(() => calculateTotalDuration(slides), [slides]);
 
@@ -63,6 +66,10 @@ export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
         duration: typeof slide.duration === "number" ? slide.duration : 2,
       })),
     [payload.slides]
+  );
+  const sharedDuration = useMemo(
+    () => (sanitizedSlides.length ? calculateTotalDuration(sanitizedSlides) : 0),
+    [sanitizedSlides]
   );
 
   useEffect(() => {
@@ -95,14 +102,27 @@ export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
   }, [payload.editor, payload.settings, sanitizedSlides]);
 
   useEffect(() => {
+    if (hasTrackedView.current) return;
+    if (!sanitizedSlides.length) return;
+
+    hasTrackedView.current = true;
+    trackAnimationEvent("shared_animation_viewed", user, {
+      slug,
+      slide_count: sanitizedSlides.length,
+      total_duration: sharedDuration,
+      has_autoplay: true,
+    });
+  }, [sanitizedSlides.length, sharedDuration, slug, user]);
+
+  useEffect(() => {
     if (!isReady) return;
     if (slides.length < 2) return;
     if (hasStartedSharedPlayback.current) return;
 
     hasStartedSharedPlayback.current = true;
-    handleReset();
+    handleReset({ track: false });
     if (!isPlaying) {
-      handlePlayPause();
+      handlePlayPause({ track: false });
     }
   }, [handlePlayPause, handleReset, isPlaying, isReady, slides.length]);
 
@@ -112,8 +132,8 @@ export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
     if (isPlaying) return;
     if (progress < 100) return;
 
-    handleReset();
-    handlePlayPause();
+    handleReset({ track: false });
+    handlePlayPause({ track: false });
   }, [handlePlayPause, handleReset, isPlaying, isReady, progress, slides.length]);
 
   if (!isReady) {
@@ -178,7 +198,17 @@ export const AnimateSharedClient = ({ payload }: AnimateSharedClientProps) => {
             </main>
 
             <footer className="bg-white/20 rounded-2xl backdrop-blur-3xl flex justify-center w-full lg:w-auto fixed bottom-20 p-3 left-1/2 -translate-x-1/2">
-              <Button size="lg" variant="secondary" onClick={() => router.push("/")}>
+              <Button
+                size="lg"
+                variant="secondary"
+                onClick={() => {
+                  trackAnimationEvent("shared_animation_cta_clicked", user, {
+                    slug,
+                    cta_type: "create_snippet",
+                  });
+                  router.push("/");
+                }}
+              >
                 <i className="ri-magic-fill text-lg mr-3" />
                 Create my Snippet
               </Button>

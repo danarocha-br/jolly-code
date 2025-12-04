@@ -30,9 +30,11 @@ import {
   generatePlatformUrl,
   generateSocialShareUrl,
 } from "@/features/animation/share-utils";
-import { analytics } from "@/lib/services/tracking";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { VideoExporter } from "./video-exporter";
+import { calculateTotalDuration } from "@/features/animation";
+import { trackAnimationEvent } from "@/features/animation/analytics";
+import { debounce } from "@/lib/utils/debounce";
 
 const shareFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -52,6 +54,7 @@ export const EnhancedAnimationShareDialog = () => {
   const user = useUserStore((state) => state.user);
   const slides = useAnimationStore((state) => state.slides);
   const animationSettings = useAnimationStore((state) => state.animationSettings);
+  const totalDuration = useMemo(() => calculateTotalDuration(slides), [slides]);
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
   const fontFamily = useEditorStore((state) => state.fontFamily);
@@ -67,10 +70,13 @@ export const EnhancedAnimationShareDialog = () => {
   const [embedWidth, setEmbedWidth] = useState(defaultEmbedSizes.width);
   const [embedHeight, setEmbedHeight] = useState(defaultEmbedSizes.height);
   const previewTrackedRef = useRef(false);
+  const loadTimestampRef = useRef<number>(Date.now());
+  const firstExportTrackedRef = useRef(false);
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [cancelExport, setCancelExport] = useState(false);
 
   const { copy: copyLink, isCopying: isCopyingLink } = useCopyToClipboard({
     successMessage: "Link copied to clipboard.",
@@ -134,6 +140,16 @@ export const EnhancedAnimationShareDialog = () => {
 
   const titleValue = form.watch("title");
   const descriptionValue = form.watch("description");
+  const trackMetadataUpdated = useMemo(
+    () =>
+      debounce((field: "title" | "description", hasValue: boolean) => {
+        trackAnimationEvent("share_metadata_updated", user, {
+          field,
+          has_value: hasValue,
+        });
+      }, 600),
+    [user]
+  );
 
   const buildOgPreviewUrl = useCallback(
     () => {
@@ -157,6 +173,16 @@ export const EnhancedAnimationShareDialog = () => {
     },
     [form, shareSlug]
   );
+
+  useEffect(() => {
+    if (!form.formState.isDirty) return;
+    trackMetadataUpdated("title", Boolean(titleValue?.trim()));
+  }, [form.formState.isDirty, titleValue, trackMetadataUpdated]);
+
+  useEffect(() => {
+    if (!form.formState.isDirty) return;
+    trackMetadataUpdated("description", Boolean(descriptionValue?.trim()));
+  }, [descriptionValue, form.formState.isDirty, trackMetadataUpdated]);
 
   const shortenUrlMutation = useMutation({
     mutationFn: async (params: { url: string; title?: string; description?: string }) => {
@@ -226,8 +252,11 @@ export const EnhancedAnimationShareDialog = () => {
         form.reset(parsed.data);
         previewTrackedRef.current = false;
 
-        analytics.track("share_animation_link", {
-          slides: serializedSlides.length,
+        trackAnimationEvent("share_animation_link", user, {
+          slide_count: serializedSlides.length,
+          has_title: Boolean(parsed.data.title?.trim()),
+          has_description: Boolean(parsed.data.description?.trim()),
+          url_generated: Boolean(fullUrl),
         });
 
         return fullUrl;
@@ -237,14 +266,14 @@ export const EnhancedAnimationShareDialog = () => {
         return undefined;
       }
     },
-    [buildOgPreviewUrl, currentUrl, form, payload, serializedSlides.length, shortenUrlMutation]
+    [currentUrl, form, payload, serializedSlides.length, shortenUrlMutation, user]
   );
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
 
     if (nextOpen) {
-      analytics.track("share_modal_opened");
+      trackAnimationEvent("share_modal_opened", user);
       void generateShareUrl();
     } else {
       setActiveTab("public");
@@ -254,7 +283,7 @@ export const EnhancedAnimationShareDialog = () => {
   };
 
   const handlePlatformCopy = (platform: "hashnode" | "medium" | "devto" | "notion") => {
-    analytics.track("platform_share_clicked", { platform });
+    trackAnimationEvent("platform_share_clicked", user, { platform });
     void copySnippet(generatePlatformUrl(platform, shareUrl, titleValue || "My animation"));
   };
 
@@ -269,16 +298,16 @@ export const EnhancedAnimationShareDialog = () => {
   const handleSocialShare = (platform: "twitter" | "linkedin") => {
     const target = socialLinks[platform];
     if (!target) return;
-    analytics.track("social_share_clicked", { platform });
+    trackAnimationEvent("social_share_clicked", user, { platform });
     window.open(target, "_blank", "noopener,noreferrer");
   };
 
   const handleTabChange = (value: (typeof TAB_KEYS)[number]) => {
     setActiveTab(value);
-    analytics.track("share_tab_changed", { tab: value });
+    trackAnimationEvent("share_tab_changed", user, { tab: value });
 
     if (value === "preview" && shareSlug && !previewTrackedRef.current) {
-      analytics.track("og_image_viewed", { slug: shareSlug });
+      trackAnimationEvent("og_image_viewed", user, { slug: shareSlug });
       previewTrackedRef.current = true;
     }
   };
@@ -287,6 +316,9 @@ export const EnhancedAnimationShareDialog = () => {
     void generateShareUrl();
     setOgPreviewUrl(buildOgPreviewUrl());
     previewTrackedRef.current = false;
+    trackAnimationEvent("share_preview_refreshed", user, {
+      slug: shareSlug,
+    });
   };
 
   const embedCode = useMemo(
@@ -316,13 +348,16 @@ export const EnhancedAnimationShareDialog = () => {
       if (!latestUrl) {
         return;
       }
-      analytics.track("copy_link", { from: "share_dialog" });
+      trackAnimationEvent("copy_link", user, {
+        from: "share_dialog",
+        link_type: "animation",
+      });
       await copyLink(latestUrl);
     } catch (error) {
       console.error("Failed to copy link", error);
       toast.error("Could not generate and copy the link. Please try again.");
     }
-  }, [copyLink, form.formState.isDirty, generateShareUrl, shareUrl]);
+  }, [copyLink, form.formState.isDirty, generateShareUrl, shareUrl, user]);
 
   const handleEmbedCopy = useCallback(async () => {
     try {
@@ -336,13 +371,16 @@ export const EnhancedAnimationShareDialog = () => {
         height: embedHeight || defaultEmbedSizes.height,
       });
 
-      analytics.track("embed_code_copied");
+      trackAnimationEvent("embed_code_copied", user, {
+        embed_width: embedWidth || defaultEmbedSizes.width,
+        embed_height: embedHeight || defaultEmbedSizes.height,
+      });
       await copyEmbed(code);
     } catch (error) {
       console.error("Failed to copy embed code", error);
       toast.error("Could not generate and copy the embed code. Please try again.");
     }
-  }, [copyEmbed, embedHeight, embedWidth, form.formState.isDirty, generateShareUrl, shareUrl]);
+  }, [copyEmbed, embedHeight, embedWidth, form.formState.isDirty, generateShareUrl, shareUrl, user]);
 
   const handleExport = () => {
     if (serializedSlides.length < 2) {
@@ -352,15 +390,41 @@ export const EnhancedAnimationShareDialog = () => {
 
     setIsExporting(true);
     setExportProgress(0);
-    analytics.track("export_started", {
+    setCancelExport(false);
+    const isFirstExport = !firstExportTrackedRef.current;
+    if (isFirstExport) {
+      firstExportTrackedRef.current = true;
+    }
+    trackAnimationEvent("export_started", user, {
       format: animationSettings.exportFormat,
-      resolution: animationSettings.resolution
+      resolution: animationSettings.resolution,
+      slide_count: serializedSlides.length,
+      total_duration: totalDuration,
+      transition_type: animationSettings.transitionType,
+      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+      time_to_first_export_ms: isFirstExport
+        ? Date.now() - loadTimestampRef.current
+        : undefined,
+    });
+  };
+
+  const handleCancelExport = () => {
+    setCancelExport(true);
+    trackAnimationEvent("export_cancelled", user, {
+      progress_percent: Math.round(exportProgress * 100),
+      format: animationSettings.exportFormat,
+      resolution: animationSettings.resolution,
+      slide_count: serializedSlides.length,
+      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
     });
   };
 
   const onExportComplete = (blob: Blob) => {
     setIsExporting(false);
     setExportProgress(0);
+    setCancelExport(false);
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -371,9 +435,15 @@ export const EnhancedAnimationShareDialog = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    analytics.track("export_completed", {
+    trackAnimationEvent("export_completed", user, {
       format: animationSettings.exportFormat,
-      resolution: animationSettings.resolution
+      resolution: animationSettings.resolution,
+      slide_count: serializedSlides.length,
+      file_size_mb: Number((blob.size / (1024 * 1024)).toFixed(2)),
+      duration_seconds: totalDuration,
+      transition_type: animationSettings.transitionType,
+      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
     });
 
     toast.success("Video downloaded successfully.");
@@ -414,6 +484,17 @@ export const EnhancedAnimationShareDialog = () => {
               <p className="text-xs text-muted-foreground text-center">
                 Please wait while we render your animation frame by frame.
               </p>
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelExport}
+                  disabled={cancelExport}
+                >
+                  {cancelExport ? "Cancelling..." : "Cancel export"}
+                </Button>
+              </div>
             </div>
 
             <VideoExporter
@@ -430,7 +511,25 @@ export const EnhancedAnimationShareDialog = () => {
               onError={(err: Error) => {
                 console.error(err);
                 setIsExporting(false);
+                setCancelExport(false);
+                trackAnimationEvent("export_failed", user, {
+                  error_type: err?.message || "unknown",
+                  format: animationSettings.exportFormat,
+                  resolution: animationSettings.resolution,
+                  slide_count: serializedSlides.length,
+                  transition_type: animationSettings.transitionType,
+                  progress_percent: Math.round(exportProgress * 100),
+                  export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+                  transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+                });
                 toast.error("Export failed. Please try again.");
+              }}
+              cancelled={cancelExport}
+              onCancelled={() => {
+                setIsExporting(false);
+                setExportProgress(0);
+                setCancelExport(false);
+                toast("Export canceled.");
               }}
             />
           </div>
