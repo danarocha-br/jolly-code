@@ -34,6 +34,8 @@ import {
   NavigationMenuLink,
 } from "../navigation-menu";
 import { cn } from "@/lib/utils";
+import { useAnimationFeatureFlag } from "@/features/animation/hooks/use-animation-feature-flag";
+import { Skeleton } from "../skeleton";
 
 const TOGGLE_THEME_HOTKEY = hotKeyList.find((item) => item.label === "Toggle theme")?.hotKey ?? "";
 
@@ -112,6 +114,9 @@ export const Nav = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { isEnabled: isAnimationFlagEnabled, isLoading: isAnimationFlagLoading } = useAnimationFeatureFlag({
+    initialValue: pathname?.startsWith("/animate"),
+  });
 
   // Optimize Zustand selectors - only subscribe to needed values
   const isPresentational = useEditorStore((state) => state.presentational);
@@ -119,6 +124,18 @@ export const Nav = () => {
 
   const username = user?.user_metadata?.full_name;
   const imageUrl = user?.user_metadata?.avatar_url;
+  const navItems = useMemo(
+    () => [
+      { href: "/", label: "Code editor", enabled: true, loading: false },
+      {
+        href: "/animate",
+        label: "Code animation",
+        enabled: isAnimationFlagEnabled,
+        loading: isAnimationFlagLoading,
+      },
+    ],
+    [isAnimationFlagEnabled, isAnimationFlagLoading]
+  );
 
   /**
    * Handles the toggle theme functionality.
@@ -186,10 +203,17 @@ export const Nav = () => {
         {!isPresentational && (
           <NavigationMenu>
             <NavigationMenuList className="gap-4">
-              {[
-                { href: "/", label: "Code editor" },
-                { href: "/animate", label: "Code animation" },
-              ].map(({ href, label }) => {
+              {navItems.map(({ href, label, enabled, loading }) => {
+                if (loading) {
+                  return (
+                    <NavigationMenuItem key={href}>
+                      <Skeleton className="h-9 w-[148px]" />
+                    </NavigationMenuItem>
+                  );
+                }
+
+                if (!enabled) return null;
+
                 const isActive =
                   (href === "/" && pathname === "/") ||
                   (href !== "/" && pathname?.startsWith(href));

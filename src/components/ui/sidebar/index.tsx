@@ -16,6 +16,7 @@ import { CreateCollectionDialog } from '@/features/snippets/create-collection-di
 import { Snippets } from '@/features/snippets';
 import { Animations } from "@/features/animations";
 import { CreateAnimationCollectionDialog } from "@/features/animations/create-collection-dialog";
+import { useAnimationFeatureFlag } from "@/features/animation/hooks/use-animation-feature-flag";
 import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
@@ -128,7 +129,11 @@ export const Sidebar = () => {
   const memoizedTheme = useMemo(() => theme, [theme]);
   const showSidebarContent = useMemo(() => SIDEBAR_COLLAPSED_WIDTH !== width, [width]);
   const isAnimationEditor = useMemo(() => pathname?.startsWith("/animate") ?? false, [pathname]);
-  const sidebarTitle = isAnimationEditor ? "My Animations" : "My Snippets";
+  const { isEnabled: canUseAnimation, isLoading: isAnimationFlagLoading } = useAnimationFeatureFlag({
+    initialValue: isAnimationEditor,
+  });
+  const showAnimationCollections = isAnimationEditor && canUseAnimation;
+  const sidebarTitle = isAnimationEditor && canUseAnimation ? "My Animations" : "My Snippets";
 
   return (
     <aside className="hidden lg:flex">
@@ -163,9 +168,9 @@ export const Sidebar = () => {
 
         {showSidebarContent && (
           <div className="absolute right-2 top-3">
-            <Tooltip content={isAnimationEditor ? "Add animation folder" : "Add folder"}>
+            <Tooltip content={showAnimationCollections ? "Add animation folder" : "Add folder"}>
               {user ? (
-                isAnimationEditor ? (
+                showAnimationCollections ? (
                   <CreateAnimationCollectionDialog>
                     <Button
                       size="icon"
@@ -209,7 +214,16 @@ export const Sidebar = () => {
             duration: showSidebarContent ? 0.2 : 0.1,
           }}
         >
-          {isAnimationEditor ? <Animations /> : <Snippets />}
+          {isAnimationFlagLoading && isAnimationEditor ? (
+            <div className="space-y-3">
+              <div className="h-7 w-32 rounded-lg bg-muted/40 animate-pulse" />
+              <div className="h-72 w-full rounded-xl bg-muted/40 animate-pulse" />
+            </div>
+          ) : showAnimationCollections ? (
+            <Animations />
+          ) : (
+            <Snippets />
+          )}
         </motion.div>
 
         <div className="absolute bottom-3 left-2">
