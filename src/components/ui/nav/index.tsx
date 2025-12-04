@@ -24,6 +24,7 @@ import {
 import { Avatar } from "../avatar";
 import { LoginDialog } from "@/features/login";
 import { CopyURLToClipboard } from "@/features/share-code";
+import { ExportMenu } from "@/features/export/export-menu";
 import { AnimationShareDialog } from "@/features/animation/enhanced-share-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -216,7 +217,14 @@ export const Nav = () => {
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
         {isPresentational && <UsersPresence />}
 
-        {isAnimationPage ? <AnimationShareDialog /> : <CopyURLToClipboard />}
+        {isAnimationPage ? (
+          <AnimationShareDialog />
+        ) : (
+          <>
+            <ExportMenu />
+            <CopyURLToClipboard />
+          </>
+        )}
 
         <Tooltip content="GitHub repository">
           <Button

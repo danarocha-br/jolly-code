@@ -92,7 +92,7 @@ export const EditorOptionsMenu = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="not-dark:hover:bg-subdued">
           <Tooltip content="Editor Options" side="right" sideOffset={16}>
-            <i className="ri-more-2-fill text-lg" />
+            <i className="ri-settings-line text-lg" />
           </Tooltip>
         </Button>
       </DropdownMenuTrigger>
