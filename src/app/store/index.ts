@@ -40,6 +40,7 @@ export type EditorStoreState = {
   padding: number;
   presentational: boolean;
   editor: "default" | "minimal";
+  showLineNumbers: boolean;
 };
 
 export const useUserStore = create<
@@ -83,6 +84,7 @@ export const useEditorStore = create<
         padding: 60,
         presentational: false,
         editor: "default",
+        showLineNumbers: false,
         currentEditorState: initialEditor,
         activeEditorTabId: initialEditor.id,
 

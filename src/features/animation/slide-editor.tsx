@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import CodeEditor from "react-simple-code-editor";
 import hljs from "highlight.js";
 import { useTheme } from "next-themes";
@@ -23,7 +23,7 @@ export const SlideEditor = () => {
   const [isMounted, setIsMounted] = useState(false);
   const { theme } = useTheme();
   const isDarkTheme = theme === "dark";
-  
+
   const slides = useAnimationStore((state) => state.slides);
   const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
   const updateSlide = useAnimationStore((state) => state.updateSlide);
@@ -33,8 +33,16 @@ export const SlideEditor = () => {
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
   const editorPreferences = useEditorStore((state) => state.editor);
+  const showLineNumbers = useEditorStore((state) => state.showLineNumbers);
 
   const activeSlide = slides[activeSlideIndex];
+
+  // Calculate line numbers
+  const lineNumbers = useMemo(() => {
+    if (!activeSlide?.code) return [];
+    const lines = activeSlide.code.split("\n").length;
+    return Array.from({ length: lines }, (_, i) => i + 1);
+  }, [activeSlide?.code]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -158,32 +166,47 @@ export const SlideEditor = () => {
         {/* Code content */}
         <section
           className={cn(
-            "px-4 py-4",
+            "px-4 py-4 relative",
             isDarkTheme
               ? "brightness-110"
               : "text-stone-800 contrast-200 brightness-[0.65]"
           )}
         >
-          <CodeEditor
-            key={activeSlide.id}
-            value={activeSlide.code}
-            onValueChange={(code) =>
-              updateSlide(activeSlide.id, { code })
-            }
-            highlight={(code) =>
-              hljs.highlight(code, {
-                language: activeSlide.language || "plaintext",
-              }).value
-            }
-            padding={10}
-            style={{
-              fontFamily: fonts[fontFamily || "robotoMono"].name,
-              fontSize: fontSize,
-              lineHeight: (fontSize || 14) * 1.7 + "px",
-            }}
-            textareaClassName="focus:outline-none"
-            placeholder="Write your code here..."
-          />
+          {showLineNumbers && (
+            <div
+              className="text-sm text-foreground/40 dark:text-muted-foreground/40 absolute left-4 select-none"
+              style={{
+                lineHeight: (fontSize || 14) * 1.7 + "px",
+                paddingTop: "10px" // Match CodeEditor padding
+              }}
+            >
+              {lineNumbers.map((num) => (
+                <div key={num}>{num}</div>
+              ))}
+            </div>
+          )}
+          <div className={cn(showLineNumbers && "ml-6")}>
+            <CodeEditor
+              key={activeSlide.id}
+              value={activeSlide.code}
+              onValueChange={(code) =>
+                updateSlide(activeSlide.id, { code })
+              }
+              highlight={(code) =>
+                hljs.highlight(code, {
+                  language: activeSlide.language || "plaintext",
+                }).value
+              }
+              padding={10}
+              style={{
+                fontFamily: fonts[fontFamily || "robotoMono"].name,
+                fontSize: fontSize,
+                lineHeight: (fontSize || 14) * 1.7 + "px",
+              }}
+              textareaClassName="focus:outline-none"
+              placeholder="Write your code here..."
+            />
+          </div>
         </section>
       </div>
     </div>

@@ -39,12 +39,17 @@ export const MorphingCodeRenderer = ({
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const editorPreferences = useEditorStore((state) => state.editor);
   const fontSize = useEditorStore((state) => state.fontSize);
+  const showLineNumbers = useEditorStore((state) => state.showLineNumbers);
 
   // Default values if store is not ready
   const currentFontFamily = fontFamily || "robotoMono";
   const currentFontSize = fontSize || 14;
   const lineHeight = currentFontSize * 1.7;
   const estimatedCharWidth = currentFontSize * 0.6;
+
+  // Calculate line number offset (similar to CodeRenderer)
+  const lineNumberOffset = showLineNumbers ? 24 : 0; // ml-6 is approximately 24px
+
   const clamped = Math.min(Math.max(progress, 0), 1);
   const easeInOutCubic = (t: number) =>
     t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -88,6 +93,15 @@ export const MorphingCodeRenderer = ({
 
   // Keep tokens fully visible; only added/removed fade based on eased morph
 
+  // Calculate line numbers for both from and to code
+  const fromLineCount = fromCode.split("\n").length;
+  const toLineCount = toCode.split("\n").length;
+  const maxLineCount = Math.max(fromLineCount, toLineCount);
+  const lineNumbers = useMemo(() =>
+    Array.from({ length: maxLineCount }, (_, i) => i + 1),
+    [maxLineCount]
+  );
+
   const content = (
     <div
       className="relative w-full"
@@ -111,66 +125,81 @@ export const MorphingCodeRenderer = ({
         M
       </span>
 
-      {entities.map((entity) => {
-        let left = 0;
-        let top = 0;
-        let opacity = 1;
-        let scale = 1;
-        let filter = "none";
-        let colorClass = "";
+      {/* Line numbers */}
+      {showLineNumbers && (
+        <div
+          className="text-sm text-foreground/40 dark:text-muted-foreground/40 absolute left-0 top-0 select-none"
+          style={{ lineHeight: `${lineHeight}px` }}
+        >
+          {lineNumbers.map((num) => (
+            <div key={num}>{num}</div>
+          ))}
+        </div>
+      )}
 
-        if (entity.type === "kept" && entity.from && entity.to) {
-          // Move from old to new position after a short hold
-          left = entity.from.x + (entity.to.x - entity.from.x) * morphProgress;
-          top = entity.from.y + (entity.to.y - entity.from.y) * morphProgress;
+      {/* Morphing code content with offset for line numbers */}
+      <div className="relative" style={{ marginLeft: lineNumberOffset }}>
+        {entities.map((entity) => {
+          let left = 0;
+          let top = 0;
+          let opacity = 1;
+          let scale = 1;
+          let filter = "none";
+          let colorClass = "";
 
-          const fromColIndex = Math.round(entity.from.x / charWidth);
-          const fromLineIndex = Math.round(entity.from.y / lineHeight);
-          const toColIndex = Math.round(entity.to.x / charWidth);
-          const toLineIndex = Math.round(entity.to.y / lineHeight);
-          const fromColor = fromColorMap[`${fromLineIndex}-${fromColIndex}`] || "";
-          const toColor = toColorMap[`${toLineIndex}-${toColIndex}`] || "";
-          colorClass = morphProgress < 0.5 ? fromColor : toColor;
-        } else if (entity.type === "removed" && entity.from) {
-          // Fade out removed tokens with eased progress
-          left = entity.from.x;
-          top = entity.from.y;
-          const effective = morphProgress;
-          opacity = 1 - effective;
-          scale = 1 - effective * 0.15;
-          filter = `blur(${effective * 1.5}px)`;
-          const colIndex = Math.round(entity.from.x / charWidth);
-          const lineIndex = Math.round(entity.from.y / lineHeight);
-          colorClass = fromColorMap[`${lineIndex}-${colIndex}`] || "";
-        } else if (entity.type === "added" && entity.to) {
-          // Fade in added tokens with eased progress
-          left = entity.to.x;
-          top = entity.to.y;
-          const effective = morphProgress;
-          opacity = effective;
-          scale = 0.9 + effective * 0.1;
-          filter = `blur(${(1 - effective) * 1.5}px)`;
-          const colIndex = Math.round(entity.to.x / charWidth);
-          const lineIndex = Math.round(entity.to.y / lineHeight);
-          colorClass = toColorMap[`${lineIndex}-${colIndex}`] || "";
-        }
+          if (entity.type === "kept" && entity.from && entity.to) {
+            // Move from old to new position after a short hold
+            left = entity.from.x + (entity.to.x - entity.from.x) * morphProgress;
+            top = entity.from.y + (entity.to.y - entity.from.y) * morphProgress;
 
-        return (
-          <span
-            key={entity.id}
-            className={cn("absolute whitespace-pre", colorClass)}
-            style={{
-              opacity,
-              transform: `translate3d(${left}px, ${top}px, 0) scale(${scale})`,
-              filter,
-              willChange: "transform, opacity, filter",
-              letterSpacing: 0,
-            }}
-          >
-            {entity.content}
-          </span>
-        );
-      })}
+            const fromColIndex = Math.round(entity.from.x / charWidth);
+            const fromLineIndex = Math.round(entity.from.y / lineHeight);
+            const toColIndex = Math.round(entity.to.x / charWidth);
+            const toLineIndex = Math.round(entity.to.y / lineHeight);
+            const fromColor = fromColorMap[`${fromLineIndex}-${fromColIndex}`] || "";
+            const toColor = toColorMap[`${toLineIndex}-${toColIndex}`] || "";
+            colorClass = morphProgress < 0.5 ? fromColor : toColor;
+          } else if (entity.type === "removed" && entity.from) {
+            // Fade out removed tokens with eased progress
+            left = entity.from.x;
+            top = entity.from.y;
+            const effective = morphProgress;
+            opacity = 1 - effective;
+            scale = 1 - effective * 0.15;
+            filter = `blur(${effective * 1.5}px)`;
+            const colIndex = Math.round(entity.from.x / charWidth);
+            const lineIndex = Math.round(entity.from.y / lineHeight);
+            colorClass = fromColorMap[`${lineIndex}-${colIndex}`] || "";
+          } else if (entity.type === "added" && entity.to) {
+            // Fade in added tokens with eased progress
+            left = entity.to.x;
+            top = entity.to.y;
+            const effective = morphProgress;
+            opacity = effective;
+            scale = 0.9 + effective * 0.1;
+            filter = `blur(${(1 - effective) * 1.5}px)`;
+            const colIndex = Math.round(entity.to.x / charWidth);
+            const lineIndex = Math.round(entity.to.y / lineHeight);
+            colorClass = toColorMap[`${lineIndex}-${colIndex}`] || "";
+          }
+
+          return (
+            <span
+              key={entity.id}
+              className={cn("absolute whitespace-pre", colorClass)}
+              style={{
+                opacity,
+                transform: `translate3d(${left}px, ${top}px, 0) scale(${scale})`,
+                filter,
+                willChange: "transform, opacity, filter",
+                letterSpacing: 0,
+              }}
+            >
+              {entity.content}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 

@@ -48,6 +48,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
   const editorPreferences = useEditorStore((state) => state.editor);
+  const showLineNumbers = useEditorStore((state) => state.showLineNumbers);
 
   const languageOptions = useMemo(
     () => Object.entries(languages).map(([value, label]) => ({ value, label })),
@@ -76,6 +77,13 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
     detectLanguage,
     updateSlide,
   ]);
+
+  // Calculate line numbers for edit mode
+  const lineNumbers = useMemo(() => {
+    if (!activeSlide?.code) return [];
+    const lines = activeSlide.code.split("\n").length;
+    return Array.from({ length: lines }, (_, i) => i + 1);
+  }, [activeSlide?.code]);
 
   // Header Content
   const headerContent = useMemo(() => {
@@ -203,26 +211,43 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
     if (mode === "edit") {
       const autoDetectEnabled = activeSlide.autoDetectLanguage ?? true;
       return (
-        <CodeEditor
-          key={activeSlide.id}
-          value={activeSlide.code}
-          onValueChange={(code) => {
-            updateSlide(activeSlide.id, { code });
-          }}
-          highlight={(code) =>
-            hljs.highlight(code, {
-              language: activeSlide.language || "plaintext",
-            }).value
-          }
-          padding={10}
-          style={{
-            fontFamily: fonts[fontFamily || "robotoMono"].name,
-            fontSize: fontSize,
-            lineHeight: (fontSize || 14) * 1.7 + "px",
-          }}
-          textareaClassName="focus:outline-none"
-          placeholder="Write your code here..."
-        />
+        <>
+          {showLineNumbers && (
+            <div
+              className="text-sm text-foreground/40 dark:text-muted-foreground/40 absolute left-4 select-none"
+              style={{
+                lineHeight: (fontSize || 14) * 1.7 + "px",
+                paddingTop: "10px" // Match CodeEditor padding
+              }}
+            >
+              {lineNumbers.map((num) => (
+                <div key={num}>{num}</div>
+              ))}
+            </div>
+          )}
+          <div className={cn(showLineNumbers && "ml-6")}>
+            <CodeEditor
+              key={activeSlide.id}
+              value={activeSlide.code}
+              onValueChange={(code) => {
+                updateSlide(activeSlide.id, { code });
+              }}
+              highlight={(code) =>
+                hljs.highlight(code, {
+                  language: activeSlide.language || "plaintext",
+                }).value
+              }
+              padding={10}
+              style={{
+                fontFamily: fonts[fontFamily || "robotoMono"].name,
+                fontSize: fontSize,
+                lineHeight: (fontSize || 14) * 1.7 + "px",
+              }}
+              textareaClassName="focus:outline-none"
+              placeholder="Write your code here..."
+            />
+          </div>
+        </>
       );
     } else {
       // Preview Mode

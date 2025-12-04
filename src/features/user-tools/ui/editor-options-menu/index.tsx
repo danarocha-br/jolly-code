@@ -60,6 +60,10 @@ export const EditorOptionsMenu = () => {
     changeEditorViewPreference(value);
   }
   function handleShowLineNumbers(checked: boolean) {
+    // Update BOTH per-tab setting AND global setting
+    // This ensures the preference applies to:
+    // 1. Current code editor tab (per-tab setting)
+    // 2. Animation view (global setting)
     useEditorStore.setState({
       editors: useEditorStore.getState().editors.map((editor) => {
         if (editor.id === currentState?.id) {
@@ -70,6 +74,7 @@ export const EditorOptionsMenu = () => {
         }
         return editor;
       }),
+      showLineNumbers: checked, // Global setting for animation view
     });
   }
 

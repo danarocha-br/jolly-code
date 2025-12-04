@@ -30,6 +30,10 @@ export const CodeRenderer = ({
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
   const editorPreferences = useEditorStore((state) => state.editor);
+  const globalShowLineNumbers = useEditorStore((state) => state.showLineNumbers);
+
+  // Use prop if provided, otherwise fall back to global setting
+  const shouldShowLineNumbers = showLineNumbers ?? globalShowLineNumbers;
 
   const highlightedCode = useMemo(() => {
     try {
@@ -46,7 +50,7 @@ export const CodeRenderer = ({
 
   const content = (
     <>
-      {showLineNumbers && (
+      {shouldShowLineNumbers && (
         <div
           className="text-sm text-foreground/40 dark:text-muted-foreground/40 absolute"
           style={{ lineHeight: (fontSize || 14) * 1.7 + "px" }}
@@ -58,7 +62,7 @@ export const CodeRenderer = ({
       )}
 
       <pre
-        className={cn("overflow-auto", showLineNumbers && "ml-6")}
+        className={cn("overflow-auto", shouldShowLineNumbers && "ml-6")}
         style={{
           fontFamily: fonts[fontFamily || "robotoMono"].name,
           fontSize: fontSize,
