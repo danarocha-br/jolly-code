@@ -110,9 +110,7 @@ export const MorphingCodeRenderer = ({
         fontFamily: fonts[currentFontFamily].name,
         fontSize: currentFontSize,
         lineHeight: `${lineHeight}px`,
-        letterSpacing: 0,
-        fontVariantLigatures: 'none',
-        fontFeatureSettings: '"liga" 0, "calt" 0, "dlig" 0',
+        letterSpacing: "normal",
       }}
     >
       {/* Hidden measurement span */}
@@ -120,7 +118,7 @@ export const MorphingCodeRenderer = ({
         ref={measureRef}
         className="opacity-0 absolute pointer-events-none"
         aria-hidden="true"
-        style={{ letterSpacing: 0 }}
+        style={{ letterSpacing: "normal" }}
       >
         M
       </span>
@@ -192,7 +190,7 @@ export const MorphingCodeRenderer = ({
                 transform: `translate3d(${left}px, ${top}px, 0) scale(${scale})`,
                 filter,
                 willChange: "transform, opacity, filter",
-                letterSpacing: 0,
+                letterSpacing: "normal",
               }}
             >
               {entity.content}

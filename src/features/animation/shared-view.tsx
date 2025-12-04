@@ -90,6 +90,8 @@ export const AnimateSharedClient = ({ payload, slug }: AnimateSharedClientProps)
       fontFamily: payload.editor?.fontFamily ?? state.fontFamily,
       fontSize: payload.editor?.fontSize ?? state.fontSize,
       showBackground: payload.editor?.showBackground ?? state.showBackground,
+      showLineNumbers: payload.editor?.showLineNumbers ?? state.showLineNumbers,
+      editor: payload.editor?.editor ?? state.editor,
       presentational: true,
     }));
 

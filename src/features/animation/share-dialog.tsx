@@ -33,6 +33,8 @@ export const AnimationShareDialog = () => {
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
   const showBackground = useEditorStore((state) => state.showBackground);
+  const editor = useEditorStore((state) => state.editor);
+  const showLineNumbers = useEditorStore((state) => state.showLineNumbers);
 
   const [open, setOpen] = useState(false);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
@@ -65,9 +67,20 @@ export const AnimationShareDialog = () => {
         fontFamily,
         fontSize,
         showBackground,
+        editor,
+        showLineNumbers,
       },
     }),
-    [animationSettings, backgroundTheme, fontFamily, fontSize, serializedSlides, showBackground]
+    [
+      animationSettings,
+      backgroundTheme,
+      editor,
+      fontFamily,
+      fontSize,
+      serializedSlides,
+      showBackground,
+      showLineNumbers,
+    ]
   );
 
   const shortenUrlMutation = useMutation({
