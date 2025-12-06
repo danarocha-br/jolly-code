@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { toast } from "sonner";
+import { useAnimationStore } from "@/app/store";
 import { AnimationControls, Timeline } from "@/features/animation";
+import { ResetAnimationDialog } from "./reset-animation-dialog";
 
 type AnimationBottomBarProps = {
   mode: "edit" | "preview";
@@ -30,11 +34,16 @@ export function AnimationBottomBar({
   onSlideLimitReached,
 }: AnimationBottomBarProps) {
 
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const resetActiveAnimation = useAnimationStore((state) => state.resetActiveAnimation);
+
   const handleResetSlides = () => {
-    if (confirm("Reset all slides to default? This will clear your current work.")) {
-      localStorage.removeItem("animation-store");
-      window.location.reload();
-    }
+    setIsResetDialogOpen(true);
+  };
+
+  const handleConfirmReset = () => {
+    resetActiveAnimation();
+    toast.success("Animation reset to default");
   };
 
   return (
@@ -61,6 +70,12 @@ export function AnimationBottomBar({
           />
         )}
       </div>
-    </div>
+
+      <ResetAnimationDialog
+        open={isResetDialogOpen}
+        onOpenChange={setIsResetDialogOpen}
+        onConfirm={handleConfirmReset}
+      />
+    </div >
   );
 }

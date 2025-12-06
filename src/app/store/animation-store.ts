@@ -50,6 +50,7 @@ export type AnimationStoreState = {
   updateActiveAnimation: (animation: Animation) => void;
   closeTab: (tabId: string) => void;
   removeAnimationFromTabs: (animationId: string) => void;
+  resetActiveAnimation: () => void;
 };
 
 const createSlide = (index: number, code = "", title?: string): AnimationSlide => ({
@@ -522,6 +523,50 @@ export const useAnimationStore = create<
             isAnimationSaved: false,
           });
         }
+      },
+
+      resetActiveAnimation: () => {
+        const { activeAnimationTabId, tabs } = get();
+
+        // Create default clean state for reset
+        const resetSlides = [createInitialSlide(1), createInitialSlide(2)];
+        const resetSettings: AnimationSettings = {
+          fps: 30,
+          resolution: "1080p",
+          transitionType: "diff",
+          exportFormat: getDefaultExportFormat(),
+          quality: "balanced",
+        };
+
+        // Update active store state
+        set({
+          slides: resetSlides,
+          activeSlideIndex: 0,
+          animationSettings: resetSettings,
+          isPlaying: false,
+          currentPlaybackTime: 0,
+          animationId: undefined,
+          isAnimationSaved: false,
+        });
+
+        // Update the active tab in the tabs list
+        const updatedTabs = sanitizeTabs(
+          tabs.map((tab) => {
+            if (tab.id === activeAnimationTabId) {
+              return {
+                ...tab,
+                slides: resetSlides,
+                settings: resetSettings,
+                animationId: undefined, // Detach from saved animation
+                title: "Slide 1", // Reset title
+                saved: false,
+              };
+            }
+            return tab;
+          })
+        );
+
+        set({ tabs: updatedTabs });
       }
     }),
     {
