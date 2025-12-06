@@ -98,20 +98,20 @@ export function AnimationAccessDenied() {
                               disabled={status === "submitting" || status === "success"}
                             />
                           </FormControl>
-                          <Button
-                            type="submit"
-                            disabled={status === "submitting" || status === "success"}
-                            className="shrink-0 sm:w-[160px]"
-                          >
-                            {status === "submitting"
-                              ? "Joining..."
-                              : status === "success"
-                                ? "Joined"
-                                : "Join waitlist"}
-                          </Button>
                         </div>
                         <FormMessage />
                       </Field>
+                      <Button
+                        type="submit"
+                        disabled={status === "submitting" || status === "success"}
+                        className="shrink-0 sm:w-[160px]"
+                      >
+                        {status === "submitting"
+                          ? "Joining..."
+                          : status === "success"
+                            ? "Joined"
+                            : "Join waitlist"}
+                      </Button>
                     </FormItem>
                   )}
                 />

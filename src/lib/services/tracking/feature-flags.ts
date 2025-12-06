@@ -35,6 +35,8 @@ let posthogClient: PostHog | null = null
 function getPostHogClient() {
   if (!posthogClient && POSTHOG_API_KEY) {
     posthogClient = new PostHog(POSTHOG_API_KEY, { host: POSTHOG_HOST })
+  } else if (!POSTHOG_API_KEY) {
+    console.warn('[Feature Flags] PostHog API Key not found. Feature flags will default to false.')
   }
   return posthogClient
 }
@@ -71,6 +73,13 @@ async function requestFeatureFlag(
     // However, for stateless serverless functions, we might need a different approach.
     // Since this is Next.js App Router, a singleton variable at module scope should persist across requests in the same lambda container.
 
+    if (!isEnabled) {
+      console.log(`[Feature Flags] Flag '${flagKey}' is disabled for user '${distinctId}'`, {
+        reason: 'posthog_eval_false',
+        distinctId,
+      })
+    }
+
     return {
       isEnabled: Boolean(isEnabled),
       payload,
@@ -78,7 +87,7 @@ async function requestFeatureFlag(
       reason: 'ok',
     }
   } catch (error) {
-    console.error('Error evaluating PostHog feature flag', error)
+    console.error(`[Feature Flags] Error evaluating flag '${flagKey}':`, error)
     return {
       isEnabled: false,
       fromCache: false,
