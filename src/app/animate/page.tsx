@@ -5,6 +5,15 @@ import { FEATURE_FLAG_KEYS } from "@/lib/services/tracking/feature-flag-keys";
 import { getAnimationFeatureFlag } from "@/lib/services/tracking/feature-flags";
 import { captureServerEvent } from "@/lib/services/tracking/server";
 import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Code Animation Editor | Jolly Code",
+  description: "Create engaging code animations for social media. Turn static code snippets into beautiful videos.",
+  alternates: {
+    canonical: "/animate",
+  },
+};
 
 export default async function AnimatePage() {
   const isProduction = process.env.NODE_ENV === "production";

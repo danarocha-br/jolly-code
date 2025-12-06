@@ -7,6 +7,7 @@ import {
   extractAnimationPayloadFromUrl,
 } from "@/features/animation/share-utils";
 import { AnimateSharedClient } from "@/features/animation/shared-view";
+import { JsonLd } from "@/components/seo/json-ld";
 
 type SharedAnimationPageProps = {
   params: Promise<{
@@ -44,12 +45,16 @@ export async function generateMetadata({ params }: SharedAnimationPageProps): Pr
       images: [ogImage],
       title,
       description,
+      type: "video.other",
     },
     twitter: {
       card: "summary_large_image",
       images: [ogImage],
       title,
       description,
+    },
+    alternates: {
+      canonical: `/animate/shared/${slug}`,
     },
   };
 }
@@ -73,5 +78,26 @@ export default async function SharedAnimationPage({ params }: SharedAnimationPag
     return notFound();
   }
 
-  return <AnimateSharedClient payload={payload} slug={slug} />;
+  const title = data.title || payload.slides?.[0]?.title || "Shared animation";
+  const datePublished = data.created_at;
+
+  return (
+    <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "CreativeWork",
+          name: title,
+          description: "A code animation created with Jolly Code",
+          author: {
+            "@type": "Organization",
+            name: "Jolly Code",
+          },
+          datePublished,
+          url: `https://jollycode.dev/animate/shared/${slug}`,
+        }}
+      />
+      <AnimateSharedClient payload={payload} slug={slug} />
+    </>
+  );
 }
