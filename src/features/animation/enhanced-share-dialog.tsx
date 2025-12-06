@@ -550,6 +550,7 @@ export const EnhancedAnimationShareDialog = () => {
                 isGenerating={isGenerating}
                 isCopying={isCopyingEmbed}
                 onCopy={() => void handleEmbedCopy()}
+                previewUrl={shareUrl ? shareUrl.replace("/animate/shared/", "/animate/embed/") : ""}
               />
             </TabsContent>
 

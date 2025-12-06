@@ -8,6 +8,7 @@ import {
 } from "@/features/animation/share-utils";
 import { AnimateSharedClient } from "@/features/animation/shared-view";
 import { JsonLd } from "@/components/seo/json-ld";
+import { siteConfig } from "@/lib/utils/site-config";
 
 type SharedAnimationPageProps = {
   params: Promise<{
@@ -48,13 +49,24 @@ export async function generateMetadata({ params }: SharedAnimationPageProps): Pr
       type: "video.other",
     },
     twitter: {
-      card: "summary_large_image",
-      images: [ogImage],
+      card: "player",
       title,
       description,
+      images: [ogImage],
+      players: [
+        {
+          playerUrl: `${siteConfig.url}/animate/embed/${slug}`,
+          streamUrl: `${siteConfig.url}/animate/embed/${slug}`,
+          width: 800,
+          height: 450,
+        },
+      ],
     },
     alternates: {
       canonical: `/animate/shared/${slug}`,
+      types: {
+        "application/json+oembed": `/api/oembed?url=${encodeURIComponent(`${siteConfig.url}/animate/shared/${slug}`)}`,
+      },
     },
   };
 }

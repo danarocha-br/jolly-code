@@ -15,6 +15,7 @@ interface ShareTabEmbedProps {
   isGenerating: boolean;
   isCopying: boolean;
   onCopy: () => void;
+  previewUrl?: string;
 }
 
 export const ShareTabEmbed = ({
@@ -26,6 +27,7 @@ export const ShareTabEmbed = ({
   isGenerating,
   isCopying,
   onCopy,
+  previewUrl,
 }: ShareTabEmbedProps) => {
   return (
     <div className="py-2">
@@ -66,6 +68,16 @@ export const ShareTabEmbed = ({
           Customize the iframe size before copying the embed code.
         </p>
         <div className="flex gap-2">
+          {previewUrl && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.open(previewUrl, "_blank")}
+            >
+              <i className="ri-external-link-line mr-2"></i>
+              Preview
+            </Button>
+          )}
           <Button
             type="button"
             onClick={onCopy}

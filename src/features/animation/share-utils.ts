@@ -86,7 +86,10 @@ export const generateEmbedCode = (url: string, options: EmbedOptions = {}) => {
   const width = options.width ?? "100%";
   const height = options.height ?? 420;
 
-  return `<iframe src="${url}" width="${width}" height="${height}" style="border:0; border-radius: 12px; overflow: hidden;" loading="lazy" allowfullscreen></iframe>`;
+  // Use the embed route if it's a shared animation link
+  const embedUrl = url.replace("/animate/shared/", "/animate/embed/");
+
+  return `<iframe src="${embedUrl}" width="${width}" height="${height}" style="border:0; border-radius: 12px; overflow: hidden;" loading="lazy" allowfullscreen></iframe>`;
 };
 
 type PlatformTarget = "hashnode" | "medium" | "devto" | "notion";
