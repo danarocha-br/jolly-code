@@ -2,24 +2,43 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { FEATURE_FLAG_KEYS } from "@/lib/services/tracking/feature-flag-keys";
 import { cn } from "@/lib/utils";
 
+const formSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
 type WaitlistState = "idle" | "submitting" | "success" | "error";
 
 export function AnimationAccessDenied() {
-  const [email, setEmail] = useState("");
   const [status, setStatus] = useState<WaitlistState>("idle");
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!email) return;
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
 
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setStatus("submitting");
     setMessage(null);
 
@@ -28,7 +47,7 @@ export function AnimationAccessDenied() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
+          email: values.email,
           feature_key: FEATURE_FLAG_KEYS.betaCodeAnimate,
         }),
       });
@@ -40,7 +59,7 @@ export function AnimationAccessDenied() {
 
       setStatus("success");
       setMessage("You're on the list! We'll email you when access opens.");
-      setEmail("");
+      form.reset();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Something went wrong");
@@ -61,43 +80,70 @@ export function AnimationAccessDenied() {
         </CardHeader>
 
         <CardContent className="space-y-4 border-t border-border/70 p-4 text-left">
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <label className="text-sm text-foreground/80" htmlFor="waitlist-email">
-              Email
-            </label>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                id="waitlist-email"
-                type="email"
-                required
-                placeholder="you@example.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                disabled={status === "submitting" || status === "success"}
-              />
-              <Button
-                type="submit"
-                disabled={status === "submitting" || status === "success"}
-                className="shrink-0 sm:w-[160px]"
-              >
-                {status === "submitting" ? "Joining..." : status === "success" ? "Joined" : "Join waitlist"}
-              </Button>
-            </div>
-          </form>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+              <FieldGroup >
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Field orientation="horizontal">
+                        <FormLabel className="text-sm text-foreground/80">Email</FormLabel>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <FormControl className="flex-1">
+                            <Input
+                              {...field}
+                              placeholder="you@example.com"
+                              disabled={status === "submitting" || status === "success"}
+                            />
+                          </FormControl>
+                          <Button
+                            type="submit"
+                            disabled={status === "submitting" || status === "success"}
+                            className="shrink-0 sm:w-[160px]"
+                          >
+                            {status === "submitting"
+                              ? "Joining..."
+                              : status === "success"
+                                ? "Joined"
+                                : "Join waitlist"}
+                          </Button>
+                        </div>
+                        <FormMessage />
+                      </Field>
+                    </FormItem>
+                  )}
+                />
+              </FieldGroup>
+            </form>
+          </Form>
 
           {message && (
-            <p className={cn("p-2 border border-border/70 rounded-md text-sm font-normal", status === "error" ? "bg-destructive/10 text-destructive-foreground" : "bg-success/5 text-primary-foreground")}>
-              <i className={cn("mr-2", status === "error" ? "ri-error-warning-line" : "ri-user-smile-line")}></i>
+            <p
+              className={cn(
+                "p-2 border border-border/70 rounded-md text-sm font-normal",
+                status === "error"
+                  ? "bg-destructive/10 text-destructive-foreground"
+                  : "bg-success/5 text-primary-foreground"
+              )}
+            >
+              <i
+                className={cn(
+                  "mr-2",
+                  status === "error"
+                    ? "ri-error-warning-line"
+                    : "ri-user-smile-line"
+                )}
+              ></i>
               {message}
             </p>
           )}
-
         </CardContent>
         <div className="flex items-center gap-3 p-2 border-t border-border/70">
           <Button variant="ghost" asChild className="flex-1 text-foreground/80">
             <Link href="/">Return home</Link>
           </Button>
-
         </div>
       </Card>
     </div>

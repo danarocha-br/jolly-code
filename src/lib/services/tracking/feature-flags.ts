@@ -2,6 +2,8 @@ import 'server-only'
 
 import { FEATURE_FLAG_KEYS } from './feature-flag-keys'
 
+import { PostHog } from 'posthog-node'
+
 const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com'
 
@@ -27,8 +29,23 @@ export type FeatureFlagResult = {
   reason?: 'ok' | 'missing_api_key' | 'decide_error'
 }
 
-async function requestFeatureFlag(flagKey: string, options: FeatureFlagEvaluationOptions): Promise<FeatureFlagResult> {
-  if (!POSTHOG_API_KEY) {
+// Initialize PostHog client
+let posthogClient: PostHog | null = null
+
+function getPostHogClient() {
+  if (!posthogClient && POSTHOG_API_KEY) {
+    posthogClient = new PostHog(POSTHOG_API_KEY, { host: POSTHOG_HOST })
+  }
+  return posthogClient
+}
+
+async function requestFeatureFlag(
+  flagKey: string,
+  options: FeatureFlagEvaluationOptions,
+): Promise<FeatureFlagResult> {
+  const client = getPostHogClient()
+
+  if (!client) {
     return {
       isEnabled: false,
       fromCache: false,
@@ -36,37 +53,26 @@ async function requestFeatureFlag(flagKey: string, options: FeatureFlagEvaluatio
     }
   }
 
-  const body = {
-    api_key: POSTHOG_API_KEY,
-    distinct_id: options.distinctId || 'anonymous',
-    groups: options.groups,
-    person_properties: options.personProperties,
-    only_evaluate_flags: [flagKey],
-    send_feature_flag_payloads: true,
-  }
+  const distinctId = options.distinctId || 'anonymous'
 
   try {
-    const response = await fetch(`${POSTHOG_HOST}/decide/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
+    const isEnabled = await client.isFeatureEnabled(flagKey, distinctId, {
+      groups: options.groups,
+      personProperties: options.personProperties as Record<string, string> | undefined,
     })
 
-    if (!response.ok) {
-      return {
-        isEnabled: false,
-        fromCache: false,
-        reason: 'decide_error',
-      }
-    }
+    const payload = await client.getFeatureFlagPayload(flagKey, distinctId, undefined, {
+      groups: options.groups,
+      personProperties: options.personProperties as Record<string, string> | undefined,
+    })
 
-    const data = await response.json()
-    const flagValue = data?.featureFlags?.[flagKey]
-    const payload = data?.featureFlagPayloads?.[flagKey]
+    // It's important to shutdown the client to flush events if this was a one-off script,
+    // but in a server environment like Next.js we keep the singleton alive.
+    // However, for stateless serverless functions, we might need a different approach.
+    // Since this is Next.js App Router, a singleton variable at module scope should persist across requests in the same lambda container.
 
     return {
-      isEnabled: Boolean(flagValue),
+      isEnabled: Boolean(isEnabled),
       payload,
       fromCache: false,
       reason: 'ok',
@@ -103,6 +109,14 @@ export async function getServerFeatureFlag(
     return { ...cachedResult, fromCache: true }
   }
 
+  // We might not need caching as much if posthog-node handles it or if it's fast enough,
+  // but keeping it for now to avoid excessive API calls if the SDK doesn't do local eval by default in this setup.
+  // Note: posthog-node does local evaluation if initialized with personal_api_key,
+  // but here we are using the project API key.
+  // Actually, standard posthog-node init with just project key does remote evaluation unless personal key is provided for some features? 
+  // Wait, the docs say for "Local Evaluation" you need to ensure the library is initialized correctly.
+  // However, for consistency with the previous structure, I'll keep the cache wrapper but rely on the SDK for the actual call.
+
   const resultPromise = requestFeatureFlag(flagKey, options)
   featureFlagCache.set(cacheKey, {
     expiresAt: now + FLAG_CACHE_TTL_MS,
@@ -110,6 +124,7 @@ export async function getServerFeatureFlag(
   })
 
   return resultPromise
+
 }
 
 export async function getAnimationFeatureFlag(options: FeatureFlagEvaluationOptions = {}) {
