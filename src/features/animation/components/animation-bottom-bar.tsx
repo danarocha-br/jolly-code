@@ -48,7 +48,7 @@ export function AnimationBottomBar({
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 bg-background/95 backdrop-blur border-t border-border/60 transition-[padding] duration-300 ease-out lg:pl-[var(--sidebar-width,_50px)]">
-      <div className="w-full px-0 py-3">
+      <div className="w-full px-0 pt-3">
         {/* Controls */}
         <AnimationControls
           mode={mode}

@@ -108,7 +108,7 @@ export const Timeline = ({ maxSlides, onSlideLimitReached }: TimelineProps) => {
     })
   );
 
-const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {

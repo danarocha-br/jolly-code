@@ -43,16 +43,13 @@ export type EditorStoreState = {
   showLineNumbers: boolean;
 };
 
-export const useUserStore = create<
-  UserStoreState,
-  [["zustand/persist", UserStoreState]]
->(
-  persist(
+export const useUserStore = create<UserStoreState>()(
+  persist<UserStoreState>(
     (set) => ({
       user: null,
     }),
     { name: "user-store" }
-  )
+  ) as any
 );
 
 function createNewTab(index: number): EditorState {
@@ -68,11 +65,8 @@ function createNewTab(index: number): EditorState {
   };
 }
 
-export const useEditorStore = create<
-  EditorStoreState,
-  [["zustand/persist", EditorStoreState]]
->(
-  persist(
+export const useEditorStore = create<EditorStoreState>()(
+  persist<EditorStoreState>(
     (set, get) => {
       const initialEditor = createNewTab(1);
       return {
@@ -164,7 +158,7 @@ export const useEditorStore = create<
       };
     },
     { name: "code-store" }
-  )
+  ) as any
 );
 
 export { useAnimationStore } from "./animation-store";

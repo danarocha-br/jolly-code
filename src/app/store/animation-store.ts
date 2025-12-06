@@ -120,11 +120,8 @@ const sanitizeTabs = (tabs: AnimationTabState[]) =>
     saved: Boolean(tab.animationId) && Boolean(tab.saved),
   }));
 
-export const useAnimationStore = create<
-  AnimationStoreState,
-  [["zustand/persist", AnimationStoreState]]
->(
-  persist(
+export const useAnimationStore = create<AnimationStoreState>()(
+  persist<AnimationStoreState>(
     (set, get) => ({
       slides: initialSlides,
       activeSlideIndex: 0,
@@ -581,5 +578,5 @@ export const useAnimationStore = create<
         };
       },
     }
-  )
+  ) as any
 );
