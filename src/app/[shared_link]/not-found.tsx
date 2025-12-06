@@ -149,7 +149,7 @@ export default function NotFound() {
             strokeWidth=".502"
             strokeLinecap="round"
             strokeLinejoin="round"
-            stroke-dasharray="1.51 1.51"
+            strokeDasharray="1.51 1.51"
           />
           <path d="M75.06 166.202v-27.42H56.68v27.42h18.38Z" fill="#686868" />
           <path

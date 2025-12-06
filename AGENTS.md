@@ -29,3 +29,9 @@
 ## Security & Configuration Tips
 - Store secrets in `.env.local`; never commit keys. Required keys include Supabase (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) and Sentry/PostHog credentials where applicable.
 - When developing analytics/Sentry changes, guard them behind environment checks to keep local runs noise-free.
+
+## Usage Limits & Plans
+- Free plan caps: 10 snippets, 10 animations, 5 slides per animation. Pro plan removes limits.
+- Usage counts live in `profiles` and `usage_limits` with helper RPCs (`check_*_limit`, `increment_*`, `decrement_*`).
+- Use `src/lib/services/usage-limits.ts` + `src/features/user/queries.ts` for limit checks and usage fetch/invalidation.
+- Surface upgrade prompts via `UpgradeDialog` and show current usage with `UsageStatsWidget`.

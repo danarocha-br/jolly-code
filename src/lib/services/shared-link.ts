@@ -1,8 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
-import { isValidURL } from "@/lib/utils/is-valid-url";
 
 export async function getSharedLink(slug: string) {
-    if (!slug || !isValidURL(slug)) {
+    if (!slug) {
         return null;
     }
 
@@ -11,7 +10,7 @@ export async function getSharedLink(slug: string) {
     try {
         const { data, error } = await supabase
             .from("links")
-            .select("id, url, snippet_id")
+            .select("id, url, snippet_id, title, description, created_at")
             .eq("short_url", slug)
             .single();
 

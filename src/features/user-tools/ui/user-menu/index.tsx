@@ -1,15 +1,23 @@
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip } from '@/components/ui/tooltip';
+import { UsageStatsWidget } from '@/components/usage-stats-widget';
+import type { UsageSummary } from '@/lib/services/usage-limits';
 
 export const UserMenu = ({
   username,
   imageUrl,
   onSignOut,
+  usage,
+  isUsageLoading,
+  onUpgrade,
 }: {
   username: string;
   imageUrl?: string;
   onSignOut: () => void;
+  usage?: UsageSummary;
+  isUsageLoading?: boolean;
+  onUpgrade?: () => void;
 }) => {
   return (
     <DropdownMenu>
@@ -36,6 +44,20 @@ export const UserMenu = ({
             Logout
           </div>
         </DropdownMenuItem>
+
+        {(usage || isUsageLoading) && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="p-2">
+              <UsageStatsWidget
+                usage={usage}
+                isLoading={isUsageLoading}
+                onUpgrade={onUpgrade}
+                className="w-64"
+              />
+            </div>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

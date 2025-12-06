@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
@@ -11,18 +11,22 @@ import { Separator } from "../../components/ui/separator";
 import { EditorOptionsMenu } from "./ui/editor-options-menu";
 import { Tooltip } from "../../components/ui/tooltip";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CodeAnnotationMenu } from "./ui/code-annotation-menu";
 import { HotKeysPopover } from "./ui/hotkeys-menu";
 import { UserMenu } from "./ui/user-menu";
 import { LoginMenu } from "./ui/login-menu";
 
 import * as S from "./ui/styles";
 import { Changelog } from '@/features/changelog';
+import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
+import { useUserUsage } from "@/features/user/queries";
+import { analytics } from "@/lib/services/tracking";
 
 export const UserTools = () => {
   const supabase = createClient();
   const router = useRouter();
   const { user } = useUserStore();
+  const { data: usage, isLoading: isUsageLoading } = useUserUsage(user?.id);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const queryKey = ["user"];
@@ -50,41 +54,61 @@ export const UserTools = () => {
   });
 
   return (
-    <Card className={S.container()}>
-      <CardContent className={S.content()}>
-        {!!user && username ? (
-          <UserMenu
-            username={username}
-            imageUrl={imageUrl}
-            onSignOut={handleSignOut.mutate}
-          />
-        ) : (
-          <LoginMenu />
-        )}
+    <>
+      <UpgradeDialog
+        open={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        limitType="snippets"
+        currentCount={usage?.snippets.current}
+        maxCount={usage?.snippets.max ?? null}
+      />
+      <div className="space-y-3">
+        <Card className={S.container()}>
+          <CardContent className={S.content()}>
+            {!!user && username ? (
+              <UserMenu
+                username={username}
+                imageUrl={imageUrl}
+                onSignOut={handleSignOut.mutate}
+                usage={usage}
+                isUsageLoading={isUsageLoading}
+                onUpgrade={() => {
+                  analytics.track("upgrade_cta_clicked", {
+                    location: "user_menu",
+                    plan_interested: "pro",
+                  });
+                  setIsUpgradeOpen(true);
+                }}
+              />
+            ) : (
+              <LoginMenu />
+            )}
 
-        <Separator />
+            <Separator />
 
-        <EditorOptionsMenu />
+            <EditorOptionsMenu />
 
-        <CodeAnnotationMenu />
+            {/* <CodeAnnotationMenu /> */}
 
-        <HotKeysPopover />
+            <HotKeysPopover />
 
-        <Separator />
+            <Separator />
 
-        <Changelog>
-          <Button size="icon" variant="ghost" className="not-dark:hover:bg-subdued">
-            <Tooltip
-              content="Feedback & Updates"
-              align="end"
-              side="right"
-              sideOffset={12}
-            >
-              <i className="ri-question-line text-lg" />
-            </Tooltip>
-          </Button>
-        </Changelog>
-      </CardContent>
-    </Card>
+            <Changelog>
+              <Button size="icon" variant="ghost" className="not-dark:hover:bg-subdued">
+                <Tooltip
+                  content="Feedback & Updates"
+                  align="end"
+                  side="right"
+                  sideOffset={12}
+                >
+                  <i className="ri-question-line text-lg" />
+                </Tooltip>
+              </Button>
+            </Changelog>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 };

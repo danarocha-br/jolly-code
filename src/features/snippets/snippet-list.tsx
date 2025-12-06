@@ -39,6 +39,7 @@ import { analytics } from "@/lib/services/tracking";
 import { cn } from "@/lib/utils";
 import { languagesLogos } from "@/lib/language-logos";
 import * as SnippetStyles from "./ui/styles";
+import { USAGE_QUERY_KEY } from "@/features/user/queries";
 
 type CollectionDroppableProps = {
   collectionId: string;
@@ -89,6 +90,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { setActiveTab, editors, addEditor } = useEditorStore();
   const user = useUserStore((state) => state.user);
+  const userId = useUserStore((state) => state.user?.id);
 
   const queryClient = useQueryClient();
   const queryKey = ["collections"];
@@ -231,6 +233,9 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       queryClient.invalidateQueries({ queryKey });
       // Invalidate any cached snippet queries to avoid fetching deleted snippets
       queryClient.invalidateQueries({ queryKey: ['snippet'] });
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, userId] });
+      }
     },
   });
 

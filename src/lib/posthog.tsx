@@ -9,8 +9,9 @@ const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com'
 const IS_BROWSER = typeof window !== 'undefined'
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+const ENABLE_POSTHOG_LOCAL = process.env.NEXT_PUBLIC_POSTHOG_ENABLE_LOCAL === 'true'
 const IS_LOCALHOST = IS_BROWSER && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-const IS_POSTHOG_CONFIGURED = Boolean(POSTHOG_KEY) && IS_PRODUCTION && !IS_LOCALHOST
+const IS_POSTHOG_CONFIGURED = Boolean(POSTHOG_KEY) && (IS_PRODUCTION || ENABLE_POSTHOG_LOCAL)
 
 let hasInitialized = false
 
@@ -31,29 +32,36 @@ export function ensurePostHogClient() {
 export function CSPostHogProvider({ children, user }: { children: ReactNode, user?: any }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [isReady, setIsReady] = useState(() => ensurePostHogClient())
 
   useEffect(() => {
-    if (!isReady) return
+    ensurePostHogClient()
+  }, [])
 
+  useEffect(() => {
+    if (!ensurePostHogClient()) return
+    const email = user?.email?.toLowerCase()
     if (user) {
-      posthog.identify(user.id, {
-        email: user.email,
+      posthog.identify(user.id ?? email, {
+        email,
         name: user.user_metadata?.full_name,
       })
+      if (posthog.setPersonPropertiesForFlags) {
+        posthog.setPersonPropertiesForFlags({
+          email,
+          name: user.user_metadata?.full_name,
+        })
+      }
     } else {
       posthog.reset()
     }
-  }, [user, isReady])
+  }, [user])
 
   useEffect(() => {
-    if (!isReady) return
+    if (!ensurePostHogClient()) return
     if (!pathname) return
 
     posthog.capture('$pageview')
-  }, [pathname, searchParams, isReady])
-
-  if (!isReady) return children
+  }, [pathname, searchParams])
 
   return <PostHogProvider client={posthog}>{children}</PostHogProvider>
 }

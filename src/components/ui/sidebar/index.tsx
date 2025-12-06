@@ -1,9 +1,9 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { Button } from "../button";
 import { Logo } from "../logo";
@@ -14,6 +14,9 @@ import { useEditorStore, useUserStore } from "@/app/store";
 import { LoginDialog } from "@/features/login";
 import { CreateCollectionDialog } from '@/features/snippets/create-collection-dialog';
 import { Snippets } from '@/features/snippets';
+import { Animations } from "@/features/animations";
+import { CreateAnimationCollectionDialog } from "@/features/animations/create-collection-dialog";
+import { useAnimationFeatureFlag } from "@/features/animation/hooks/use-animation-feature-flag";
 import * as S from "./styles";
 
 const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
@@ -21,7 +24,8 @@ const themeMapping: { [key in "dark" | "light"]: "dark" | "light" } = {
   light: "dark",
 };
 
-const initialWidth = 50;
+export const SIDEBAR_COLLAPSED_WIDTH = 50;
+export const SIDEBAR_EXPANDED_WIDTH = 300;
 
 /**
  * Generates a custom hook that handles mouse events for the sidebar.
@@ -32,7 +36,7 @@ const initialWidth = 50;
  *   - handleMouseLeave: A callback function to handle mouse leave events.
  */
 const useSidebarMouseEvents = () => {
-  const [width, setWidth] = useState(initialWidth);
+  const [width, setWidth] = useState(SIDEBAR_COLLAPSED_WIDTH);
   const collapseTimeout = useRef<NodeJS.Timeout | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const hasOpenPortals = useRef(false);
@@ -78,7 +82,7 @@ const useSidebarMouseEvents = () => {
       clearTimeout(collapseTimeout.current);
       collapseTimeout.current = null;
     }
-    const newWidth = 300;
+    const newWidth = SIDEBAR_EXPANDED_WIDTH;
     setWidth(newWidth);
   }, []);
 
@@ -92,7 +96,7 @@ const useSidebarMouseEvents = () => {
     collapseTimeout.current = setTimeout(() => {
       // Double-check portals before collapsing
       if (!hasOpenPortals.current) {
-        setWidth(initialWidth);
+        setWidth(SIDEBAR_COLLAPSED_WIDTH);
         collapseTimeout.current = null;
       }
     }, 300);
@@ -104,8 +108,12 @@ const useSidebarMouseEvents = () => {
       clearTimeout(collapseTimeout.current);
       collapseTimeout.current = null;
     }
-    setWidth(initialWidth);
+    setWidth(SIDEBAR_COLLAPSED_WIDTH);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+  }, [width]);
 
   return { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef, setHasOpenPortals };
 };
@@ -114,11 +122,18 @@ export const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const { width, handlePointerEnter, handlePointerLeave, closeSidebar, sidebarRef, setHasOpenPortals } = useSidebarMouseEvents();
   const router = useRouter();
+  const pathname = usePathname();
 
   const user = useUserStore((state) => state.user);
   const isPresentational = useEditorStore((state) => state.presentational);
   const memoizedTheme = useMemo(() => theme, [theme]);
-  const showSidebarContent = useMemo(() => initialWidth !== width, [width]);
+  const showSidebarContent = useMemo(() => SIDEBAR_COLLAPSED_WIDTH !== width, [width]);
+  const isAnimationEditor = useMemo(() => pathname?.startsWith("/animate") ?? false, [pathname]);
+  const { isEnabled: canUseAnimation, isLoading: isAnimationFlagLoading } = useAnimationFeatureFlag({
+    initialValue: isAnimationEditor,
+  });
+  const showAnimationCollections = isAnimationEditor && canUseAnimation;
+  const sidebarTitle = isAnimationEditor && canUseAnimation ? "My Animations" : "My Snippets";
 
   return (
     <aside className="hidden lg:flex">
@@ -149,21 +164,33 @@ export const Sidebar = () => {
           )}
         </Button>
 
-        <h2 className={S.title({ show: showSidebarContent })}>My Snippets</h2>
+        <h2 className={S.title({ show: showSidebarContent })}>{sidebarTitle}</h2>
 
         {showSidebarContent && (
           <div className="absolute right-2 top-3">
-            <Tooltip content="Add folder">
+            <Tooltip content={showAnimationCollections ? "Add animation folder" : "Add folder"}>
               {user ? (
-                <CreateCollectionDialog>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="rounded-full not-dark:bg-white not-dark:bg-white/80"
-                  >
-                    <i className="ri-add-line" />
-                  </Button>
-                </CreateCollectionDialog>
+                showAnimationCollections ? (
+                  <CreateAnimationCollectionDialog>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="rounded-full not-dark:bg-white not-dark:bg-white/80"
+                    >
+                      <i className="ri-add-line" />
+                    </Button>
+                  </CreateAnimationCollectionDialog>
+                ) : (
+                  <CreateCollectionDialog>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="rounded-full not-dark:bg-white not-dark:bg-white/80"
+                    >
+                      <i className="ri-add-line" />
+                    </Button>
+                  </CreateCollectionDialog>
+                )
               ) : (
                 <LoginDialog>
                   <Button
@@ -187,7 +214,16 @@ export const Sidebar = () => {
             duration: showSidebarContent ? 0.2 : 0.1,
           }}
         >
-          <Snippets />
+          {isAnimationFlagLoading && isAnimationEditor ? (
+            <div className="space-y-3">
+              <div className="h-7 w-32 rounded-lg bg-muted/40 animate-pulse" />
+              <div className="h-72 w-full rounded-xl bg-muted/40 animate-pulse" />
+            </div>
+          ) : showAnimationCollections ? (
+            <Animations />
+          ) : (
+            <Snippets />
+          )}
         </motion.div>
 
         <div className="absolute bottom-3 left-2">
@@ -238,7 +274,7 @@ export const Sidebar = () => {
           </HoverCard>
         </div>
 
-        <div className={S.logo({ show: initialWidth === width })}>
+        <div className={S.logo({ show: SIDEBAR_COLLAPSED_WIDTH === width })}>
           <Logo />
         </div>
 

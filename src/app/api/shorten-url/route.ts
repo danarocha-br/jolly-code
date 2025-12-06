@@ -39,18 +39,13 @@ export const GET = wrapRouteHandlerWithSentry(
       );
     }
 
-    if (!isValidURL(slug)) {
-      applyResponseContextToSentry(400);
-      return NextResponse.json({ error: "Invalid slug." }, { status: 400 });
-    }
-
     let data;
     let error;
     try {
       const result = await supabase
         .from("links")
-        .select("id, url")
-        .eq("short_url", slug);
+            .select("id, url, title, description")
+            .eq("short_url", slug);
 
       data = result.data;
 
@@ -88,7 +83,7 @@ export const POST = wrapRouteHandlerWithSentry(
         return NextResponse.json({ error: "Invalid request" }, { status: 415 });
       }
 
-      const { url, snippet_id, user_id } =
+      const { url, snippet_id, user_id, title, description } =
         await validateContentType(request).json();
 
       applyRequestContextToSentry({ request, userId: user_id });
@@ -108,7 +103,7 @@ export const POST = wrapRouteHandlerWithSentry(
 
       const { data: existingUrl, error } = await supabase
         .from("links")
-        .select("url, short_url")
+        .select("url, short_url, title, description")
         .eq("url", longUrl);
 
       if (error) {
@@ -118,11 +113,27 @@ export const POST = wrapRouteHandlerWithSentry(
       }
 
       if (existingUrl && existingUrl.length > 0) {
-        // URL already exists, return the existing short URL
+        // URL already exists, return the existing short URL and refresh metadata if needed
+        const existing = existingUrl[0];
+
+        if (title || description) {
+          try {
+            await supabase
+              .from("links")
+              .update({
+                title: title ?? existing.title ?? null,
+                description: description ?? existing.description ?? null,
+              })
+              .eq("short_url", existing.short_url);
+          } catch (updateError) {
+            console.error("Failed to update link metadata", updateError);
+          }
+        }
+
         applyResponseContextToSentry(200);
         return NextResponse.json({
           status: 200,
-          short_url: existingUrl[0].short_url,
+          short_url: existing.short_url,
         });
       }
 
@@ -148,6 +159,8 @@ export const POST = wrapRouteHandlerWithSentry(
             url: longUrl,
             short_url: shortUrl,
             snippet_id: snippet_id ? snippet_id : null,
+            title: title ?? null,
+            description: description ?? null,
           },
         ]);
 

@@ -13,6 +13,7 @@ import { codeSnippets } from "@/lib/code-snippets-options";
 import { fonts } from "@/lib/fonts-options";
 import { themes } from "@/lib/themes-options";
 import { EditorState, useEditorStore, useUserStore } from "@/app/store";
+import { toast } from "sonner";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useMediaQuery } from "@/lib/utils/media-query";
 import { debounce } from "@/lib/utils/debounce";
@@ -29,6 +30,8 @@ import { Collection } from "@/features/snippets/dtos";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import { analytics } from "@/lib/services/tracking";
+import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
+import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -196,6 +199,13 @@ export const Editor = forwardRef<any, EditorProps>(
         return user?.id;
       }
     }, [user]);
+    const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
+    const snippetLimit = usage?.snippets;
+    const snippetLimitReached =
+      snippetLimit?.max !== null &&
+      typeof snippetLimit?.max !== "undefined" &&
+      snippetLimit.current >= snippetLimit.max;
+    const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
     useHotkeys(focusEditor[0].hotKey, () => {
       if (editorRef.current) {
@@ -250,6 +260,9 @@ export const Editor = forwardRef<any, EditorProps>(
           });
         }
         queryClient.invalidateQueries({ queryKey });
+        if (user_id) {
+          queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
+        }
       },
     });
 
@@ -281,6 +294,9 @@ export const Editor = forwardRef<any, EditorProps>(
 
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: queryKey });
+        if (user_id) {
+          queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
+        }
       },
     });
 
@@ -361,8 +377,49 @@ export const Editor = forwardRef<any, EditorProps>(
       [currentEditor, handleUpdateSnippet, user_id]
     );
 
+    const handleSaveSnippet = () => {
+      if (snippetLimitReached) {
+        const limitLabel =
+          snippetLimit?.max !== null && typeof snippetLimit?.max !== "undefined"
+            ? `${snippetLimit.current}/${snippetLimit.max}`
+            : `${snippetLimit?.current ?? 0}`;
+
+        toast.error(
+          `You've reached the free plan limit (${limitLabel} snippets). Upgrade to Pro for unlimited snippets!`
+        );
+        analytics.track("limit_reached", {
+          limit_type: "snippets",
+          current: snippetLimit?.current ?? 0,
+          max: snippetLimit?.max ?? null,
+        });
+        setIsUpgradeOpen(true);
+        analytics.track("upgrade_prompt_shown", {
+          limit_type: "snippets",
+          trigger: "save_attempt",
+        });
+        return;
+      }
+
+      handleCreateSnippet({
+        id: currentEditor?.id!,
+        user_id,
+        currentUrl: currentUrlOrigin,
+        title: currentEditor?.title || "Untitled",
+        code: code,
+        language: language,
+        state: currentEditor!,
+      });
+    };
+
     return (
       <>
+        <UpgradeDialog
+          open={isUpgradeOpen}
+          onOpenChange={setIsUpgradeOpen}
+          limitType="snippets"
+          currentCount={snippetLimit?.current}
+          maxCount={snippetLimit?.max ?? null}
+        />
         <div
           className={cn(
             S.background(),
@@ -393,17 +450,7 @@ export const Editor = forwardRef<any, EditorProps>(
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={() =>
-                    handleCreateSnippet({
-                      id: currentEditor?.id!,
-                      user_id,
-                      currentUrl: currentUrlOrigin,
-                      title: currentEditor?.title || "Untitled",
-                      code: code,
-                      language: language,
-                      state: currentEditor!,
-                    })
-                  }
+                  onClick={handleSaveSnippet}
                   className={cn(
                     S.bookmarkButton({ onDark: isDarkTheme }),
                     padding > 44 ? "top-2 right-2" : "top-1 right-1"
@@ -465,21 +512,12 @@ export const Editor = forwardRef<any, EditorProps>(
                 </div>
 
                 <div className={S.title({ editorPreferences })}>
-                  <TabsList>
-                    <TabsTrigger
-                      value="initial"
-                      className={cn(
-                        "relative"
-                      )}
-                    >
-                      <TitleInput
-                        onUpdateTitle={handleUpdateSnippet}
-                        language={language}
-                        disabled={presentational}
-                        userId={user_id ?? ""}
-                      />
-                    </TabsTrigger>
-                  </TabsList>
+                  <TitleInput
+                    onUpdateTitle={handleUpdateSnippet}
+                    language={language}
+                    disabled={presentational}
+                    userId={user_id ?? ""}
+                  />
                 </div>
               </header>
 
