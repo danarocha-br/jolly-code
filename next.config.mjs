@@ -34,6 +34,19 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: "/animate/embed/:slug",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors *",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "ALLOWALL",
+          },
+        ],
+      },
     ];
   },
   turbopack: {},

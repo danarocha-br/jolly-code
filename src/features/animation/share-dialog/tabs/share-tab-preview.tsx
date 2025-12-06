@@ -17,9 +17,9 @@ export const ShareTabPreview = ({
     <div className="space-y-4 px-4 pt-1">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <p className="text-sm">Open Graph preview generated from your first slide.</p>
+          <p className="text-sm">Link preview (Medium, LinkedIn, etc.)</p>
           <p className="text-xs text-muted-foreground">
-            Cached for an hour. Refresh if you just updated the animation.
+            Cached for an hour. Refresh if you just updated the link.
           </p>
         </div>
         <Button
@@ -41,8 +41,8 @@ export const ShareTabPreview = ({
             className="w-full h-[280px] object-cover bg-muted"
           />
         ) : (
-          <div className="w-full h-[280px] flex items-center justify-center text-muted-foreground">
-            Generate a link to see the OG image.
+          <div className="w-full h-[480px] flex items-center justify-center text-muted-foreground">
+            Generate a link to see the preview.
           </div>
         )}
       </div>

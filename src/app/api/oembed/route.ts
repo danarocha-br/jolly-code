@@ -51,15 +51,24 @@ export async function GET(request: NextRequest) {
 
 	const embedUrl = `${siteConfig.url}/animate/embed/${slug}`;
 
-	// Return oEmbed JSON
-	return NextResponse.json({
-		type: "rich",
-		version: "1.0",
-		title: title,
-		provider_name: siteConfig.title,
-		provider_url: siteConfig.url,
-		width: width,
-		height: height,
-		html: `<iframe src="${embedUrl}" width="${width}" height="${height}" style="border:0; border-radius: 12px; overflow: hidden;" loading="lazy" allowfullscreen></iframe>`,
-	});
+	// Return oEmbed JSON with CORS headers
+	return NextResponse.json(
+		{
+			type: "rich",
+			version: "1.0",
+			title: title,
+			provider_name: siteConfig.title,
+			provider_url: siteConfig.url,
+			width: width,
+			height: height,
+			html: `<iframe src="${embedUrl}" width="${width}" height="${height}" style="border:0; border-radius: 12px; overflow: hidden;" loading="lazy" allowfullscreen></iframe>`,
+		},
+		{
+			headers: {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type",
+			},
+		}
+	);
 }

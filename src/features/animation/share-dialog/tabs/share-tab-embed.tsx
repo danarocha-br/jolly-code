@@ -16,6 +16,7 @@ interface ShareTabEmbedProps {
   isCopying: boolean;
   onCopy: () => void;
   previewUrl?: string;
+  ogPreviewUrl?: string | null;
 }
 
 export const ShareTabEmbed = ({

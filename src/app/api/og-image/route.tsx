@@ -57,8 +57,7 @@ export async function GET(request: Request) {
     const slugParam = searchParams.get("slug");
     const titleOverride = searchParams.get("title") ?? undefined;
     const descriptionOverride = searchParams.get("description") ?? undefined;
-
-    console.log("OG Image Request - Payload length:", payloadParam?.length ?? 0, "Slug:", slugParam);
+    const mode = searchParams.get("mode") ?? "social"; // "social" or "embed"
 
     let decodedPayload: Payload | null = null;
     let titleFromDb: string | undefined;
@@ -107,6 +106,26 @@ export async function GET(request: Request) {
       (firstSlide?.code || fallbackSlide.code)?.split("\n").slice(0, 6).join("\n").slice(0, 200) ||
       fallbackSlide.code;
 
+    // Get the background theme from payload
+    const backgroundTheme = (decodedPayload as any)?.editor?.backgroundTheme || "sublime";
+
+    // Theme background mapping (matching themes-options.ts)
+    const themeBackgrounds: Record<string, string> = {
+      sublime: "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)",
+      hyper: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)",
+      dracula: "linear-gradient(135deg, #ff79c6 0%, #bd93f9 50%, #6272a4 100%)",
+      monokai: "linear-gradient(135deg, #f92672 0%, #66d9ef 50%, #a6e22e 100%)",
+      nord: "linear-gradient(135deg, #88c0d0 0%, #81a1c1 50%, #5e81ac 100%)",
+      gotham: "linear-gradient(135deg, #2aa889 0%, #599cab 50%, #4e5165 100%)",
+      blue: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)",
+      nightOwl: "linear-gradient(135deg, #c792ea 0%, #7fdbca 50%, #82aaff 100%)",
+    };
+
+    // Choose background based on mode
+    const background = mode === "embed"
+      ? (themeBackgrounds[backgroundTheme] || themeBackgrounds.sublime) // Use theme gradient for embed
+      : "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)"; // Default gradient for social
+
     return new ImageResponse(
       (
         <div
@@ -117,7 +136,7 @@ export async function GET(request: Request) {
             justifyContent: "center",
             width: "100%",
             height: "100%",
-            background: "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)",
+            background,
             fontFamily: '"Inter", sans-serif',
           }}
         >

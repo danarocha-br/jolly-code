@@ -414,8 +414,8 @@ export const useAnimationStore = create<AnimationStoreState>()(
           animationSettings: newTab.settings,
           isPlaying: false,
           currentPlaybackTime: 0,
-          animationId: undefined,
-          isAnimationSaved: false,
+          animationId: animation.id,
+          isAnimationSaved: true,
         });
       },
 

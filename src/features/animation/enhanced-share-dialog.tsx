@@ -181,6 +181,7 @@ export const EnhancedAnimationShareDialog = () => {
 
       const params = new URLSearchParams();
       params.set("slug", shareSlug);
+      params.set("mode", "embed");
       const currentTitle = form.getValues("title");
       const currentDescription = form.getValues("description");
 
@@ -264,6 +265,7 @@ export const EnhancedAnimationShareDialog = () => {
         // Build OG preview URL with the new slug
         const ogParams = new URLSearchParams();
         ogParams.set("slug", shortUrl);
+        ogParams.set("mode", "embed");
         if (parsed.data.title) ogParams.set("title", parsed.data.title);
         if (parsed.data.description) ogParams.set("description", parsed.data.description);
         ogParams.set("ts", Date.now().toString());
@@ -303,8 +305,21 @@ export const EnhancedAnimationShareDialog = () => {
   };
 
   const handlePlatformCopy = (platform: "hashnode" | "medium" | "devto" | "notion") => {
-    trackAnimationEvent("platform_share_clicked", user, { platform });
-    void copySnippet(generatePlatformUrl(platform, shareUrl, titleValue || "My animation"));
+    if (!shareUrl) return;
+
+    const title = form.getValues("title") || "Shared animation";
+    const platformSnippet = generatePlatformUrl(platform, shareUrl, title);
+
+    // If platform returns "iframe", use the actual iframe embed code
+    const contentToCopy = platformSnippet === "iframe" ? embedCode : platformSnippet;
+
+    void copySnippet(contentToCopy);
+
+    trackAnimationEvent("share_platform_copy", user, {
+      platform,
+      has_title: Boolean(title?.trim()),
+      url_generated: Boolean(shareUrl),
+    });
   };
 
   const socialLinks = useMemo(
@@ -547,10 +562,11 @@ export const EnhancedAnimationShareDialog = () => {
                 onWidthChange={setEmbedWidth}
                 onHeightChange={setEmbedHeight}
                 embedCode={embedCode}
-                isGenerating={isGenerating}
+                isGenerating={shortenUrlMutation.isPending}
                 isCopying={isCopyingEmbed}
                 onCopy={() => void handleEmbedCopy()}
                 previewUrl={shareUrl ? shareUrl.replace("/animate/shared/", "/animate/embed/") : ""}
+                ogPreviewUrl={ogPreviewUrl}
               />
             </TabsContent>
 

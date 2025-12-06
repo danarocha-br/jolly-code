@@ -14,6 +14,8 @@ import { fonts } from "@/lib/fonts-options";
 import { AnimationSharePayload } from "@/features/animation/share-utils";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
+import { cn } from "@/lib/utils";
 
 export type AnimateEmbedClientProps = {
 	payload: AnimationSharePayload;
@@ -38,6 +40,11 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
 
 	const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
 	const fontFamily = useEditorStore((state) => state.fontFamily);
+
+	// Determine if background is dark for watermark color
+	const isDarkBackground = ['sublime', 'hyper', 'dracula', 'monokai', 'nord', 'gotham', 'blue', 'nightOwl'].includes(
+		backgroundTheme
+	);
 
 	// Start with a clean store state for the embed
 	const sanitizedSlides = useMemo(
@@ -157,6 +164,30 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
 						<i className={isPlaying ? "ri-pause-fill" : "ri-play-fill"}></i>
 					</Button>
 				</div>
+
+				{/* Watermark */}
+				<a
+					href="https://jollycode.dev"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="absolute bottom-6 right-6 flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer"
+				>
+					<span
+						className={cn(
+							"text-base font-medium tracking-wide",
+							isDarkBackground ? "text-white/90" : "text-foreground/90"
+						)}
+					>
+						jollycode.dev
+					</span>
+					<Logo
+						variant="short"
+						className={cn(
+							"scale-60 grayscale contrast-150",
+							isDarkBackground ? "text-white/90" : "text-foreground/90"
+						)}
+					/>
+				</a>
 			</div>
 		</QueryClientProvider>
 	);

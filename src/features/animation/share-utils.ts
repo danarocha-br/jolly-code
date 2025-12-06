@@ -104,11 +104,11 @@ export const generatePlatformUrl = (
 
   switch (platform) {
     case "hashnode":
-      // Hashnode auto-generates preview cards from OG metadata
-      return `Check out this animation: ${url}`;
+      // Hashnode supports HTML embeds - return iframe code
+      return "iframe"; // Special marker to use iframe code
     case "devto":
-      // Dev.to supports liquid tags for embeds
-      return `{% embed ${url} %}`;
+      // Dev.to auto-generates preview cards when you paste the URL
+      return url;
     case "medium":
       // Medium auto-generates preview cards when you paste the URL
       return url;
