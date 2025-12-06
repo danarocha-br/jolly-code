@@ -113,7 +113,7 @@ export async function deleteAnimation({
   animation_id: string;
   user_id: string;
   supabase: SupabaseClient<Database, "public", any>;
-}): Promise<void> {
+}): Promise<{ deletedCount: number }> {
   try {
     const { data: collections, error: collectionError } = await supabase
       .from("animation_collection")
@@ -145,15 +145,23 @@ export async function deleteAnimation({
       }
     }
 
-    const { error: deleteError } = await supabase
+    const { data: deletedRows, error: deleteError } = await supabase
       .from("animation")
       .delete()
       .eq("id", animation_id)
-      .eq("user_id", user_id);
+      .eq("user_id", user_id)
+      .select("id");
 
     if (deleteError) {
       throw deleteError;
     }
+
+    const deletedCount = deletedRows?.length ?? 0;
+    if (deletedCount === 0) {
+      throw new Error("Animation not found or already deleted.");
+    }
+
+    return { deletedCount };
   } catch (err) {
     console.error(err);
     throw new Error("An error occurred. Please try again later.");

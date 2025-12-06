@@ -14,6 +14,7 @@ import {
   deleteAnimationCollection as deleteAnimationCollectionAction,
 } from "@/actions";
 import { AnimationSettings, AnimationSlide } from "@/types/animation";
+import type { UsageLimitCheck } from "@/lib/services/usage-limits";
 
 export type CreateAnimationProps = {
   id: string;
@@ -22,6 +23,11 @@ export type CreateAnimationProps = {
   title?: string;
   slides: AnimationSlide[];
   settings: AnimationSettings;
+};
+
+export type CreateAnimationResponse = {
+  data: Animation;
+  usage?: UsageLimitCheck;
 };
 
 export type UpdateAnimationProps = {
@@ -321,7 +327,7 @@ export async function createAnimation({
   title,
   slides,
   settings,
-}: CreateAnimationProps): Promise<{ data: Animation } | undefined> {
+}: CreateAnimationProps): Promise<CreateAnimationResponse | undefined> {
   try {
     const url = createAnimationUrl(currentUrl, slides, settings, user_id);
 
@@ -338,8 +344,22 @@ export async function createAnimation({
       return undefined;
     }
 
-    toast.success("Your animation was saved.");
-    return { data: result.data! };
+    const animation = result.data?.animation;
+    const usage = result.data?.usage;
+
+    if (usage?.max && usage.current >= usage.max) {
+      toast.error(
+        `You've reached the free plan limit (${usage.current}/${usage.max} animations). Upgrade to Pro for unlimited animations!`
+      );
+    } else {
+      toast.success("Your animation was saved.");
+    }
+
+    if (usage?.max && usage.current >= usage.max - 1) {
+      toast.message(`You're almost at your animation limit (${usage.current}/${usage.max}).`);
+    }
+
+    return animation ? { data: animation, usage } : undefined;
   } catch (error) {
     console.log(error);
     toast.error(`Failed to save the animation.`);

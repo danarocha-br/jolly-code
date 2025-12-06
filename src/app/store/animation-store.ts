@@ -31,7 +31,7 @@ export type AnimationStoreState = {
   tabs: AnimationTabState[];
   activeAnimationTabId?: string;
   createNewAnimation: () => void;
-  addSlide: () => void;
+  addSlide: (options?: { maxSlides?: number | null; onLimit?: () => void }) => void;
   removeSlide: (id: string) => void;
   updateSlide: (id: string, updates: Partial<AnimationSlide>) => void;
   reorderSlides: (startIndex: number, endIndex: number) => void;
@@ -40,6 +40,7 @@ export type AnimationStoreState = {
   pause: () => void;
   reset: () => void;
   updateSettings: (settings: Partial<AnimationSettings>) => void;
+  setAllSlideDurations: (duration: number) => void;
   setPlaybackTime: (time: number) => void;
   setAnimationId: (id?: string) => void;
   setIsAnimationSaved: (saved: boolean) => void;
@@ -68,16 +69,13 @@ function greet(name) {
 }
 
 greet("World");`,
-    `// Slide ${index} - TypeScript Example
-interface User {
-  name: string;
-  age: number;
+    `// Slide ${index} - Improved Greeting
+function greet(name, { excited = false } = {}) {
+  const punctuation = excited ? "!" : ".";
+  console.log(\`Hello, \${name}\${punctuation}\`);
 }
 
-const user: User = {
-  name: "Alice",
-  age: 30
-};`,
+greet("World", { excited: true });`,
   ];
 
   return createSlide(index, sampleCode[index - 1] || sampleCode[0]);
@@ -115,6 +113,12 @@ const initialTab: AnimationTabState = {
   settings: initialSettings,
 };
 
+const sanitizeTabs = (tabs: AnimationTabState[]) =>
+  tabs.map((tab) => ({
+    ...tab,
+    saved: Boolean(tab.animationId) && Boolean(tab.saved),
+  }));
+
 export const useAnimationStore = create<
   AnimationStoreState,
   [["zustand/persist", AnimationStoreState]]
@@ -128,25 +132,27 @@ export const useAnimationStore = create<
       currentPlaybackTime: 0,
       animationId: undefined,
       isAnimationSaved: false,
-      tabs: [initialTab],
+      tabs: sanitizeTabs([initialTab]),
       activeAnimationTabId: initialTab.id,
 
       createNewAnimation: () => {
         const { tabs, activeAnimationTabId } = get();
 
         // Sync current state to the active tab before creating a new one
-        const updatedTabs = tabs.map((tab) => {
-          if (tab.id === activeAnimationTabId) {
-            return {
-              ...tab,
-              slides: get().slides,
-              settings: get().animationSettings,
-              animationId: get().animationId,
-              saved: get().isAnimationSaved,
-            };
-          }
-          return tab;
-        });
+        const updatedTabs = sanitizeTabs(
+          tabs.map((tab) => {
+            if (tab.id === activeAnimationTabId) {
+              return {
+                ...tab,
+                slides: get().slides,
+                settings: get().animationSettings,
+                animationId: get().animationId,
+                saved: Boolean(get().animationId),
+              };
+            }
+            return tab;
+          })
+        );
 
         const newTabId = uuidv4();
         const nextIndex = updatedTabs.length + 1;
@@ -171,7 +177,7 @@ export const useAnimationStore = create<
         };
 
         set({
-          tabs: [...updatedTabs, newTab],
+          tabs: sanitizeTabs([...updatedTabs, newTab]),
           activeAnimationTabId: newTabId,
           // Set active state to the new tab's state
           slides: newTab.slides,
@@ -179,13 +185,17 @@ export const useAnimationStore = create<
           animationSettings: newTab.settings,
           isPlaying: false,
           currentPlaybackTime: 0,
-          animationId: undefined,
-          isAnimationSaved: false,
+          animationId: newTab.animationId,
+          isAnimationSaved: true,
         });
       },
 
-      addSlide: () => {
+      addSlide: (options) => {
         const slides = get().slides;
+        if (typeof options?.maxSlides === "number" && slides.length >= options.maxSlides) {
+          options?.onLimit?.();
+          return;
+        }
         const newSlide = createEmptySlide(slides.length + 1);
         set({
           slides: [...slides, newSlide],
@@ -250,26 +260,49 @@ export const useAnimationStore = create<
         }));
       },
 
+      setAllSlideDurations: (duration: number) => {
+        const { slides, activeAnimationTabId, tabs } = get();
+        const clampedDuration = Math.max(0.1, Math.min(15, duration));
+        const hasChange = slides.some((slide) => slide.duration !== clampedDuration);
+
+        if (!hasChange) return;
+
+        const updatedSlides = slides.map((slide) => ({
+          ...slide,
+          duration: clampedDuration,
+        }));
+
+        const updatedTabs = tabs.map((tab) =>
+          tab.id === activeAnimationTabId ? { ...tab, slides: updatedSlides } : tab
+        );
+
+        set({ slides: updatedSlides, tabs: updatedTabs });
+      },
+
       setPlaybackTime: (time: number) => set({ currentPlaybackTime: time }),
 
       setAnimationId: (id?: string) => {
         const { activeAnimationTabId, tabs } = get();
-        const updatedTabs = tabs.map(tab =>
-          tab.id === activeAnimationTabId
-            ? { ...tab, animationId: id }
-            : tab
+        const updatedTabs = sanitizeTabs(
+          tabs.map(tab =>
+            tab.id === activeAnimationTabId
+              ? { ...tab, animationId: id }
+              : tab
+          )
         );
-        set({ animationId: id, tabs: updatedTabs });
+        set({ animationId: id, tabs: updatedTabs, isAnimationSaved: Boolean(id) && get().isAnimationSaved });
       },
 
       setIsAnimationSaved: (saved: boolean) => {
         const { activeAnimationTabId, tabs } = get();
-        const updatedTabs = tabs.map(tab =>
-          tab.id === activeAnimationTabId
-            ? { ...tab, saved }
-            : tab
+        const updatedTabs = sanitizeTabs(
+          tabs.map(tab =>
+            tab.id === activeAnimationTabId
+              ? { ...tab, saved: saved && Boolean(tab.animationId) }
+              : tab
+          )
         );
-        set({ isAnimationSaved: saved, tabs: updatedTabs });
+        set({ isAnimationSaved: saved && Boolean(get().animationId), tabs: updatedTabs });
       },
 
       loadAnimation: (animation: Animation) => {
@@ -288,11 +321,11 @@ export const useAnimationStore = create<
           isPlaying: false,
           currentPlaybackTime: 0,
           animationId: animation.id,
-          isAnimationSaved: true,
+          isAnimationSaved: Boolean(animation.id),
         }));
       },
 
-      setTabs: (tabs: AnimationTabState[]) => set({ tabs }),
+      setTabs: (tabs: AnimationTabState[]) => set({ tabs: sanitizeTabs(tabs) }),
 
       setActiveAnimationTabId: (id?: string) => {
         const { tabs, activeAnimationTabId } = get();
@@ -300,20 +333,20 @@ export const useAnimationStore = create<
         if (id === activeAnimationTabId) return;
 
         // Sync current state to the OLD active tab
-        const updatedTabs = tabs.map((tab) => {
-          if (tab.id === activeAnimationTabId) {
-            return {
-              ...tab,
-              slides: get().slides,
-              settings: get().animationSettings,
-              animationId: get().animationId,
-              saved: get().isAnimationSaved,
-              // Update title if it's an unsaved/untitled animation to match first slide? 
-              // Or keep it as is. Let's keep it simple for now.
-            };
-          }
-          return tab;
-        });
+        const updatedTabs = sanitizeTabs(
+          tabs.map((tab) => {
+            if (tab.id === activeAnimationTabId) {
+              return {
+                ...tab,
+                slides: get().slides,
+                settings: get().animationSettings,
+                animationId: get().animationId,
+                saved: Boolean(get().animationId) && get().isAnimationSaved,
+              };
+            }
+            return tab;
+          })
+        );
 
         const targetTab = updatedTabs.find((t) => t.id === id);
 
@@ -328,11 +361,11 @@ export const useAnimationStore = create<
             isPlaying: false,
             currentPlaybackTime: 0,
             animationId: targetTab.animationId,
-            isAnimationSaved: targetTab.saved,
+            isAnimationSaved: Boolean(targetTab.animationId),
           });
         } else {
           // Fallback if tab not found (shouldn't happen usually)
-          set({ activeAnimationTabId: id });
+          set({ activeAnimationTabId: id, animationId: undefined, isAnimationSaved: false });
         }
       },
 
@@ -349,18 +382,20 @@ export const useAnimationStore = create<
         }
 
         // Sync current state to the active tab before creating a new one
-        const updatedTabs = tabs.map((tab) => {
-          if (tab.id === activeAnimationTabId) {
-            return {
-              ...tab,
-              slides: get().slides,
-              settings: get().animationSettings,
-              animationId: get().animationId,
-              saved: get().isAnimationSaved,
-            };
-          }
-          return tab;
-        });
+        const updatedTabs = sanitizeTabs(
+          tabs.map((tab) => {
+            if (tab.id === activeAnimationTabId) {
+              return {
+                ...tab,
+                slides: get().slides,
+                settings: get().animationSettings,
+                animationId: get().animationId,
+                saved: Boolean(get().animationId) && get().isAnimationSaved,
+              };
+            }
+            return tab;
+          })
+        );
 
         const newTabId = uuidv4();
         const newTab: AnimationTabState = {
@@ -373,7 +408,7 @@ export const useAnimationStore = create<
         };
 
         set({
-          tabs: [...updatedTabs, newTab],
+          tabs: sanitizeTabs([...updatedTabs, newTab]),
           activeAnimationTabId: newTabId,
           // Set active state to the new tab's state
           slides: newTab.slides,
@@ -381,8 +416,8 @@ export const useAnimationStore = create<
           animationSettings: newTab.settings,
           isPlaying: false,
           currentPlaybackTime: 0,
-          animationId: newTab.animationId,
-          isAnimationSaved: newTab.saved,
+          animationId: undefined,
+          isAnimationSaved: false,
         });
       },
 
@@ -409,21 +444,23 @@ export const useAnimationStore = create<
           isPlaying: false,
           currentPlaybackTime: 0,
           animationId: animation.id,
-          isAnimationSaved: true,
+          isAnimationSaved: Boolean(animation.id),
         });
 
         // Update active tab
-        const updatedTabs = tabs.map(tab =>
-          tab.id === activeAnimationTabId
-            ? {
-              ...tab,
-              animationId: animation.id,
-              title: animation.title,
-              saved: true,
-              slides: newSlides,
-              settings: newSettings
-            }
-            : tab
+        const updatedTabs = sanitizeTabs(
+          tabs.map(tab =>
+            tab.id === activeAnimationTabId
+              ? {
+                ...tab,
+                animationId: animation.id,
+                title: animation.title,
+                saved: Boolean(animation.id),
+                slides: newSlides,
+                settings: newSettings
+              }
+              : tab
+          )
         );
         set({ tabs: updatedTabs });
       },
@@ -433,7 +470,7 @@ export const useAnimationStore = create<
 
         if (tabs.length <= 1) return; // Don't close the last tab
 
-        const newTabs = tabs.filter(t => t.id !== tabId);
+        const newTabs = sanitizeTabs(tabs.filter(t => t.id !== tabId));
 
         // If we closed the active tab, switch to another one
         if (tabId === activeAnimationTabId) {
@@ -451,7 +488,7 @@ export const useAnimationStore = create<
             isPlaying: false,
             currentPlaybackTime: 0,
             animationId: newActiveTab.animationId,
-            isAnimationSaved: newActiveTab.saved,
+            isAnimationSaved: Boolean(newActiveTab.animationId),
           });
         } else {
           // Just remove the tab, no need to change active state
@@ -459,6 +496,17 @@ export const useAnimationStore = create<
         }
       }
     }),
-    { name: "animation-store" }
+    {
+      name: "animation-store",
+      version: 1,
+      migrate: (persisted: any, version: number) => {
+        if (!persisted || typeof persisted !== "object") return persisted;
+        return {
+          ...persisted,
+          tabs: sanitizeTabs(persisted.tabs || []),
+          isAnimationSaved: persisted.animationId ? persisted.isAnimationSaved : false,
+        };
+      },
+    }
   )
 );

@@ -36,27 +36,31 @@ export const AnimationControls = ({
 }: AnimationControlsProps) => {
   const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
   const slides = useAnimationStore((state) => state.slides);
-  const updateSlide = useAnimationStore((state) => state.updateSlide);
+  const setAllSlideDurations = useAnimationStore((state) => state.setAllSlideDurations);
   const activeSlide = slides[activeSlideIndex];
   const user = useUserStore((state) => state.user);
 
   const handleDurationChange = (value: string) => {
-    if (!activeSlide) return;
+    if (!slides.length) return;
     const parsed = parseFloat(value);
     if (!Number.isFinite(parsed)) return;
     const clamped = Math.max(0.1, Math.min(15, parsed));
-    if (clamped !== activeSlide.duration) {
-      trackAnimationEvent("animation_slide_duration_changed", user, {
-        old_duration: activeSlide.duration,
-        new_duration: clamped,
-        slide_index: activeSlideIndex,
-      });
-      trackAnimationEvent("animation_slide_edited", user, {
-        field_changed: "duration",
-        slide_index: activeSlideIndex,
-      });
-    }
-    updateSlide(activeSlide.id, { duration: clamped });
+    const hasChange = slides.some((slide) => slide.duration !== clamped);
+    if (!hasChange) return;
+
+    trackAnimationEvent("animation_slide_duration_changed", user, {
+      old_duration: activeSlide?.duration,
+      new_duration: clamped,
+      slide_index: "all",
+      slide_count: slides.length,
+    });
+    trackAnimationEvent("animation_slide_edited", user, {
+      field_changed: "duration_all",
+      slide_index: "all",
+      slide_count: slides.length,
+    });
+
+    setAllSlideDurations(clamped);
   };
 
   return (

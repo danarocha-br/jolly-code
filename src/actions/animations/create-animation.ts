@@ -7,6 +7,12 @@ import { success, error, type ActionResult } from '@/actions/utils/action-result
 import { insertAnimation } from '@/lib/services/database/animations'
 import type { Animation } from '@/features/animations/dtos'
 import type { AnimationSettings, AnimationSlide } from '@/types/animation'
+import {
+    checkAnimationLimit,
+    checkSlideLimit,
+    incrementUsageCount,
+    type UsageLimitCheck,
+} from '@/lib/services/usage-limits'
 
 export type CreateAnimationInput = {
     id: string
@@ -16,9 +22,14 @@ export type CreateAnimationInput = {
     url?: string | null
 }
 
+export type CreateAnimationResult = {
+    animation: Animation
+    usage: UsageLimitCheck
+}
+
 export async function createAnimation(
     input: CreateAnimationInput
-): Promise<ActionResult<Animation>> {
+): Promise<ActionResult<CreateAnimationResult>> {
     try {
         const { id, title, slides, settings, url } = input
 
@@ -31,6 +42,17 @@ export async function createAnimation(
         }
 
         const { user, supabase } = await requireAuth()
+
+        const limit = await checkAnimationLimit(supabase, user.id)
+        if (!limit.canSave) {
+            const maxText = limit.max ?? 'unlimited'
+            return error(`You've reached the free plan limit (${limit.current}/${maxText} animations). Upgrade to Pro for unlimited animations!`)
+        }
+
+        const slideLimit = checkSlideLimit(slides.length, limit.plan)
+        if (!slideLimit.canSave) {
+            return error(`Free users can add up to ${slideLimit.max} slides per animation. Upgrade to Pro for unlimited slides!`)
+        }
 
         const data = await insertAnimation({
             id,
@@ -46,10 +68,12 @@ export async function createAnimation(
             return error('Failed to create animation')
         }
 
+        const usageResult = await incrementUsageCount(supabase, user.id, 'animations')
+
         revalidatePath('/animate')
         revalidatePath('/animations')
 
-        return success(data[0] as Animation)
+        return success({ animation: data[0] as Animation, usage: usageResult })
     } catch (err) {
         console.error('Error creating animation:', err)
 

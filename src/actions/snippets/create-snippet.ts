@@ -5,6 +5,11 @@ import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { insertSnippet } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/features/snippets/dtos'
+import {
+    checkSnippetLimit,
+    incrementUsageCount,
+    type UsageLimitCheck,
+} from '@/lib/services/usage-limits'
 
 export type CreateSnippetInput = {
     id: string
@@ -12,6 +17,11 @@ export type CreateSnippetInput = {
     code: string
     language: string
     url?: string
+}
+
+export type CreateSnippetResult = {
+    snippet: Snippet
+    usage: UsageLimitCheck
 }
 
 /**
@@ -22,7 +32,7 @@ export type CreateSnippetInput = {
  */
 export async function createSnippet(
     input: CreateSnippetInput
-): Promise<ActionResult<Snippet>> {
+): Promise<ActionResult<CreateSnippetResult>> {
     try {
         const { id, title, code, language, url } = input
 
@@ -32,6 +42,12 @@ export async function createSnippet(
         }
 
         const { user, supabase } = await requireAuth()
+
+        const limit = await checkSnippetLimit(supabase, user.id)
+        if (!limit.canSave) {
+            const maxText = limit.max ?? 'unlimited'
+            return error(`You've reached the free plan limit (${limit.current}/${maxText} snippets). Upgrade to Pro for unlimited snippets!`)
+        }
 
         const data = await insertSnippet({
             id,
@@ -47,11 +63,13 @@ export async function createSnippet(
             return error('Failed to create snippet')
         }
 
+        const updatedUsage = await incrementUsageCount(supabase, user.id, 'snippets')
+
         // Revalidate the snippets list
         revalidatePath('/snippets')
         revalidatePath('/')
 
-        return success(data[0])
+        return success({ snippet: data[0], usage: updatedUsage })
     } catch (err) {
         console.error('Error creating snippet:', err)
 

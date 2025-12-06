@@ -5,7 +5,7 @@ export const container = cva(
     "bg-card",
     "flex-shrink-0",
     "w-48",
-    "h-32",
+    "h-30",
     "rounded-xl",
     "border-2",
     "transition-all",
@@ -40,7 +40,7 @@ export const removeButton = cva("opacity-0 group-hover:opacity-100 z-40 absolute
 export const preview = cva("flex-1 rounded p-1.5 overflow-hidden relative");
 export const previewOverlay = cva("absolute inset-0 dark:bg-black/25");
 export const previewCode = cva(
-  "bg-background/95 dark:bg-black/70 rounded-sm p-2 relative z-10 text-[7px] leading-tight overflow-hidden whitespace-pre-wrap break-words text:foreground drop-shadow-sm h-13.5"
+  "bg-background/95 dark:bg-black/70 rounded-sm p-2 relative z-10 text-[7px] leading-tight overflow-hidden whitespace-pre-wrap break-words text:foreground drop-shadow-sm h-15"
 );
 
 export const meta = cva("mt-2 flex items-center justify-between text-[11px] text-muted-foreground gap-2");

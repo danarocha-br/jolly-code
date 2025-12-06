@@ -193,21 +193,39 @@ export type Database = {
             }
             profiles: {
                 Row: {
+                    animation_count: number
                     avatar_url: string | null
                     created_at: string
                     id: string
+                    plan: Database["public"]["Enums"]["user_plan"]
+                    plan_updated_at: string
+                    snippet_count: number
+                    subscription_id: string | null
+                    subscription_status: string | null
                     username: string | null
                 }
                 Insert: {
+                    animation_count?: number
                     avatar_url?: string | null
                     created_at?: string
                     id: string
+                    plan?: Database["public"]["Enums"]["user_plan"]
+                    plan_updated_at?: string
+                    snippet_count?: number
+                    subscription_id?: string | null
+                    subscription_status?: string | null
                     username?: string | null
                 }
                 Update: {
+                    animation_count?: number
                     avatar_url?: string | null
                     created_at?: string
                     id?: string
+                    plan?: Database["public"]["Enums"]["user_plan"]
+                    plan_updated_at?: string
+                    snippet_count?: number
+                    subscription_id?: string | null
+                    subscription_status?: string | null
                     username?: string | null
                 }
                 Relationships: []
@@ -269,20 +287,85 @@ export type Database = {
                     },
                 ]
             }
+            usage_limits: {
+                Row: {
+                    animation_count: number
+                    last_reset_at: string
+                    snippet_count: number
+                    user_id: string
+                }
+                Insert: {
+                    animation_count?: number
+                    last_reset_at?: string
+                    snippet_count?: number
+                    user_id: string
+                }
+                Update: {
+                    animation_count?: number
+                    last_reset_at?: string
+                    snippet_count?: number
+                    user_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "usage_limits_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: true
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
         }
         Views: {
             [_ in never]: never
         }
         Functions: {
+            check_animation_limit: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: Json
+            }
+            check_snippet_limit: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: Json
+            }
+            decrement_animation_count: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: Json
+            }
+            decrement_snippet_count: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: Json
+            }
             increment_link_visits: {
                 Args: {
                     link_id: string
                 }
                 Returns: undefined
             }
+            increment_animation_count: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: Json
+            }
+            increment_snippet_count: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
-            [_ in never]: never
+            user_plan: "free" | "pro"
         }
         CompositeTypes: {
             [_ in never]: never

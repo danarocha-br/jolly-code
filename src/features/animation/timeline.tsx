@@ -25,6 +25,11 @@ import { AddSlideCard } from "@/components/ui/add-slide-card";
 import { LoginDialog } from "@/features/login";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 
+type TimelineProps = {
+  maxSlides?: number | null;
+  onSlideLimitReached?: (payload: { current: number; max?: number | null }) => void;
+};
+
 type SortableSlideProps = {
   slide: AnimationSlide;
   index: number;
@@ -76,7 +81,7 @@ function SortableSlide({
   );
 }
 
-export const Timeline = () => {
+export const Timeline = ({ maxSlides, onSlideLimitReached }: TimelineProps) => {
   const slides = useAnimationStore((state) => state.slides);
   const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
   const addSlide = useAnimationStore((state) => state.addSlide);
@@ -103,7 +108,7 @@ export const Timeline = () => {
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
@@ -119,9 +124,17 @@ export const Timeline = () => {
   };
 
   const canRemove = slides.length > 2;
-  const hasReachedGuestLimit = !user && slides.length >= 3;
-  const hasReachedMaxSlides = slides.length >= 10;
-  const maxSlidesLabel = user ? 10 : 3;
+  const guestMaxSlides = 3;
+  const effectiveMaxSlides = user
+    ? typeof maxSlides === "number"
+      ? maxSlides
+      : null
+    : guestMaxSlides;
+  const hasReachedGuestLimit = !user && slides.length >= guestMaxSlides;
+  const hasReachedMaxSlides =
+    typeof effectiveMaxSlides === "number" ? slides.length >= effectiveMaxSlides : false;
+  const maxSlidesLabel =
+    typeof effectiveMaxSlides === "number" ? `${effectiveMaxSlides}` : "∞";
 
   const handleAddSlide = () => {
     if (hasReachedGuestLimit) {
@@ -136,13 +149,34 @@ export const Timeline = () => {
       return;
     }
 
-    if (hasReachedMaxSlides) return;
+    if (hasReachedMaxSlides) {
+      trackAnimationEvent("slide_limit_blocked", user, {
+        limit_type: "slides",
+        current: slides.length,
+        max: effectiveMaxSlides,
+      });
+      onSlideLimitReached?.({
+        current: slides.length,
+        max: typeof effectiveMaxSlides === "number" ? effectiveMaxSlides : null,
+      });
+      return;
+    }
 
-    addSlide();
+    addSlide({
+      maxSlides: typeof effectiveMaxSlides === "number" ? effectiveMaxSlides : undefined,
+      onLimit: () => {
+        onSlideLimitReached?.({
+          current: slides.length,
+          max: typeof effectiveMaxSlides === "number" ? effectiveMaxSlides : null,
+        });
+      },
+    });
     const nextCount = slides.length + 1;
+    const reachedLimit =
+      typeof effectiveMaxSlides === "number" ? nextCount >= effectiveMaxSlides : false;
     trackAnimationEvent("animation_slide_added", user, {
       slide_count: nextCount,
-      reached_limit: nextCount >= maxSlidesLabel,
+      reached_limit: reachedLimit,
     });
   };
 

@@ -38,6 +38,7 @@ import { AnimationCollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import * as AnimationStyles from "./ui/styles";
+import { USAGE_QUERY_KEY } from "@/features/user/queries";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type CollectionDroppableProps = {
@@ -86,6 +87,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   const pathname = usePathname();
   const { openAnimationInTab, setIsAnimationSaved, setAnimationId } = useAnimationStore();
   const user = useUserStore((state) => state.user);
+  const userId = useUserStore((state) => state.user?.id);
 
   const queryClient = useQueryClient();
   const queryKey = ["animation-collections"];
@@ -216,6 +218,9 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ["animation"] });
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, userId] });
+      }
     },
   });
 

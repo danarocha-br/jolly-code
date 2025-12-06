@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,6 +9,7 @@ import { Room } from "../room";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Timeline,
@@ -27,6 +28,9 @@ import { debounce } from "@/lib/utils/debounce";
 import { LoginDialog } from "@/features/login";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { UserTools } from "@/features/user-tools";
+import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
+import { getPlanLimitValue } from "@/lib/config/plans";
+import { createClient } from "@/utils/supabase/client";
 import type { AnimationSlide, AnimationSettings } from "@/types/animation";
 
 type AnimationTab = {
@@ -64,6 +68,34 @@ export default function AnimationClientPage() {
   const user = useUserStore((state) => state.user);
   const user_id = user?.id;
   const queryClient = useQueryClient();
+  const supabase = createClient();
+  useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        useUserStore.setState({ user: data.user });
+      } else {
+        useUserStore.setState({ user: null });
+      }
+      return data.user;
+    },
+  });
+  const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
+  const animationLimit = usage?.animations;
+  const animationLimitReached =
+    animationLimit?.max !== null &&
+    typeof animationLimit?.max !== "undefined" &&
+    animationLimit.current >= animationLimit.max;
+  const plan = usage?.plan ?? "free";
+  const slideLimitMax = getPlanLimitValue(plan, "maxSlidesPerAnimation");
+  const slideLimitReached = slideLimitMax !== null && slides.length >= slideLimitMax;
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<{
+    type: "animations" | "slides";
+    current?: number;
+    max?: number | null;
+  }>({ type: "animations" });
 
   const sharedFlag = searchParams.get("animation_shared");
   const sharedData = searchParams.get("animation");
@@ -135,6 +167,9 @@ export default function AnimationClientPage() {
         });
       }
       queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
+      if (user_id) {
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
+      }
     },
   });
 
@@ -142,6 +177,10 @@ export default function AnimationClientPage() {
     mutationFn: updateAnimation,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
+    },
+    onError: () => {
+      // If update fails (e.g., unsaved animation), mark as unsaved to avoid repeat attempts
+      setIsAnimationSaved(false);
     },
   });
 
@@ -156,6 +195,9 @@ export default function AnimationClientPage() {
       setIsAnimationSaved(false);
       setAnimationId(undefined);
       queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
+      if (user_id) {
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
+      }
     },
   });
 
@@ -298,6 +340,50 @@ export default function AnimationClientPage() {
       return;
     }
 
+    if (animationLimitReached && animationLimit) {
+      toast.error(
+        `You've reached the free plan limit (${animationLimit.current}/${animationLimit.max} animations). Upgrade to Pro for unlimited animations!`
+      );
+      trackAnimationEvent("limit_reached", user, {
+        limit_type: "animations",
+        current: animationLimit.current,
+        max: animationLimit.max ?? null,
+      });
+      trackAnimationEvent("upgrade_prompt_shown", user, {
+        limit_type: "animations",
+        trigger: "save_attempt",
+      });
+      setUpgradeContext({
+        type: "animations",
+        current: animationLimit.current,
+        max: animationLimit.max ?? null,
+      });
+      setIsUpgradeOpen(true);
+      return;
+    }
+
+    if (slideLimitMax !== null && slides.length > slideLimitMax) {
+      toast.error(
+        `Free users can add up to ${slideLimitMax} slides per animation. Upgrade to Pro for unlimited slides!`
+      );
+      trackAnimationEvent("limit_reached", user, {
+        limit_type: "slides",
+        current: slides.length,
+        max: slideLimitMax,
+      });
+      trackAnimationEvent("upgrade_prompt_shown", user, {
+        limit_type: "slides",
+        trigger: "save_attempt",
+      });
+      setUpgradeContext({
+        type: "slides",
+        current: slides.length,
+        max: slideLimitMax,
+      });
+      setIsUpgradeOpen(true);
+      return;
+    }
+
     const newId = animationId || uuidv4();
 
     handleCreateAnimation({
@@ -315,6 +401,9 @@ export default function AnimationClientPage() {
     canSaveAnimation,
     currentUrlOrigin,
     handleCreateAnimation,
+    animationLimit,
+    animationLimitReached,
+    slideLimitMax,
     slides,
     user,
     user_id,
@@ -364,6 +453,27 @@ export default function AnimationClientPage() {
     [closeTab, tabs, user]
   );
 
+  const handleSlideLimitReached = useCallback(
+    (payload: { current: number; max?: number | null }) => {
+      trackAnimationEvent("slide_limit_blocked", user, {
+        limit_type: "slides",
+        current: payload.current,
+        max: payload.max ?? slideLimitMax,
+      });
+      trackAnimationEvent("upgrade_prompt_shown", user, {
+        limit_type: "slides",
+        trigger: "timeline",
+      });
+      setUpgradeContext({
+        type: "slides",
+        current: payload.current,
+        max: payload.max ?? slideLimitMax ?? null,
+      });
+      setIsUpgradeOpen(true);
+    },
+    [slideLimitMax, user]
+  );
+
   const bookmarkActionSlot = !user ? (
     <LoginDialog>
       <Button
@@ -400,62 +510,85 @@ export default function AnimationClientPage() {
         onOpenChange={setIsSaveLoginOpen}
         hideTrigger
       />
-      <Room user={null}>
-        <div className="min-h-screen !bg-background flex flex-col lg:flex-row">
+      <UpgradeDialog
+        open={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        limitType={upgradeContext.type}
+        currentCount={
+          upgradeContext.current ??
+          (upgradeContext.type === "slides" ? slides.length : animationLimit?.current)
+        }
+        maxCount={
+          upgradeContext.max ??
+          (upgradeContext.type === "slides"
+            ? slideLimitMax ?? null
+            : animationLimit?.max ?? null)
+        }
+      />
+      <Room user={user ?? null}>
+        <div className="relative min-h-screen !bg-background flex flex-col lg:flex-row">
           <Sidebar />
-
+          <div className="absolute top-1/3 z-50"><UserTools /></div>
           <div className="flex-1 min-h-screen flex flex-col">
             <Nav />
 
             <main className="flex-1 pt-16 flex flex-col justify-center pb-64">
-              {/* Main Content - Centered like code editor */}
+              {/* Tabs + canvas aligned like code editor */}
               <div className="flex-1 flex items-center justify-center overflow-auto py-6 relative">
-                <div className="w-full max-w-6xl px-6 relative group/editor">
-                  <div className="w-full max-w-3xl mx-auto mb-4 flex items-center gap-2">
-                    <Tabs value={tabsValue} onValueChange={handleTabChange}>
-                      <TabsList className="bg-transparent px-0 py-0 text-foreground">
-                        {renderTabs.map((tab) => (
-                          <TabsTrigger
-                            key={tab.id}
-                            value={tab.id}
-                            className="relative group/tab max-w-[220px] capitalize data-[state=active]:bg-foreground/[0.08] data-[state=active]:text-foreground text-foreground/70 hover:text-foreground"
-                          >
-                            <span className="truncate flex items-center gap-2">
-                              {tab.saved ? <i className="ri-bookmark-fill" /> : null}
-                              {tab.title}
-                            </span>
-                            {tabs.length > 1 && !presentational ? (
-                              <span
-                                role="button"
-                                className="-mr-2.5 ml-1 transition-opacity opacity-0 group-hover/tab:opacity-100 inline-flex items-center justify-center w-4 h-4 rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveTab(tab.id);
-                                }}
-                              >
-                                <i className="ri-close-line" />
+                <div className="w-full max-w-3xl px-0 relative group/editor space-y-4">
+                  <div className="w-full flex items-center gap-2">
+                    <div className="-ml-1 flex-1 min-w-0 overflow-hidden">
+                      <Tabs value={tabsValue} onValueChange={handleTabChange} className="w-full">
+                        <TabsList
+                          className="bg-transparent px-2 py-0 text-foreground w-full overflow-x-auto flex-nowrap gap-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent justify-start"
+                          style={{ scrollPaddingLeft: 12, scrollPaddingRight: 12 }}
+                        >
+                          {renderTabs.map((tab) => (
+                            <TabsTrigger
+                              key={tab.id}
+                              value={tab.id}
+                              className="relative group/tab max-w-[220px] whitespace-nowrap capitalize data-[state=active]:bg-foreground/[0.08] data-[state=active]:text-foreground text-foreground/70 hover:text-foreground"
+                            >
+                              <span className="truncate flex items-center gap-2">
+                                {tab.saved ? <i className="ri-bookmark-fill" /> : null}
+                                {tab.title}
                               </span>
-                            ) : null}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
+                              {tabs.length > 1 && !presentational ? (
+                                <span
+                                  role="button"
+                                  className="-mr-2.5 ml-1 transition-opacity opacity-0 group-hover/tab:opacity-100 inline-flex items-center justify-center w-4 h-4 rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveTab(tab.id);
+                                  }}
+                                >
+                                  <i className="ri-close-line" />
+                                </span>
+                              ) : null}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                    </div>
 
                     <Button
                       variant="secondary"
                       size="icon"
-                      className="bg-foreground/[0.02]"
+                      className="bg-foreground/[0.02] shrink-0"
                       onClick={handleCreateNewAnimationTab}
                     >
                       <i className="ri-add-line text-lg" />
                     </Button>
                   </div>
-                  <UnifiedAnimationCanvas
-                    ref={previewRef}
-                    mode={mode}
-                    currentFrame={currentFrame}
-                    actionSlot={bookmarkActionSlot}
-                  />
+
+                  <div className="w-full max-w-6xl mx-auto px-0">
+                    <UnifiedAnimationCanvas
+                      ref={previewRef}
+                      mode={mode}
+                      currentFrame={currentFrame}
+                      actionSlot={bookmarkActionSlot}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -483,13 +616,16 @@ export default function AnimationClientPage() {
                     modeLocked={isSharedView}
                   />
                   {/* Timeline */}
-                  {!isSharedView && <Timeline />}
+                  {!isSharedView && (
+                    <Timeline
+                      maxSlides={typeof slideLimitMax === "number" ? slideLimitMax : undefined}
+                      onSlideLimitReached={handleSlideLimitReached}
+                    />
+                  )}
                 </div>
               </div>
 
-              {/* <UserTools /> */}
-              <UserTools />
-            </main>
+            </main>/
 
             {/* Shared CTA */}
             {isSharedView && (

@@ -27,6 +27,7 @@ export const SlideEditor = () => {
   const slides = useAnimationStore((state) => state.slides);
   const activeSlideIndex = useAnimationStore((state) => state.activeSlideIndex);
   const updateSlide = useAnimationStore((state) => state.updateSlide);
+  const setAllSlideDurations = useAnimationStore((state) => state.setAllSlideDurations);
   const user = useUserStore((state) => state.user);
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
@@ -152,18 +153,22 @@ export const SlideEditor = () => {
                 value={activeSlide.duration}
                 onChange={(e) => {
                   const parsed = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
-                  if (parsed !== activeSlide.duration) {
-                    updateSlide(activeSlide.id, { duration: parsed });
-                    trackAnimationEvent("animation_slide_duration_changed", user, {
-                      old_duration: activeSlide.duration,
-                      new_duration: parsed,
-                      slide_index: activeSlideIndex,
-                    });
-                    trackAnimationEvent("animation_slide_edited", user, {
-                      field_changed: "duration",
-                      slide_index: activeSlideIndex,
-                    });
-                  }
+                  const hasChange = slides.some((slide) => slide.duration !== parsed);
+                  if (!hasChange) return;
+
+                  setAllSlideDurations(parsed);
+
+                  trackAnimationEvent("animation_slide_duration_changed", user, {
+                    old_duration: activeSlide.duration,
+                    new_duration: parsed,
+                    slide_index: "all",
+                    slide_count: slides.length,
+                  });
+                  trackAnimationEvent("animation_slide_edited", user, {
+                    field_changed: "duration_all",
+                    slide_index: "all",
+                    slide_count: slides.length,
+                  });
                 }}
                 className="w-[50px] h-7 bg-transparent border-0 text-stone-500 dark:text-stone-400 text-xs focus-visible:ring-0"
               />

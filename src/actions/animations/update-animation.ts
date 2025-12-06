@@ -7,6 +7,8 @@ import { success, error, type ActionResult } from '@/actions/utils/action-result
 import { updateAnimation as updateAnimationDb } from '@/lib/services/database/animations'
 import type { Animation } from '@/features/animations/dtos'
 import type { AnimationSettings, AnimationSlide } from '@/types/animation'
+import { checkSlideLimit } from '@/lib/services/usage-limits'
+import type { PlanId } from '@/lib/config/plans'
 
 export type UpdateAnimationInput = {
     id: string
@@ -27,6 +29,20 @@ export async function updateAnimation(
         }
 
         const { user, supabase } = await requireAuth()
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('plan')
+            .eq('id', user.id)
+            .single()
+
+        const plan = (profile?.plan as PlanId | null) ?? 'free'
+
+        if (slides && slides.length > 0) {
+            const slideLimit = checkSlideLimit(slides.length, plan)
+            if (!slideLimit.canSave) {
+                return error(`Free users can add up to ${slideLimit.max} slides per animation. Upgrade to Pro for unlimited slides!`)
+            }
+        }
 
         const data = await updateAnimationDb({
             id,
