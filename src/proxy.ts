@@ -2,7 +2,7 @@ import { updateSession } from '@/utils/supabase/middleware'
 import { wrapMiddlewareWithSentry } from '@sentry/nextjs'
 import { type NextRequest } from 'next/server'
 
-export const middleware = wrapMiddlewareWithSentry(async function middleware(
+export const proxy = wrapMiddlewareWithSentry(async function proxy(
   request: NextRequest,
 ) {
   return await updateSession(request)
