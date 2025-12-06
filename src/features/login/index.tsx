@@ -74,14 +74,13 @@ export const LoginDialog = ({
           </div>
 
           <DialogDescription className="text-center flex flex-col justify-center items-center">
-            {/* <p className="mt-8 font-semibold text-3xl">Create an account</p> */}
             <span className="mt-8 text-lg font-normal">
               Create, manage and share code snippets with Jolly Code.
             </span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 pt-8 pb-2">
+        <div className="grid gap-4 pb-2 px-4">
           <CtaButton
             label="Sign in with Github"
             onClick={() => handleSignInWithGithub()}

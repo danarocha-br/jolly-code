@@ -25,7 +25,7 @@ import { Avatar } from "../avatar";
 import { LoginDialog } from "@/features/login";
 import { CopyURLToClipboard } from "@/features/share-code";
 import { ExportMenu } from "@/features/export/export-menu";
-import { AnimationShareDialog } from "@/features/animation/enhanced-share-dialog";
+import { EnhancedAnimationShareDialog } from "@/features/animation/enhanced-share-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   NavigationMenu,
@@ -242,7 +242,7 @@ export const Nav = () => {
         {isPresentational && <UsersPresence />}
 
         {isAnimationPage ? (
-          <AnimationShareDialog />
+          <EnhancedAnimationShareDialog />
         ) : (
           <>
             <ExportMenu />

@@ -4,8 +4,8 @@ export const overlay = cva([
   "fixed",
   "inset-0",
   "z-[999]",
-  "bg-subdued/80",
-  "dark:bg-background/80",
+  "bg-subdued/70",
+  "dark:bg-background/70",
   "backdrop-blur-md",
 
   "data-[state=open]:animate-in",
@@ -20,8 +20,7 @@ export const content = cva([
   "dark:bg-background",
   "border",
   "border-border/60",
-  "p-6",
-  "pt-4",
+  "py-4",
   "fixed",
   "left-[50%]",
   "top-[50%]",
@@ -73,15 +72,22 @@ export const header = cva([
   "flex-col",
   "text-center",
   "sm:text-left",
+  "border-b",
+  "px-4",
+  "pb-4",
+  "font-light",
+  "tracking-wide",
 ]);
 
 export const footer = cva([
   "flex",
   "flex-col-reverse",
-
   "sm:flex-row",
   "sm:justify-end",
   "sm:space-x-2",
+  "px-4",
+  "pt-4",
+  "border-t",
 ]);
 
 export const title = cva([

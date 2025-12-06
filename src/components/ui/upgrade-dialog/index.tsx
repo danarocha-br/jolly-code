@@ -8,8 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { PLANS, type PlanId } from "@/lib/config/plans";
-import { cn } from "@/lib/utils";
+import { PLANS } from "@/lib/config/plans";
+
 
 type UpgradeDialogProps = {
   open: boolean;

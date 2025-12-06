@@ -51,6 +51,14 @@ const RPC_MAP: Record<
   },
 };
 
+type LimitRpcName =
+  | (typeof RPC_MAP)["snippets"]["check"]
+  | (typeof RPC_MAP)["snippets"]["increment"]
+  | (typeof RPC_MAP)["snippets"]["decrement"]
+  | (typeof RPC_MAP)["animations"]["check"]
+  | (typeof RPC_MAP)["animations"]["increment"]
+  | (typeof RPC_MAP)["animations"]["decrement"];
+
 const normalizeLimitPayload = (
   payload: any,
   kind: UsageLimitKind,
@@ -75,7 +83,7 @@ const normalizeLimitPayload = (
 
 const callLimitRpc = async (
   supabase: Supabase,
-  fn: string,
+  fn: LimitRpcName,
   userId: string,
   kind: UsageLimitKind
 ): Promise<UsageLimitCheck> => {

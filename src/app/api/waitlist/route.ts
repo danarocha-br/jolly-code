@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/utils/supabase/server";
 import { FEATURE_FLAG_KEYS } from "@/lib/services/tracking/feature-flag-keys";
+import type { Json } from "@/types/database";
 
 const allowedFeatures = new Set<string>(Object.values(FEATURE_FLAG_KEYS));
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   const email = payload.email?.trim().toLowerCase();
   const featureKey = payload.feature_key;
-  const metadata = payload.metadata ?? {};
+  const metadata = (payload.metadata ?? {}) as Json | null;
   const referer = request.headers.get("referer") || null;
 
   if (!email || !email.includes("@")) {

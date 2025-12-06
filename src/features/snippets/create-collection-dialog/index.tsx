@@ -1,6 +1,10 @@
 "use client";
+
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
 
 import { useUserStore } from "@/app/store";
 import {
@@ -11,28 +15,39 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label/index";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createCollection } from "../queries";
 import { Collection } from "../dtos";
 import { analytics } from "@/lib/services/tracking";
 
+const formSchema = z.object({
+  title: z.string().min(1, { message: "Collection name is required." }),
+});
+
 export function CreateCollectionDialog({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [title, setTitle] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const user = useUserStore((state) => state.user);
 
   const queryClient = useQueryClient();
   const queryKey = ["collections"];
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setTitle(e.target.value);
-  }
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+    },
+  });
 
   const { mutate: handleCreateCollection } = useMutation({
     mutationFn: createCollection,
@@ -40,6 +55,8 @@ export function CreateCollectionDialog({
       analytics.track("create_collection", {
         title: variables.title,
       });
+      setIsDialogOpen(false);
+      form.reset();
     },
     onError: (err, variables, context) => {
       const { previousState } = context as { previousState: Collection[] };
@@ -52,6 +69,13 @@ export function CreateCollectionDialog({
     },
   });
 
+  function onSubmit(data: z.infer<typeof formSchema>) {
+    handleCreateCollection({
+      title: data.title,
+      user_id: user?.id ?? "",
+    });
+  }
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -60,35 +84,40 @@ export function CreateCollectionDialog({
           <DialogTitle>Use collections to organize your snippets.</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col w-full gap-2 my-4">
-          <Label htmlFor="collection" className="mb-2">
-            Collection name
-          </Label>
-          <Input
-            id="collection"
-            placeholder="Javascript ..."
-            onChange={handleChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleCreateCollection({
-                  title: title,
-                  user_id: user?.id ?? "",
-                });
-                setIsDialogOpen(false);
-              }
-            }}
-          />
-        </div>
+        <form
+          id="create-collection-form"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="px-4"
+        >
+          <FieldGroup>
+            <Controller
+              name="title"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field orientation="horizontal" data-invalid={fieldState.invalid}>
+                  <FieldLabel
+                    className="whitespace-nowrap"
+                    htmlFor="collection-title"
+                  >
+                    Collection name
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="collection-title"
+                    aria-invalid={fieldState.invalid}
+                    placeholder="Javascript ..."
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </form>
 
         <DialogFooter>
-          <Button
-            disabled={!title}
-            onClick={() => {
-              handleCreateCollection({ title: title, user_id: user?.id ?? "" });
-              setIsDialogOpen(false);
-            }}
-          >
+          <Button type="submit" form="create-collection-form">
             Save collection
           </Button>
         </DialogFooter>

@@ -1,6 +1,10 @@
 "use client";
+
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
 
 import { useUserStore } from "@/app/store";
 import {
@@ -11,28 +15,39 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label/index";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createAnimationCollection } from "../queries";
 import { AnimationCollection } from "../dtos";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 
+const formSchema = z.object({
+  title: z.string().min(1, { message: "Collection name is required." }),
+});
+
 export function CreateAnimationCollectionDialog({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [title, setTitle] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const user = useUserStore((state) => state.user);
 
   const queryClient = useQueryClient();
   const queryKey = ["animation-collections"];
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setTitle(e.target.value);
-  }
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+    },
+  });
 
   const { mutate: handleCreateCollection } = useMutation({
     mutationFn: createAnimationCollection,
@@ -44,9 +59,13 @@ export function CreateAnimationCollectionDialog({
         collection_id: data?.data?.id,
         title: variables.title,
       });
+      setIsDialogOpen(false);
+      form.reset();
     },
     onError: (err, variables, context) => {
-      const { previousState } = context as { previousState: AnimationCollection[] };
+      const { previousState } = context as {
+        previousState: AnimationCollection[];
+      };
 
       queryClient.setQueryData(queryKey, previousState);
     },
@@ -56,43 +75,52 @@ export function CreateAnimationCollectionDialog({
     },
   });
 
+  function onSubmit(data: z.infer<typeof formSchema>) {
+    handleCreateCollection({
+      title: data.title,
+      user_id: user?.id ?? "",
+    });
+  }
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Use collections to organize your animations.</DialogTitle>
+          <DialogTitle>Use collections to organize your animations</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col w-full gap-2 my-4">
-          <Label htmlFor="animation-collection" className="mb-2">
-            Collection name
-          </Label>
-          <Input
-            id="animation-collection"
-            placeholder="Demo reels..."
-            onChange={handleChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleCreateCollection({
-                  title: title,
-                  user_id: user?.id ?? "",
-                });
-                setIsDialogOpen(false);
-              }
-            }}
-          />
-        </div>
+        <form
+          id="create-collection-form"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="px-4"
+        >
+          <FieldGroup>
+            <Controller
+              name="title"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field orientation="horizontal" data-invalid={fieldState.invalid}>
+                  <FieldLabel className="whitespace-nowrap" htmlFor="collection-title">
+                    Collection name
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="collection-title"
+                    aria-invalid={fieldState.invalid}
+                    placeholder="Demo reels..."
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </form>
 
         <DialogFooter>
-          <Button
-            disabled={!title}
-            onClick={() => {
-              handleCreateCollection({ title: title, user_id: user?.id ?? "" });
-              setIsDialogOpen(false);
-            }}
-          >
+          <Button type="submit" form="create-collection-form">
             Save collection
           </Button>
         </DialogFooter>

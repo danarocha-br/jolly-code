@@ -9,7 +9,6 @@ import {
   AnimationExportFormat,
   AnimationQualityPreset,
 } from "@/types/animation";
-import { title } from "process";
 
 export type AnimationTabState = {
   id: string;
@@ -50,6 +49,7 @@ export type AnimationStoreState = {
   openAnimationInTab: (animation: Animation) => void;
   updateActiveAnimation: (animation: Animation) => void;
   closeTab: (tabId: string) => void;
+  removeAnimationFromTabs: (animationId: string) => void;
 };
 
 const createSlide = (index: number, code = "", title?: string): AnimationSlide => ({
@@ -186,7 +186,7 @@ export const useAnimationStore = create<
           isPlaying: false,
           currentPlaybackTime: 0,
           animationId: newTab.animationId,
-          isAnimationSaved: true,
+          isAnimationSaved: false,
         });
       },
 
@@ -493,6 +493,34 @@ export const useAnimationStore = create<
         } else {
           // Just remove the tab, no need to change active state
           set({ tabs: newTabs });
+        }
+      },
+
+      removeAnimationFromTabs: (id: string) => {
+        const { tabs, activeAnimationTabId, animationId } = get();
+
+        // Update tabs list - mark matching tabs as unsaved and remove animation binding
+        const updatedTabs = sanitizeTabs(
+          tabs.map((tab) => {
+            if (tab.animationId === id) {
+              return {
+                ...tab,
+                animationId: undefined,
+                saved: false,
+              };
+            }
+            return tab;
+          })
+        );
+
+        set({ tabs: updatedTabs });
+
+        // If the active animation is the one being deleted, clear the binding in current state
+        if (animationId === id) {
+          set({
+            animationId: undefined,
+            isAnimationSaved: false,
+          });
         }
       }
     }),

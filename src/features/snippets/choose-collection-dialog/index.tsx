@@ -137,7 +137,7 @@ export const DialogChooseCollection = forwardRef(
             </DialogTitle>
           </DialogHeader>
 
-          <div className="w-full">
+          <div className="w-full px-4">
             {isLoading && (
               <div className="flex justify-center items-center py-8">
                 <i className="ri-loader-4-fill text-4xl animate-spin" />

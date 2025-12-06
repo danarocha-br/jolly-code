@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -12,16 +12,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import {
   AnimationSharePayload,
@@ -31,10 +27,17 @@ import {
   generateSocialShareUrl,
 } from "@/features/animation/share-utils";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
-import { VideoExporter } from "./video-exporter";
 import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { debounce } from "@/lib/utils/debounce";
+
+import { ShareMetadataForm } from "./share-dialog/share-metadata-form";
+import { ShareTabPublic } from "./share-dialog/tabs/share-tab-public";
+import { ShareTabEmbed } from "./share-dialog/tabs/share-tab-embed";
+import { ShareTabPlatforms } from "./share-dialog/tabs/share-tab-platforms";
+import { ShareTabSocial } from "./share-dialog/tabs/share-tab-social";
+import { ShareTabPreview } from "./share-dialog/tabs/share-tab-preview";
+import { ExportOverlay } from "./share-dialog/export-overlay";
 
 const shareFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -64,7 +67,9 @@ export const EnhancedAnimationShareDialog = () => {
   const showLineNumbers = useEditorStore((state) => state.showLineNumbers);
 
   const [open, setOpen] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(() =>
+    typeof window !== "undefined" ? window.location.origin : null
+  );
   const [shareUrl, setShareUrl] = useState("");
   const [shareSlug, setShareSlug] = useState<string | null>(null);
   const [ogPreviewUrl, setOgPreviewUrl] = useState<string | null>(null);
@@ -72,7 +77,7 @@ export const EnhancedAnimationShareDialog = () => {
   const [embedWidth, setEmbedWidth] = useState(defaultEmbedSizes.width);
   const [embedHeight, setEmbedHeight] = useState(defaultEmbedSizes.height);
   const previewTrackedRef = useRef(false);
-  const loadTimestampRef = useRef<number>(Date.now());
+  const loadTimestampRef = useRef<number | null>(null);
   const firstExportTrackedRef = useRef(false);
 
   // Export state
@@ -89,10 +94,6 @@ export const EnhancedAnimationShareDialog = () => {
   const { copy: copySnippet, isCopying: isCopyingSnippet } = useCopyToClipboard({
     successMessage: "Copied to clipboard.",
   });
-
-  useEffect(() => {
-    setCurrentUrl(window.location.origin);
-  }, []);
 
   const serializedSlides = useMemo(
     () =>
@@ -151,8 +152,14 @@ export const EnhancedAnimationShareDialog = () => {
     }
   }, [firstSlide?.title, form]);
 
-  const titleValue = form.watch("title");
-  const descriptionValue = form.watch("description");
+  const titleValue = useWatch({ control: form.control, name: "title" });
+  const descriptionValue = useWatch({ control: form.control, name: "description" });
+
+  useEffect(() => {
+    if (!loadTimestampRef.current) {
+      loadTimestampRef.current = Date.now();
+    }
+  }, []);
   const trackMetadataUpdated = useMemo(
     () =>
       debounce((field: "title" | "description", hasValue: boolean) => {
@@ -343,16 +350,6 @@ export const EnhancedAnimationShareDialog = () => {
     [embedHeight, embedWidth, shareUrl]
   );
 
-  const platformButtons = useMemo(
-    () => [
-      { key: "hashnode", label: "Hashnode" },
-      { key: "medium", label: "Medium" },
-      { key: "devto", label: "Dev.to" },
-      { key: "notion", label: "Notion" },
-    ],
-    []
-  );
-
   const isGenerating = shortenUrlMutation.isPending;
 
   const handleCopyUrl = useCallback(async () => {
@@ -416,9 +413,10 @@ export const EnhancedAnimationShareDialog = () => {
       transition_type: animationSettings.transitionType,
       export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
       transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-      time_to_first_export_ms: isFirstExport
-        ? Date.now() - loadTimestampRef.current
-        : undefined,
+      time_to_first_export_ms:
+        isFirstExport && loadTimestampRef.current !== null
+          ? Date.now() - loadTimestampRef.current
+          : undefined,
     });
   };
 
@@ -473,7 +471,7 @@ export const EnhancedAnimationShareDialog = () => {
         </DialogTrigger>
       </Tooltip>
 
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-2xl gap-0">
         <DialogHeader>
           <DialogTitle>Share animation</DialogTitle>
           <DialogDescription>
@@ -482,298 +480,108 @@ export const EnhancedAnimationShareDialog = () => {
         </DialogHeader>
 
         {isExporting && (
-          <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
-            <div className="w-full max-w-md space-y-4 p-6 bg-card border rounded-xl shadow-lg">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Generating video...</h3>
-                <span className="text-sm text-muted-foreground">{Math.round(exportProgress * 100)}%</span>
-              </div>
-              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300 ease-out"
-                  style={{ width: `${exportProgress * 100}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Please wait while we render your animation frame by frame.
-              </p>
-              <div className="flex justify-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelExport}
-                  disabled={cancelExport}
-                >
-                  {cancelExport ? "Cancelling..." : "Cancel export"}
-                </Button>
-              </div>
-            </div>
-
-            <VideoExporter
-              slides={slides}
-              settings={animationSettings}
-              editorSettings={{
-                backgroundTheme,
-                fontFamily,
-                fontSize,
-                showBackground,
-              }}
-              onProgress={setExportProgress}
-              onComplete={onExportComplete}
-              onError={(err: Error) => {
-                console.error(err);
-                setIsExporting(false);
-                setCancelExport(false);
-                trackAnimationEvent("export_failed", user, {
-                  error_type: err?.message || "unknown",
-                  format: animationSettings.exportFormat,
-                  resolution: animationSettings.resolution,
-                  slide_count: serializedSlides.length,
-                  transition_type: animationSettings.transitionType,
-                  progress_percent: Math.round(exportProgress * 100),
-                  export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-                  transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-                });
-                toast.error("Export failed. Please try again.");
-              }}
-              cancelled={cancelExport}
-              onCancelled={() => {
-                setIsExporting(false);
-                setExportProgress(0);
-                setCancelExport(false);
-                toast("Export canceled.");
-              }}
-            />
-          </div>
+          <ExportOverlay
+            progress={exportProgress}
+            cancelExport={cancelExport}
+            onCancel={handleCancelExport}
+            slides={slides}
+            settings={animationSettings}
+            editorSettings={{
+              backgroundTheme,
+              fontFamily,
+              fontSize,
+              showBackground,
+            }}
+            onProgress={setExportProgress}
+            onComplete={onExportComplete}
+            onError={(err: Error) => {
+              console.error(err);
+              setIsExporting(false);
+              setCancelExport(false);
+              trackAnimationEvent("export_failed", user, {
+                error_type: err?.message || "unknown",
+                format: animationSettings.exportFormat,
+                resolution: animationSettings.resolution,
+                slide_count: serializedSlides.length,
+                transition_type: animationSettings.transitionType,
+                progress_percent: Math.round(exportProgress * 100),
+                export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+                transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+              });
+              toast.error("Export failed. Please try again.");
+            }}
+            onCancelled={() => {
+              setIsExporting(false);
+              setExportProgress(0);
+              setCancelExport(false);
+              toast("Export canceled.");
+            }}
+          />
         )}
 
-        <Form {...form}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Animation title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+        <div className="">
+          <ShareMetadataForm control={form.control} />
+
+          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as (typeof TAB_KEYS)[number])}>
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 gap-1 px-4 border-b border-t rounded-none py-4">
+              <TabsTrigger value="public">Public link</TabsTrigger>
+              <TabsTrigger value="platforms">Platforms</TabsTrigger>
+              <TabsTrigger value="social">Social</TabsTrigger>
+              <TabsTrigger value="embed">Embed code</TabsTrigger>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="public">
+              <ShareTabPublic
+                shareUrl={shareUrl}
+                isGenerating={isGenerating}
+                onCopy={() => void handleCopyUrl()}
+                isCopying={isCopyingLink}
               />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Add a short description" {...field} />
-                    </FormControl>
-                    <FormDescription className="text-muted-foreground">
-                      Optional – shown on previews.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </TabsContent>
+
+            <TabsContent value="embed">
+              <ShareTabEmbed
+                width={embedWidth}
+                height={embedHeight}
+                onWidthChange={setEmbedWidth}
+                onHeightChange={setEmbedHeight}
+                embedCode={embedCode}
+                isGenerating={isGenerating}
+                isCopying={isCopyingEmbed}
+                onCopy={() => void handleEmbedCopy()}
               />
-            </div>
+            </TabsContent>
 
-            <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as (typeof TAB_KEYS)[number])}>
-              <TabsList className="grid grid-cols-2 md:grid-cols-5">
-                <TabsTrigger value="public">Public link</TabsTrigger>
-                <TabsTrigger value="embed">Embed code</TabsTrigger>
-                <TabsTrigger value="platforms">Platforms</TabsTrigger>
-                <TabsTrigger value="social">Social</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
+            <TabsContent value="platforms">
+              <ShareTabPlatforms
+                shareUrl={shareUrl}
+                isExporting={isExporting}
+                isCopyingSnippet={isCopyingSnippet}
+                onExport={handleExport}
+                onPlatformCopy={handlePlatformCopy}
+              />
+            </TabsContent>
 
-              <TabsContent value="public" className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="animation-share-url">Public URL</Label>
-                  <div className="flex flex-col md:flex-row md:items-center gap-2">
-                    <Input
-                      id="animation-share-url"
-                      value={shareUrl}
-                      readOnly
-                      placeholder={isGenerating ? "Generating link..." : "Generate a link to share"}
-                    />
-                    <div className="flex gap-2">
-                      <Button variant="secondary" type="button" onClick={() => void handleCopyUrl()} disabled={isGenerating || isCopyingLink}>
-                        {isGenerating ? "Generating..." : isCopyingLink ? "Copying..." : "Copy"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
+            <TabsContent value="social">
+              <ShareTabSocial
+                shareUrl={shareUrl}
+                isExporting={isExporting}
+                onExport={handleExport}
+                onSocialShare={handleSocialShare}
+              />
+            </TabsContent>
 
-              <TabsContent value="embed" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="embed-width">Width</Label>
-                    <Input
-                      id="embed-width"
-                      value={embedWidth}
-                      onChange={(event) => setEmbedWidth(event.target.value)}
-                      placeholder="100%"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="embed-height">Height</Label>
-                    <Input
-                      id="embed-height"
-                      value={embedHeight}
-                      onChange={(event) => setEmbedHeight(event.target.value)}
-                      placeholder="420"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Embed code</Label>
-                  <div className="rounded-xl border bg-muted/30 p-3">
-                    <pre className="text-sm whitespace-pre-wrap break-all font-mono text-muted-foreground">
-                      {embedCode || "Generate a link to preview the embed snippet."}
-                    </pre>
-                  </div>
-                </div>
-
-                <DialogFooter className="flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    Customize the iframe size before copying the embed code.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button type="button" onClick={() => void handleEmbedCopy()} disabled={isGenerating || isCopyingEmbed}>
-                      {isGenerating ? "Generating..." : isCopyingEmbed ? "Copying..." : "Copy embed"}
-                    </Button>
-                  </div>
-                </DialogFooter>
-              </TabsContent>
-
-              <TabsContent value="platforms" className="space-y-4">
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Download Video</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Download a high-quality video of your animation to share on any platform.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => handleExport()}
-                    disabled={isExporting}
-                  >
-                    <i className="ri-download-line mr-2"></i>
-                    Download Video
-                  </Button>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t">
-                  <h4 className="text-sm font-medium">Embed Links</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Or copy platform-specific embed snippets.
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {platformButtons.map((platform) => (
-                      <Button
-                        key={`embed-${platform.key}`}
-                        type="button"
-                        variant="secondary"
-                        className="justify-start"
-                        onClick={() => handlePlatformCopy(platform.key as "hashnode" | "medium" | "devto" | "notion")}
-                        disabled={!shareUrl || isCopyingSnippet}
-                      >
-                        <i className="ri-clipboard-line mr-2"></i>
-                        {platform.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="social" className="space-y-4">
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Download Video</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Download a high-quality video to upload to any social media platform.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => handleExport()}
-                    disabled={isExporting}
-                  >
-                    <i className="ri-download-line mr-2"></i>
-                    Download Video
-                  </Button>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t">
-                  <h4 className="text-sm font-medium">Share Link</h4>
-                  <p className="text-sm text-muted-foreground">Share the public link directly.</p>
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <Button
-                      type="button"
-                      className="flex-1 bg-[#1d9bf0] hover:bg-[#1a8cd8]"
-                      onClick={() => handleSocialShare("twitter")}
-                      disabled={!shareUrl}
-                    >
-                      <i className="ri-twitter-x-line mr-2"></i>
-                      Share on X
-                    </Button>
-                    <Button
-                      type="button"
-                      className="flex-1 bg-[#0a66c2] hover:bg-[#0a66c2]/90"
-                      onClick={() => handleSocialShare("linkedin")}
-                      disabled={!shareUrl}
-                    >
-                      <i className="ri-linkedin-fill mr-2"></i>
-                      Share on LinkedIn
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="preview" className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Open Graph preview generated from your first slide.</p>
-                    <p className="text-xs text-muted-foreground">
-                      Cached for an hour. Refresh if you just updated the animation.
-                    </p>
-                  </div>
-                  <Button type="button" variant="secondary" onClick={handleRefreshPreview} disabled={isGenerating}>
-                    Refresh preview
-                  </Button>
-                </div>
-
-                <div className="rounded-xl border bg-muted/30 overflow-hidden">
-                  {ogPreviewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={ogPreviewUrl}
-                      alt="OG preview"
-                      className="w-full h-[280px] object-cover bg-muted"
-                    />
-                  ) : (
-                    <div className="w-full h-[280px] flex items-center justify-center text-muted-foreground">
-                      Generate a link to see the OG image.
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </Form>
+            <TabsContent value="preview">
+              <ShareTabPreview
+                ogPreviewUrl={ogPreviewUrl}
+                isGenerating={isGenerating}
+                onRefresh={handleRefreshPreview}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );
 };
-
-export { EnhancedAnimationShareDialog as AnimationShareDialog };

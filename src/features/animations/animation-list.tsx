@@ -85,7 +85,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
 
   const router = useRouter();
   const pathname = usePathname();
-  const { openAnimationInTab, setIsAnimationSaved, setAnimationId } = useAnimationStore();
+  const { openAnimationInTab, setIsAnimationSaved, setAnimationId, removeAnimationFromTabs } = useAnimationStore();
   const user = useUserStore((state) => state.user);
   const userId = useUserStore((state) => state.user?.id);
 
@@ -189,6 +189,9 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   const { mutate: handleDeleteAnimation } = useMutation({
     mutationFn: removeAnimation,
     onSuccess: (data, variables) => {
+      if (variables.animation_id) {
+        removeAnimationFromTabs(variables.animation_id);
+      }
       trackAnimationEvent("delete_animation", user, {
         animation_id: variables.animation_id,
       });

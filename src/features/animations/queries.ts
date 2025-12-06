@@ -329,11 +329,12 @@ export async function createAnimation({
   settings,
 }: CreateAnimationProps): Promise<CreateAnimationResponse | undefined> {
   try {
+    const sanitizedTitle = title && title.trim() !== "" ? title : "Untitled animation";
     const url = createAnimationUrl(currentUrl, slides, settings, user_id);
 
     const result = await createAnimationAction({
       id,
-      title,
+      title: sanitizedTitle,
       slides,
       settings,
       url,

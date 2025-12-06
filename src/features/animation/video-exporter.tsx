@@ -145,7 +145,8 @@ export const VideoExporter = ({
 
         for await (const frame of generator) {
           if (cancelRef.current) {
-            throw new Error("export_cancelled");
+            onCancelled?.();
+            return;
           }
           // 1. Set state to render frame
           setCurrentFrame(frame);
@@ -219,11 +220,7 @@ export const VideoExporter = ({
 
       } catch (error) {
         console.error("Export failed", error);
-        if ((error as Error)?.message === "export_cancelled") {
-          onCancelled?.();
-        } else {
-          onError(error as Error);
-        }
+        onError(error as Error);
       } finally {
         processingRef.current = false;
       }
