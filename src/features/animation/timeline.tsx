@@ -205,6 +205,11 @@ export const Timeline = ({ maxSlides, onSlideLimitReached }: TimelineProps) => {
             {slides.length}/{maxSlidesLabel}
           </span>
         </div>
+        {/* {hasReachedMaxSlides && (
+          <span className="text-[11px] text-amber-400">
+            You’ve hit your plan limit — click “Add Slide” to upgrade.
+          </span>
+        )} */}
       </div>
 
       <ScrollArea className="w-full whitespace-nowrap">

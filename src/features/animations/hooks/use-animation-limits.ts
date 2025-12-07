@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { User } from "@supabase/supabase-js";
 
 import { useUserUsage } from "@/features/user/queries";
-import { getPlanLimitValue } from "@/lib/config/plans";
+import { getPlanConfig } from "@/lib/config/plans";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type AnimationLimitType = "animations" | "slides";
@@ -33,7 +32,8 @@ export function useAnimationLimits({ user, slidesCount }: UseAnimationLimitsProp
     animationLimit.current >= animationLimit.max;
 
   const plan = usage?.plan ?? "free";
-  const slideLimitMax = getPlanLimitValue(plan, "maxSlidesPerAnimation");
+  const planConfig = getPlanConfig(plan);
+  const slideLimitMax = planConfig.maxSlidesPerAnimation === Infinity ? null : planConfig.maxSlidesPerAnimation;
 
   // NOTE: This checks if LIMIT IS EXCEEDED for creating new ones 
   // (e.g. if limit is 5, and we have 5, we can't create 6th)
@@ -42,9 +42,6 @@ export function useAnimationLimits({ user, slidesCount }: UseAnimationLimitsProp
   const checkSaveLimits = (): boolean => {
     // 1. Check Animation Limit
     if (animationLimitReached && animationLimit) {
-      toast.error(
-        `You've reached the free plan limit (${animationLimit.current}/${animationLimit.max} animations). Upgrade to Pro for unlimited animations!`
-      );
       trackAnimationEvent("limit_reached", user, {
         limit_type: "animations",
         current: animationLimit.current,
@@ -65,9 +62,6 @@ export function useAnimationLimits({ user, slidesCount }: UseAnimationLimitsProp
 
     // 2. Check Slide Limit
     if (slideLimitMax !== null && slidesCount > slideLimitMax) {
-      toast.error(
-        `Free users can add up to ${slideLimitMax} slides per animation. Upgrade to Pro for unlimited slides!`
-      );
       trackAnimationEvent("limit_reached", user, {
         limit_type: "slides",
         current: slidesCount,

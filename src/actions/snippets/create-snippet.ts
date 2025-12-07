@@ -5,23 +5,12 @@ import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { insertSnippet } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/features/snippets/dtos'
-import {
-    checkSnippetLimit,
-    incrementUsageCount,
-    type UsageLimitCheck,
-} from '@/lib/services/usage-limits'
-
 export type CreateSnippetInput = {
     id: string
     title?: string
     code: string
     language: string
     url?: string
-}
-
-export type CreateSnippetResult = {
-    snippet: Snippet
-    usage: UsageLimitCheck
 }
 
 /**
@@ -32,7 +21,7 @@ export type CreateSnippetResult = {
  */
 export async function createSnippet(
     input: CreateSnippetInput
-): Promise<ActionResult<CreateSnippetResult>> {
+): Promise<ActionResult<Snippet>> {
     try {
         const { id, title, code, language, url } = input
 
@@ -43,10 +32,24 @@ export async function createSnippet(
 
         const { user, supabase } = await requireAuth()
 
-        const limit = await checkSnippetLimit(supabase, user.id)
-        if (!limit.canSave) {
-            const maxText = limit.max ?? 'unlimited'
-            return error(`You've reached the free plan limit (${limit.current}/${maxText} snippets). Upgrade to Pro for unlimited snippets!`)
+        // Check snippet limit before allowing save
+        const { data: limitCheck, error: limitError } = await supabase.rpc('check_snippet_limit', {
+            p_user_id: user.id
+        })
+
+        if (limitError) {
+            console.error('Error checking snippet limit:', limitError)
+            return error('Failed to verify save limit. Please try again.')
+        }
+
+        if (!limitCheck.canSave) {
+            const plan = limitCheck.plan
+            if (plan === 'free') {
+                return error('Free plan doesn\'t allow saving snippets. Upgrade to Started to save up to 50 snippets!')
+            } else if (plan === 'started') {
+                return error('You\'ve reached your limit (50/50 snippets). Upgrade to Pro for unlimited snippets!')
+            }
+            return error('Snippet limit reached. Please upgrade your plan.')
         }
 
         const data = await insertSnippet({
@@ -63,13 +66,21 @@ export async function createSnippet(
             return error('Failed to create snippet')
         }
 
-        const updatedUsage = await incrementUsageCount(supabase, user.id, 'snippets')
+        // Increment snippet count after successful creation
+        const { error: incrementError } = await supabase.rpc('increment_snippet_count', {
+            p_user_id: user.id
+        })
+
+        if (incrementError) {
+            console.error('Error incrementing snippet count:', incrementError)
+            // Don't fail the operation, but log it
+        }
 
         // Revalidate the snippets list
         revalidatePath('/snippets')
         revalidatePath('/')
 
-        return success({ snippet: data[0], usage: updatedUsage })
+        return success(data[0])
     } catch (err) {
         console.error('Error creating snippet:', err)
 

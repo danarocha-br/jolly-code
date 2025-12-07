@@ -380,14 +380,6 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const handleSaveSnippet = () => {
       if (snippetLimitReached) {
-        const limitLabel =
-          snippetLimit?.max !== null && typeof snippetLimit?.max !== "undefined"
-            ? `${snippetLimit.current}/${snippetLimit.max}`
-            : `${snippetLimit?.current ?? 0}`;
-
-        toast.error(
-          `You've reached the free plan limit (${limitLabel} snippets). Upgrade to Pro for unlimited snippets!`
-        );
         analytics.track("limit_reached", {
           limit_type: "snippets",
           current: snippetLimit?.current ?? 0,

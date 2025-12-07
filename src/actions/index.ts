@@ -1,7 +1,7 @@
 // Snippets Actions
 export { getSnippets } from './snippets/get-snippets'
 export { getSnippetById } from './snippets/get-snippet-by-id'
-export { createSnippet, type CreateSnippetInput, type CreateSnippetResult } from './snippets/create-snippet'
+export { createSnippet, type CreateSnippetInput } from './snippets/create-snippet'
 export { updateSnippet, type UpdateSnippetInput } from './snippets/update-snippet'
 export { deleteSnippet } from './snippets/delete-snippet'
 
@@ -18,7 +18,6 @@ export { getAnimationById } from './animations/get-animation-by-id'
 export {
     createAnimation,
     type CreateAnimationInput,
-    type CreateAnimationResult,
 } from './animations/create-animation'
 export { updateAnimation, type UpdateAnimationInput } from './animations/update-animation'
 export { deleteAnimation } from './animations/delete-animation'

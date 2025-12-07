@@ -345,22 +345,11 @@ export async function createAnimation({
       return undefined;
     }
 
-    const animation = result.data?.animation;
-    const usage = result.data?.usage;
+    const animation = result.data;
 
-    if (usage?.max && usage.current >= usage.max) {
-      toast.error(
-        `You've reached the free plan limit (${usage.current}/${usage.max} animations). Upgrade to Pro for unlimited animations!`
-      );
-    } else {
-      toast.success("Your animation was saved.");
-    }
+    toast.success("Your animation was saved.");
 
-    if (usage?.max && usage.current >= usage.max - 1) {
-      toast.message(`You're almost at your animation limit (${usage.current}/${usage.max}).`);
-    }
-
-    return animation ? { data: animation, usage } : undefined;
+    return animation ? { data: animation } : undefined;
   } catch (error) {
     console.log(error);
     toast.error(`Failed to save the animation.`);

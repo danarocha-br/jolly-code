@@ -7,12 +7,6 @@ import { success, error, type ActionResult } from '@/actions/utils/action-result
 import { insertAnimation } from '@/lib/services/database/animations'
 import type { Animation } from '@/features/animations/dtos'
 import type { AnimationSettings, AnimationSlide } from '@/types/animation'
-import {
-    checkAnimationLimit,
-    checkSlideLimit,
-    incrementUsageCount,
-    type UsageLimitCheck,
-} from '@/lib/services/usage-limits'
 
 export type CreateAnimationInput = {
     id: string
@@ -22,14 +16,9 @@ export type CreateAnimationInput = {
     url?: string | null
 }
 
-export type CreateAnimationResult = {
-    animation: Animation
-    usage: UsageLimitCheck
-}
-
 export async function createAnimation(
     input: CreateAnimationInput
-): Promise<ActionResult<CreateAnimationResult>> {
+): Promise<ActionResult<Animation>> {
     try {
         const { id, title, slides, settings, url } = input
 
@@ -43,15 +32,45 @@ export async function createAnimation(
 
         const { user, supabase } = await requireAuth()
 
-        const limit = await checkAnimationLimit(supabase, user.id)
-        if (!limit.canSave) {
-            const maxText = limit.max ?? 'unlimited'
-            return error(`You've reached the free plan limit (${limit.current}/${maxText} animations). Upgrade to Pro for unlimited animations!`)
+        // Check animation save limit
+        const { data: animationLimitCheck, error: animationLimitError } = await supabase.rpc('check_animation_limit', {
+            p_user_id: user.id
+        })
+
+        if (animationLimitError) {
+            console.error('Error checking animation limit:', animationLimitError)
+            return error('Failed to verify save limit. Please try again.')
         }
 
-        const slideLimit = checkSlideLimit(slides.length, limit.plan)
-        if (!slideLimit.canSave) {
-            return error(`Free users can add up to ${slideLimit.max} slides per animation. Upgrade to Pro for unlimited slides!`)
+        if (!animationLimitCheck.canSave) {
+            const plan = animationLimitCheck.plan
+            if (plan === 'free') {
+                return error('Free plan doesn\'t allow saving animations. Upgrade to Started to save up to 50 animations!')
+            } else if (plan === 'started') {
+                return error('You\'ve reached your limit (50/50 animations). Upgrade to Pro for unlimited animations!')
+            }
+            return error('Animation limit reached. Please upgrade your plan.')
+        }
+
+        // Check slide count limit
+        const { data: slideLimitCheck, error: slideLimitError } = await supabase.rpc('check_slide_limit', {
+            p_user_id: user.id,
+            p_slide_count: slides.length
+        })
+
+        if (slideLimitError) {
+            console.error('Error checking slide limit:', slideLimitError)
+            return error('Failed to verify slide limit. Please try again.')
+        }
+
+        if (!slideLimitCheck.canAdd) {
+            const plan = slideLimitCheck.plan
+            if (plan === 'free') {
+                return error('Free users can add up to 3 slides. Upgrade to Started for 10 slides per animation!')
+            } else if (plan === 'started') {
+                return error('Started users can add up to 10 slides. Upgrade to Pro for unlimited slides!')
+            }
+            return error('Slide limit exceeded. Please upgrade your plan.')
         }
 
         const data = await insertAnimation({
@@ -68,12 +87,20 @@ export async function createAnimation(
             return error('Failed to create animation')
         }
 
-        const usageResult = await incrementUsageCount(supabase, user.id, 'animations')
+        // Increment animation count after successful creation
+        const { error: incrementError } = await supabase.rpc('increment_animation_count', {
+            p_user_id: user.id
+        })
+
+        if (incrementError) {
+            console.error('Error incrementing animation count:', incrementError)
+            // Don't fail the operation, but log it
+        }
 
         revalidatePath('/animate')
         revalidatePath('/animations')
 
-        return success({ animation: data[0] as Animation, usage: usageResult })
+        return success(data[0] as Animation)
     } catch (err) {
         console.error('Error creating animation:', err)
 

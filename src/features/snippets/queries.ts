@@ -414,22 +414,11 @@ export async function createSnippet({
       return undefined;
     }
 
-    const snippet = result.data?.snippet;
-    const usage = result.data?.usage;
+    const snippet = result.data;
 
-    if (usage?.max && usage.current >= usage.max) {
-      toast.error(
-        `You've reached the free plan limit (${usage.current}/${usage.max} snippets). Upgrade to Pro for unlimited snippets!`
-      );
-    } else {
-      toast.success("Your code snippet was saved.");
-    }
+    toast.success("Your code snippet was saved.");
 
-    if (usage?.max && usage.current >= usage.max - 1) {
-      toast.message(`You're almost at your snippet limit (${usage.current}/${usage.max}).`);
-    }
-
-    return snippet ? { data: snippet, usage } : undefined;
+    return snippet ? { data: snippet } : undefined;
   } catch (error) {
     console.log(error);
     toast.error(`Failed to save the snippet.`);

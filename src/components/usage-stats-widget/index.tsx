@@ -14,7 +14,7 @@ type UsageStatsWidgetProps = {
 };
 
 const getRatio = (current: number, max: number | null) => {
-  if (!max) return 0;
+  if (max === null || max === 0) return 0;
   return Math.min(current / max, 1);
 };
 
@@ -34,8 +34,8 @@ const UsageRow = ({
   max: number | null;
 }) => {
   const ratio = getRatio(current, max);
-  const maxLabel = max ? `${max}` : "Unlimited";
-  const progressWidth = max ? `${ratio * 100}%` : "100%";
+  const maxLabel = max === null ? "Unlimited" : `${max}`;
+  const progressWidth = max === null ? "100%" : `${ratio * 100}%`;
 
   return (
     <div className="space-y-2">
@@ -85,8 +85,8 @@ export function UsageStatsWidget({
             <p className="text-xs uppercase text-muted-foreground">Usage</p>
             <p className="text-sm font-semibold">{planName} plan</p>
           </div>
-          <Badge variant={usage.plan === "pro" ? "default" : "success"}>
-            {usage.plan === "pro" ? "Pro" : "Free"}
+          <Badge variant={usage.plan === "free" ? "outline" : "default"}>
+            {planName}
           </Badge>
         </div>
 
@@ -101,9 +101,9 @@ export function UsageStatsWidget({
           max={usage.animations.max}
         />
 
-        {usage.plan === "free" && (
+        {usage.plan !== "pro" && onUpgrade && (
           <Button size="sm" className="w-full mt-3" onClick={onUpgrade} variant="default">
-            Upgrade (Coming soon)
+            Upgrade to {usage.plan === "free" ? "Started" : "Pro"}
           </Button>
         )}
       </CardContent>

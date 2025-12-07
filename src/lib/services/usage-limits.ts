@@ -1,11 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
-import { getPlanLimitValue, type PlanId, type PlanLimitKey } from "@/lib/config/plans";
+import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 
 type Supabase = SupabaseClient<Database>;
 
+// Only snippets and animations have RPC functions implemented
 type UsageLimitKind = "snippets" | "animations";
+type PlanLimitKey = "maxSnippets" | "maxAnimations";
 
 export type UsageLimitCheck = {
   canSave: boolean;
@@ -65,8 +67,19 @@ const normalizeLimitPayload = (
   fallbackPlan: PlanId = "free"
 ): UsageLimitCheck => {
   const plan = (payload?.plan as PlanId | undefined) ?? fallbackPlan;
+  const planConfig = getPlanConfig(plan);
   const limitKey = RPC_MAP[kind].planKey;
-  const defaultMax = getPlanLimitValue(plan, limitKey);
+  
+  // Get default max from plan config
+  let defaultMax: number | null;
+  if (limitKey === "maxSnippets") {
+    defaultMax = planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets;
+  } else if (limitKey === "maxAnimations") {
+    defaultMax = planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations;
+  } else {
+    defaultMax = planConfig.maxSlidesPerAnimation === Infinity ? null : planConfig.maxSlidesPerAnimation;
+  }
+  
   const max =
     payload?.max === null || typeof payload?.max === "undefined"
       ? defaultMax
@@ -171,6 +184,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
   }
 
   const plan = (profile.plan as PlanId | null) ?? "free";
+  const planConfig = getPlanConfig(plan);
   const snippetCountFromLimits = usage?.snippet_count ?? profile.snippet_count ?? 0;
   const animationCountFromLimits = usage?.animation_count ?? profile.animation_count ?? 0;
   const snippetCount = Math.max(snippetCountFromLimits, actualSnippetCount ?? 0);
@@ -180,18 +194,19 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     plan,
     snippets: {
       current: snippetCount,
-      max: getPlanLimitValue(plan, "maxSnippets"),
+      max: planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets,
     },
     animations: {
       current: animationCount,
-      max: getPlanLimitValue(plan, "maxAnimations"),
+      max: planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations,
     },
     lastResetAt: usage?.last_reset_at ?? undefined,
   };
 };
 
 export const checkSlideLimit = (slideCount: number, plan: PlanId): UsageLimitCheck => {
-  const max = getPlanLimitValue(plan, "maxSlidesPerAnimation");
+  const planConfig = getPlanConfig(plan);
+  const max = planConfig.maxSlidesPerAnimation === Infinity ? null : planConfig.maxSlidesPerAnimation;
   return {
     canSave: max === null ? true : slideCount <= max,
     current: slideCount,
