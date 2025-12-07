@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoginDialog } from "@/features/login";
+import { Logo } from "@/components/ui/logo";
 import {
   createSnippet,
   removeSnippet,
@@ -425,11 +426,13 @@ export const Editor = forwardRef<any, EditorProps>(
             S.background(),
             showBackground &&
             !presentational &&
-            themes[backgroundTheme!].background
+            themes[backgroundTheme!].background,
+            "relative overflow-hidden group/export"
           )}
           style={{ padding }}
           ref={ref}
           id={currentEditor?.id || "editor"}
+          data-exporting="false"
         >
           {!user ? (
             <LoginDialog>
@@ -603,6 +606,24 @@ export const Editor = forwardRef<any, EditorProps>(
           </div>
 
           <WidthMeasurement isVisible={isWidthVisible} width={width} />
+
+          {/* Watermark (included in exports) */}
+          <div className="pointer-events-none select-none absolute bottom-0 right-0 hidden items-center gap-3 opacity-80 group-data-[exporting=true]/export:flex">
+            <span
+              className={cn(
+                "text-xs font-medium tracking-wide",
+                isDarkTheme ? "text-white/40" : "text-stone-800/40"
+              )}
+            >
+              jollycode.dev
+            </span>
+            <Logo
+              variant="short"
+              className={cn(
+                "scale-[0.4] -ml-6 grayscale contrast-150 opacity-30",
+              )}
+            />
+          </div>
         </div>
 
         <div
