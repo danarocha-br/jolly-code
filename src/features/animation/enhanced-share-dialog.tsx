@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -30,6 +30,8 @@ import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { debounce } from "@/lib/utils/debounce";
+import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
+import { useUserUsage, USAGE_QUERY_KEY } from "@/features/user/queries";
 
 import { ShareMetadataForm } from "./share-dialog/share-metadata-form";
 import { ShareTabPublic } from "./share-dialog/tabs/share-tab-public";
@@ -86,6 +88,14 @@ export const EnhancedAnimationShareDialog = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [cancelExport, setCancelExport] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { data: usage } = useUserUsage(user?.id);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<{ current?: number; max?: number | null }>({
+    current: 0,
+    max: null,
+  });
 
   const { copy: copyLink, isCopying: isCopyingLink } = useCopyToClipboard({
     successMessage: "Link copied to clipboard.",
@@ -207,6 +217,14 @@ export const EnhancedAnimationShareDialog = () => {
     trackMetadataUpdated("description", Boolean(descriptionValue?.trim()));
   }, [descriptionValue, form.formState.isDirty, trackMetadataUpdated]);
 
+  const openUpgradeForShares = (current?: number, max?: number | null) => {
+    setUpgradeContext({
+      current,
+      max: typeof max === "number" ? max : null,
+    });
+    setIsUpgradeOpen(true);
+  };
+
   const shortenUrlMutation = useMutation({
     mutationFn: async (params: { url: string; title?: string; description?: string }) => {
       const response = await fetch("/api/shorten-url", {
@@ -224,7 +242,24 @@ export const EnhancedAnimationShareDialog = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to shorten URL");
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          const authError = new Error("AUTH_REQUIRED");
+          (authError as any).code = "AUTH_REQUIRED";
+          throw authError;
+        }
+
+        if (response.status === 429) {
+          const limitError = new Error(data?.error || "Public share limit reached");
+          (limitError as any).code = "PUBLIC_SHARE_LIMIT";
+          (limitError as any).current = data?.current;
+          (limitError as any).max = data?.max;
+          (limitError as any).plan = data?.plan;
+          throw limitError;
+        }
+
+        throw new Error(data?.error || "Failed to shorten URL");
       }
 
       const data = await response.json();
@@ -235,6 +270,18 @@ export const EnhancedAnimationShareDialog = () => {
   const generateShareUrl = useCallback(
     async (values?: ShareFormValues) => {
       if (!currentUrl) {
+        return undefined;
+      }
+
+      if (!user) {
+        setIsLoginDialogOpen(true);
+        return undefined;
+      }
+
+      const publicShares = usage?.publicShares;
+      if (publicShares?.max !== null && publicShares.current >= publicShares.max) {
+        openUpgradeForShares(publicShares.current, publicShares.max);
+        toast.error("You’ve reached your public view limit. Upgrade for more views.");
         return undefined;
       }
 
@@ -283,17 +330,37 @@ export const EnhancedAnimationShareDialog = () => {
           url_generated: Boolean(fullUrl),
         });
 
+        await queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user?.id] });
+
         return fullUrl;
       } catch (error) {
         console.error("Failed to generate share URL", error);
+        const err = error as any;
+
+        if (err?.code === "AUTH_REQUIRED") {
+          setIsLoginDialogOpen(true);
+          return undefined;
+        }
+
+        if (err?.code === "PUBLIC_SHARE_LIMIT") {
+          openUpgradeForShares(err?.current, err?.max);
+          toast.error("Public share limit reached. Upgrade to continue sharing.");
+          return undefined;
+        }
+
         toast.error("Oh no, something went wrong. Please try again.");
         return undefined;
       }
     },
-    [currentUrl, form, payload, serializedSlides.length, shortenUrlMutation, user]
+    [currentUrl, form, payload, queryClient, serializedSlides.length, shortenUrlMutation, usage?.publicShares, user]
   );
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && !user) {
+      setIsLoginDialogOpen(true);
+      return;
+    }
+
     setOpen(nextOpen);
 
     if (nextOpen) {
@@ -377,6 +444,11 @@ export const EnhancedAnimationShareDialog = () => {
 
   const handleCopyUrl = useCallback(async () => {
     try {
+      if (!user) {
+        setIsLoginDialogOpen(true);
+        return;
+      }
+
       const latestUrl = shareUrl && !form.formState.isDirty ? shareUrl : await generateShareUrl();
       if (!latestUrl) {
         return;
@@ -493,6 +565,14 @@ export const EnhancedAnimationShareDialog = () => {
 
   return (
     <>
+      <UpgradeDialog
+        open={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        limitType="publicShares"
+        currentCount={upgradeContext.current ?? 0}
+        maxCount={upgradeContext.max ?? null}
+        currentPlan={usage?.plan}
+      />
       <LoginDialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} hideTrigger />
 
       <Dialog open={open} onOpenChange={handleOpenChange}>

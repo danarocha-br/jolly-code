@@ -6,6 +6,8 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { siteConfig } from "@/lib/utils/site-config";
 import Link from "next/link";
 import { Metadata } from "next";
+import { cookies, headers } from "next/headers";
+import { createHash } from "crypto";
 
 type SharedLinkPageProps = {
   params: Promise<{
@@ -53,6 +55,36 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
 
   if (!data) {
     return notFound();
+  }
+
+  const cookieStore = await cookies();
+  const viewerCookie = cookieStore.get("jc_viewer_token")?.value;
+  const headerStore = await headers();
+  const fallbackTokenSource = `${headerStore.get("x-forwarded-for") ?? ""}|${headerStore.get("user-agent") ?? ""}`;
+  const hashedFallback = createHash("sha256").update(fallbackTokenSource || shared_link).digest("hex");
+  const viewerToken = viewerCookie ?? hashedFallback;
+
+  const supabase = await createClient();
+  const { data: viewResult, error: viewError } = await supabase.rpc(
+    "record_public_share_view" as never,
+    { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
+  );
+
+  if (viewError) {
+    console.error("Failed to record public share view", viewError);
+  }
+
+  if (viewResult && (viewResult as any).allowed === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
+        <div className="max-w-md space-y-3 text-center">
+          <h1 className="text-2xl font-semibold">View limit reached</h1>
+          <p className="text-muted-foreground">
+            This shared link has reached its monthly view limit. Please ask the owner to upgrade their plan to enable more views.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Track visit asynchronously (fire and forget)

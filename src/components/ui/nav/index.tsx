@@ -242,17 +242,18 @@ export const Nav = () => {
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
         {isPresentational && <UsersPresence />}
 
-        {isAnimationPage ? (
-          <>
-            <AnimationDownloadMenu />
-            <EnhancedAnimationShareDialog />
-          </>
-        ) : (
-          <>
-            <ExportMenu />
-            <CopyURLToClipboard />
-          </>
-        )}
+        {!isPresentational &&
+          (isAnimationPage ? (
+            <>
+              <AnimationDownloadMenu />
+              <EnhancedAnimationShareDialog />
+            </>
+          ) : (
+            <>
+              <ExportMenu />
+              <CopyURLToClipboard />
+            </>
+          ))}
 
         <Tooltip content="GitHub repository">
           <Button

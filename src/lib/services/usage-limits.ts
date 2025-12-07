@@ -5,9 +5,8 @@ import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 
 type Supabase = SupabaseClient<Database>;
 
-// Only snippets and animations have RPC functions implemented
-type UsageLimitKind = "snippets" | "animations";
-type PlanLimitKey = "maxSnippets" | "maxAnimations";
+type UsageLimitKind = "snippets" | "animations" | "publicShares";
+type PlanLimitKey = "maxSnippets" | "maxAnimations" | "shareAsPublicURL";
 
 export type UsageLimitCheck = {
   canSave: boolean;
@@ -27,15 +26,19 @@ export type UsageSummary = {
     current: number;
     max: number | null;
   };
+  publicShares: {
+    current: number;
+    max: number | null;
+  };
   lastResetAt?: string;
 };
 
 const RPC_MAP: Record<
   UsageLimitKind,
   {
-    check: "check_snippet_limit" | "check_animation_limit";
-    increment: "increment_snippet_count" | "increment_animation_count";
-    decrement: "decrement_snippet_count" | "decrement_animation_count";
+    check: "check_snippet_limit" | "check_animation_limit" | "check_public_share_limit";
+    increment: "increment_snippet_count" | "increment_animation_count" | "increment_public_share_count";
+    decrement: "decrement_snippet_count" | "decrement_animation_count" | "decrement_public_share_count";
     planKey: PlanLimitKey;
   }
 > = {
@@ -51,6 +54,12 @@ const RPC_MAP: Record<
     decrement: "decrement_animation_count",
     planKey: "maxAnimations",
   },
+  publicShares: {
+    check: "check_public_share_limit",
+    increment: "increment_public_share_count",
+    decrement: "decrement_public_share_count",
+    planKey: "shareAsPublicURL",
+  },
 };
 
 type LimitRpcName =
@@ -59,7 +68,10 @@ type LimitRpcName =
   | (typeof RPC_MAP)["snippets"]["decrement"]
   | (typeof RPC_MAP)["animations"]["check"]
   | (typeof RPC_MAP)["animations"]["increment"]
-  | (typeof RPC_MAP)["animations"]["decrement"];
+  | (typeof RPC_MAP)["animations"]["decrement"]
+  | (typeof RPC_MAP)["publicShares"]["check"]
+  | (typeof RPC_MAP)["publicShares"]["increment"]
+  | (typeof RPC_MAP)["publicShares"]["decrement"];
 
 const normalizeLimitPayload = (
   payload: any,
@@ -69,17 +81,14 @@ const normalizeLimitPayload = (
   const plan = (payload?.plan as PlanId | undefined) ?? fallbackPlan;
   const planConfig = getPlanConfig(plan);
   const limitKey = RPC_MAP[kind].planKey;
-  
-  // Get default max from plan config
-  let defaultMax: number | null;
-  if (limitKey === "maxSnippets") {
-    defaultMax = planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets;
-  } else if (limitKey === "maxAnimations") {
-    defaultMax = planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations;
-  } else {
-    defaultMax = planConfig.maxSlidesPerAnimation === Infinity ? null : planConfig.maxSlidesPerAnimation;
-  }
-  
+
+  const defaultMax =
+    limitKey === "maxSnippets"
+      ? planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets
+      : limitKey === "maxAnimations"
+        ? planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations
+        : planConfig.shareAsPublicURL === Infinity ? null : planConfig.shareAsPublicURL;
+
   const max =
     payload?.max === null || typeof payload?.max === "undefined"
       ? defaultMax
@@ -100,7 +109,7 @@ const callLimitRpc = async (
   userId: string,
   kind: UsageLimitKind
 ): Promise<UsageLimitCheck> => {
-  const { data, error } = await supabase.rpc(fn, { target_user_id: userId });
+  const { data, error } = await supabase.rpc(fn, { p_user_id: userId });
 
   if (error) {
     console.error(`RPC ${fn} failed`, error);
@@ -122,6 +131,13 @@ export const checkAnimationLimit = async (
   userId: string
 ): Promise<UsageLimitCheck> => {
   return callLimitRpc(supabase, RPC_MAP.animations.check, userId, "animations");
+};
+
+export const checkPublicShareLimit = async (
+  supabase: Supabase,
+  userId: string
+): Promise<UsageLimitCheck> => {
+  return callLimitRpc(supabase, RPC_MAP.publicShares.check, userId, "publicShares");
 };
 
 export const incrementUsageCount = async (
@@ -147,7 +163,7 @@ export const decrementUsageCount = async (
 export const getUserUsage = async (supabase: Supabase, userId: string): Promise<UsageSummary> => {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("plan, snippet_count, animation_count")
+    .select("plan")
     .eq("id", userId)
     .single();
 
@@ -158,7 +174,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
 
   const { data: usage, error: usageError } = await supabase
     .from("usage_limits")
-    .select("snippet_count, animation_count, last_reset_at")
+    .select("snippet_count, animation_count, public_share_count, last_reset_at")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -185,10 +201,12 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
 
   const plan = (profile.plan as PlanId | null) ?? "free";
   const planConfig = getPlanConfig(plan);
-  const snippetCountFromLimits = usage?.snippet_count ?? profile.snippet_count ?? 0;
-  const animationCountFromLimits = usage?.animation_count ?? profile.animation_count ?? 0;
+  const snippetCountFromLimits = usage?.snippet_count ?? 0;
+  const animationCountFromLimits = usage?.animation_count ?? 0;
+  const publicShareCountFromLimits = usage?.public_share_count ?? 0;
   const snippetCount = Math.max(snippetCountFromLimits, actualSnippetCount ?? 0);
   const animationCount = Math.max(animationCountFromLimits, actualAnimationCount ?? 0);
+  const publicShareCount = publicShareCountFromLimits;
 
   return {
     plan,
@@ -199,6 +217,10 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     animations: {
       current: animationCount,
       max: planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations,
+    },
+    publicShares: {
+      current: publicShareCount,
+      max: planConfig.shareAsPublicURL === Infinity ? null : planConfig.shareAsPublicURL,
     },
     lastResetAt: usage?.last_reset_at ?? undefined,
   };

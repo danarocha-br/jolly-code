@@ -37,13 +37,13 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxSlidesPerAnimation: 3,
     maxSnippetsFolder: 0,
     maxVideoExportCount: 0,
-    shareAsPublicURL: 3,
+    shareAsPublicURL: 50,
     removeWatermark: false,
     features: [
       'Create & edit snippets',
       'Up to 3 slides per animation',
       'Export as images (PNG/JPG/SVG)',
-      '3 public shares',
+      '50 public views/month',
     ],
     pricing: null, // Free has no pricing
   },
@@ -56,7 +56,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     maxSlidesPerAnimation: 10,
     maxSnippetsFolder: 10,
     maxVideoExportCount: 50,
-    shareAsPublicURL: 50,
+    shareAsPublicURL: 1000,
     removeWatermark: false,
     features: [
       'Save up to 50 snippets',
@@ -64,7 +64,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'Up to 10 slides per animation',
       '10 folders/collections',
       '50 video exports',
-      '50 public shares',
+      '1,000 public views/month',
     ],
     pricing: {
       monthly: {
@@ -155,4 +155,3 @@ export function getUsageColor(percentage: number): 'green' | 'yellow' | 'red' {
   if (percentage >= 71) return 'yellow';
   return 'green';
 }
-

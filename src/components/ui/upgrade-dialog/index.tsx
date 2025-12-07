@@ -100,7 +100,7 @@ export function UpgradeDialog({
         : limitType === "videoExports"
           ? "video exports"
           : limitType === "publicShares"
-            ? "public shares"
+            ? "public views/month"
             : limitType;
 
   const upgradeTitle = currentPlan === "free" ? "Upgrade plan" : "Change your plan";
@@ -247,7 +247,7 @@ export function UpgradeDialog({
                         ? "Free forever"
                         : isPending && isSelected
                           ? "Redirecting..."
-                          : `Choose ${plan.name}`}
+                          : `Upgrade to ${plan.name}`}
                   </Button>
                 </div>
               );
@@ -263,24 +263,7 @@ export function UpgradeDialog({
                 {PLANS[selectedPlan].name} • {formatPrice(PLANS[selectedPlan], billingInterval)}{" "}
                 {PLANS[selectedPlan].pricing ? intervalLabel[billingInterval] : ""}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {formatLimit(getLimitForPlan(PLANS[selectedPlan], limitType))} {limitLabel}
-              </p>
             </div>
-
-            <Button
-              className="w-full sm:w-auto"
-              onClick={() => handleCheckout()}
-              disabled={isPending || selectedPlan === "free" || selectedPlan === currentPlan}
-            >
-              {selectedPlan === currentPlan
-                ? "Already on this plan"
-                : selectedPlan === "free"
-                  ? "Free is active"
-                  : isPending
-                    ? "Redirecting..."
-                    : "Continue to checkout"}
-            </Button>
           </div>
         </div>
       </DialogContent>

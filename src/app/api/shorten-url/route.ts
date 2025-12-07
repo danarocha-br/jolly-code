@@ -4,17 +4,14 @@ import {
 } from "@/lib/sentry-context";
 import { isValidURL } from "@/lib/utils/is-valid-url";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
-import { Database } from "@/types/database";
 import { createClient } from "@/utils/supabase/server";
 import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 
 export const runtime = "edge";
 
-
-
-const shortURLs: { [key: string]: string } = {};
 const keySet: Set<string> = new Set();
 
 /**
@@ -44,8 +41,8 @@ export const GET = wrapRouteHandlerWithSentry(
     try {
       const result = await supabase
         .from("links")
-            .select("id, url, title, description")
-            .eq("short_url", slug);
+        .select("id, url, title, description, user_id")
+        .eq("short_url", slug);
 
       data = result.data;
 
@@ -54,17 +51,83 @@ export const GET = wrapRouteHandlerWithSentry(
       error = error.message;
     }
 
-    if (!data) {
+    if (!data || !data[0]) {
       applyResponseContextToSentry(404);
       return NextResponse.json({ error: "URL not found." }, { status: 404 });
     }
 
+    const link = data[0];
+
+    const cookieStore = await cookies();
+    const VIEWER_COOKIE = "jc_viewer_token";
+    let viewerToken = cookieStore.get(VIEWER_COOKIE)?.value;
+
+    if (!viewerToken) {
+      viewerToken = nanoid(24);
+    }
+
+    let viewResult:
+      | { allowed?: boolean; counted?: boolean; current?: number; max?: number | null; plan?: string }
+      | null = null;
+
+    try {
+      const { data: recordViewData, error: recordViewError } = await supabase.rpc(
+        "record_public_share_view" as never,
+        { p_owner_id: link.user_id, p_link_id: link.id, p_viewer_token: viewerToken }
+      );
+
+      if (recordViewError) {
+        throw recordViewError;
+      }
+
+      viewResult = recordViewData as typeof viewResult;
+    } catch (recordError) {
+      console.error("Failed to record share view", recordError);
+    }
+
+    if (viewResult && viewResult.allowed === false) {
+      applyResponseContextToSentry(429);
+      const response = NextResponse.json(
+        {
+          error: "View limit reached for this shared link.",
+          current: viewResult.current ?? null,
+          max: viewResult.max ?? null,
+          plan: viewResult.plan ?? null,
+        },
+        { status: 429 }
+      );
+
+      if (!cookieStore.get(VIEWER_COOKIE)?.value && viewerToken) {
+        response.cookies.set(VIEWER_COOKIE, viewerToken, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+        });
+      }
+
+      return response;
+    }
+
     applyResponseContextToSentry(200);
-    return NextResponse.json({
+    const response = NextResponse.json({
       status: 200,
-      id: data[0].id,
-      url: data[0].url,
+      id: link.id,
+      url: link.url,
     });
+
+    if (!cookieStore.get(VIEWER_COOKIE)?.value && viewerToken) {
+      response.cookies.set(VIEWER_COOKIE, viewerToken, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    return response;
   },
   {
     method: "GET",
@@ -83,15 +146,14 @@ export const POST = wrapRouteHandlerWithSentry(
         return NextResponse.json({ error: "Invalid request" }, { status: 415 });
       }
 
-      const { url, snippet_id, user_id, title, description } =
+      const { url, snippet_id, title, description } =
         await validateContentType(request).json();
 
-      applyRequestContextToSentry({ request, userId: user_id });
+      applyRequestContextToSentry({ request });
 
       const longUrl = url ? url : null;
-      const validURL = await isValidURL(longUrl);
-
-      let data;
+      const isInternalPayload = typeof longUrl === "string" && longUrl.startsWith("animation:");
+      const validURL = isInternalPayload || await isValidURL(longUrl);
 
       if (!validURL) {
         applyResponseContextToSentry(400);
@@ -101,9 +163,19 @@ export const POST = wrapRouteHandlerWithSentry(
         );
       }
 
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        applyResponseContextToSentry(401);
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
       const { data: existingUrl, error } = await supabase
         .from("links")
-        .select("url, short_url, title, description")
+        .select("url, short_url, title, description, user_id")
         .eq("url", longUrl);
 
       if (error) {
@@ -112,10 +184,10 @@ export const POST = wrapRouteHandlerWithSentry(
         return NextResponse.json({ error: "Database error" }, { status: 500 });
       }
 
-      if (existingUrl && existingUrl.length > 0) {
-        // URL already exists, return the existing short URL and refresh metadata if needed
-        const existing = existingUrl[0];
+      const existing = existingUrl?.[0];
 
+      // If the current user already owns this link, allow reuse without consuming quota
+      if (existing && existing.user_id === user.id) {
         if (title || description) {
           try {
             await supabase
@@ -137,6 +209,14 @@ export const POST = wrapRouteHandlerWithSentry(
         });
       }
 
+      if (existing) {
+        applyResponseContextToSentry(200);
+        return NextResponse.json({
+          status: 200,
+          short_url: existing.short_url,
+        });
+      }
+
       const key = nanoid(5);
       if (keySet.has(key)) {
         applyResponseContextToSentry(400);
@@ -147,7 +227,6 @@ export const POST = wrapRouteHandlerWithSentry(
       }
 
       keySet.add(key);
-      shortURLs[key] = longUrl;
 
       const shortUrl = key;
 
@@ -155,7 +234,7 @@ export const POST = wrapRouteHandlerWithSentry(
         .from("links")
         .insert([
           {
-            user_id: user_id ? user_id : null,
+            user_id: user.id,
             url: longUrl,
             short_url: shortUrl,
             snippet_id: snippet_id ? snippet_id : null,
