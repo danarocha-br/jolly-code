@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
+import { LoginDialog } from "@/features/login";
 import { ExportOverlay } from "./share-dialog/export-overlay";
 import { GifExporter } from "./gif-exporter";
 
@@ -37,6 +38,13 @@ export const AnimationDownloadMenu = () => {
 	const [cancelExport, setCancelExport] = useState(false);
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 	const [currentExportFormat, setCurrentExportFormat] = useState<"mp4" | "webm" | "gif">("mp4");
+	const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+
+	useEffect(() => {
+		if (user && isLoginDialogOpen) {
+			setIsLoginDialogOpen(false);
+		}
+	}, [user, isLoginDialogOpen]);
 
 	const serializedSlides = useMemo(
 		() =>
@@ -57,6 +65,15 @@ export const AnimationDownloadMenu = () => {
 	}
 
 	const handleExport = (format: "mp4" | "webm" | "gif" = "mp4") => {
+		if (!user) {
+			setDropdownOpen(false);
+			setIsLoginDialogOpen(true);
+			trackAnimationEvent("guest_upgrade_prompted", user, {
+				trigger: "download_animation",
+			});
+			return;
+		}
+
 		if (serializedSlides.length < 2) {
 			toast.error("Add at least two slides to export.");
 			return;
@@ -131,6 +148,8 @@ export const AnimationDownloadMenu = () => {
 
 	return (
 		<>
+			<LoginDialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} hideTrigger />
+
 			<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
 				<Tooltip content="Download animation">
 					<DropdownMenuTrigger asChild>

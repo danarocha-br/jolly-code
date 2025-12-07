@@ -38,6 +38,7 @@ import { ShareTabPlatforms } from "./share-dialog/tabs/share-tab-platforms";
 import { ShareTabSocial } from "./share-dialog/tabs/share-tab-social";
 import { ShareTabPreview } from "./share-dialog/tabs/share-tab-preview";
 import { ExportOverlay } from "./share-dialog/export-overlay";
+import { LoginDialog } from "@/features/login";
 
 const shareFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -79,6 +80,7 @@ export const EnhancedAnimationShareDialog = () => {
   const previewTrackedRef = useRef(false);
   const loadTimestampRef = useRef<number | null>(null);
   const firstExportTrackedRef = useRef(false);
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -304,6 +306,12 @@ export const EnhancedAnimationShareDialog = () => {
     }
   };
 
+  useEffect(() => {
+    if (user && isLoginDialogOpen) {
+      setIsLoginDialogOpen(false);
+    }
+  }, [user, isLoginDialogOpen]);
+
   const handlePlatformCopy = (platform: "hashnode" | "medium" | "devto" | "notion") => {
     if (!shareUrl) return;
 
@@ -408,6 +416,14 @@ export const EnhancedAnimationShareDialog = () => {
   }, [copyEmbed, embedHeight, embedWidth, form.formState.isDirty, generateShareUrl, shareUrl, user]);
 
   const handleExport = () => {
+    if (!user) {
+      setIsLoginDialogOpen(true);
+      trackAnimationEvent("guest_upgrade_prompted", user, {
+        trigger: "download_animation_share_modal",
+      });
+      return;
+    }
+
     if (serializedSlides.length < 2) {
       toast.error("Add at least two slides to export.");
       return;
@@ -476,129 +492,133 @@ export const EnhancedAnimationShareDialog = () => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Tooltip content="Share animation link">
-        <DialogTrigger asChild>
-          <Button size="sm" className="whitespace-nowrap">
-            <i className="ri-share-forward-line text-lg mr-2"></i>
-            Share
-          </Button>
-        </DialogTrigger>
-      </Tooltip>
+    <>
+      <LoginDialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} hideTrigger />
 
-      <DialogContent className="max-w-2xl gap-0">
-        <DialogHeader>
-          <DialogTitle>Share animation</DialogTitle>
-          <DialogDescription>
-            Generate links, embeds, and videos to share your code animation anywhere.
-          </DialogDescription>
-        </DialogHeader>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Tooltip content="Share animation link">
+          <DialogTrigger asChild>
+            <Button size="sm" className="whitespace-nowrap">
+              <i className="ri-share-forward-line text-lg mr-2"></i>
+              Share
+            </Button>
+          </DialogTrigger>
+        </Tooltip>
 
-        {isExporting && (
-          <ExportOverlay
-            progress={exportProgress}
-            cancelExport={cancelExport}
-            onCancel={handleCancelExport}
-            slides={slides}
-            settings={animationSettings}
-            editorSettings={{
-              backgroundTheme,
-              fontFamily,
-              fontSize,
-              showBackground,
-            }}
-            onProgress={setExportProgress}
-            onComplete={onExportComplete}
-            onError={(err: Error) => {
-              console.error(err);
-              setIsExporting(false);
-              setCancelExport(false);
-              trackAnimationEvent("export_failed", user, {
-                error_type: err?.message || "unknown",
-                format: animationSettings.exportFormat,
-                resolution: animationSettings.resolution,
-                slide_count: serializedSlides.length,
-                transition_type: animationSettings.transitionType,
-                progress_percent: Math.round(exportProgress * 100),
-                export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-                transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-              });
-              toast.error("Export failed. Please try again.");
-            }}
-            onCancelled={() => {
-              setIsExporting(false);
-              setExportProgress(0);
-              setCancelExport(false);
-              toast("Export canceled.");
-            }}
-          />
-        )}
+        <DialogContent className="max-w-2xl gap-0">
+          <DialogHeader>
+            <DialogTitle>Share animation</DialogTitle>
+            <DialogDescription>
+              Generate links, embeds, and videos to share your code animation anywhere.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="">
-          <ShareMetadataForm control={form.control} />
+          {isExporting && (
+            <ExportOverlay
+              progress={exportProgress}
+              cancelExport={cancelExport}
+              onCancel={handleCancelExport}
+              slides={slides}
+              settings={animationSettings}
+              editorSettings={{
+                backgroundTheme,
+                fontFamily,
+                fontSize,
+                showBackground,
+              }}
+              onProgress={setExportProgress}
+              onComplete={onExportComplete}
+              onError={(err: Error) => {
+                console.error(err);
+                setIsExporting(false);
+                setCancelExport(false);
+                trackAnimationEvent("export_failed", user, {
+                  error_type: err?.message || "unknown",
+                  format: animationSettings.exportFormat,
+                  resolution: animationSettings.resolution,
+                  slide_count: serializedSlides.length,
+                  transition_type: animationSettings.transitionType,
+                  progress_percent: Math.round(exportProgress * 100),
+                  export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+                  transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+                });
+                toast.error("Export failed. Please try again.");
+              }}
+              onCancelled={() => {
+                setIsExporting(false);
+                setExportProgress(0);
+                setCancelExport(false);
+                toast("Export canceled.");
+              }}
+            />
+          )}
 
-          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as (typeof TAB_KEYS)[number])}>
-            <TabsList className="grid grid-cols-2 md:grid-cols-5 gap-1 px-4 border-b border-t rounded-none py-4">
-              <TabsTrigger value="public">Public link</TabsTrigger>
-              <TabsTrigger value="platforms">Platforms</TabsTrigger>
-              <TabsTrigger value="social">Social</TabsTrigger>
-              <TabsTrigger value="embed">Embed code</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
+          <div className="">
+            <ShareMetadataForm control={form.control} />
 
-            <TabsContent value="public">
-              <ShareTabPublic
-                shareUrl={shareUrl}
-                isGenerating={isGenerating}
-                onCopy={() => void handleCopyUrl()}
-                isCopying={isCopyingLink}
-              />
-            </TabsContent>
+            <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as (typeof TAB_KEYS)[number])}>
+              <TabsList className="grid grid-cols-2 md:grid-cols-5 gap-1 px-4 border-b border-t rounded-none py-4">
+                <TabsTrigger value="public">Public link</TabsTrigger>
+                <TabsTrigger value="platforms">Platforms</TabsTrigger>
+                <TabsTrigger value="social">Social</TabsTrigger>
+                <TabsTrigger value="embed">Embed code</TabsTrigger>
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="embed">
-              <ShareTabEmbed
-                width={embedWidth}
-                height={embedHeight}
-                onWidthChange={setEmbedWidth}
-                onHeightChange={setEmbedHeight}
-                embedCode={embedCode}
-                isGenerating={shortenUrlMutation.isPending}
-                isCopying={isCopyingEmbed}
-                onCopy={() => void handleEmbedCopy()}
-                previewUrl={shareUrl ? shareUrl.replace("/animate/shared/", "/animate/embed/") : ""}
-                ogPreviewUrl={ogPreviewUrl}
-              />
-            </TabsContent>
+              <TabsContent value="public">
+                <ShareTabPublic
+                  shareUrl={shareUrl}
+                  isGenerating={isGenerating}
+                  onCopy={() => void handleCopyUrl()}
+                  isCopying={isCopyingLink}
+                />
+              </TabsContent>
 
-            <TabsContent value="platforms">
-              <ShareTabPlatforms
-                shareUrl={shareUrl}
-                isExporting={isExporting}
-                isCopyingSnippet={isCopyingSnippet}
-                onExport={handleExport}
-                onPlatformCopy={handlePlatformCopy}
-              />
-            </TabsContent>
+              <TabsContent value="embed">
+                <ShareTabEmbed
+                  width={embedWidth}
+                  height={embedHeight}
+                  onWidthChange={setEmbedWidth}
+                  onHeightChange={setEmbedHeight}
+                  embedCode={embedCode}
+                  isGenerating={shortenUrlMutation.isPending}
+                  isCopying={isCopyingEmbed}
+                  onCopy={() => void handleEmbedCopy()}
+                  previewUrl={shareUrl ? shareUrl.replace("/animate/shared/", "/animate/embed/") : ""}
+                  ogPreviewUrl={ogPreviewUrl}
+                />
+              </TabsContent>
 
-            <TabsContent value="social">
-              <ShareTabSocial
-                shareUrl={shareUrl}
-                isExporting={isExporting}
-                onExport={handleExport}
-                onSocialShare={handleSocialShare}
-              />
-            </TabsContent>
+              <TabsContent value="platforms">
+                <ShareTabPlatforms
+                  shareUrl={shareUrl}
+                  isExporting={isExporting}
+                  isCopyingSnippet={isCopyingSnippet}
+                  onExport={handleExport}
+                  onPlatformCopy={handlePlatformCopy}
+                />
+              </TabsContent>
 
-            <TabsContent value="preview">
-              <ShareTabPreview
-                ogPreviewUrl={ogPreviewUrl}
-                isGenerating={isGenerating}
-                onRefresh={handleRefreshPreview}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </DialogContent>
-    </Dialog>
+              <TabsContent value="social">
+                <ShareTabSocial
+                  shareUrl={shareUrl}
+                  isExporting={isExporting}
+                  onExport={handleExport}
+                  onSocialShare={handleSocialShare}
+                />
+              </TabsContent>
+
+              <TabsContent value="preview">
+                <ShareTabPreview
+                  ogPreviewUrl={ogPreviewUrl}
+                  isGenerating={isGenerating}
+                  onRefresh={handleRefreshPreview}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
