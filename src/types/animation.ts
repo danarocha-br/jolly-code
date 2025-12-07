@@ -9,7 +9,7 @@ export type AnimationSlide = {
   duration: number; // in seconds
 };
 
-export type AnimationExportFormat = "mp4" | "webm";
+export type AnimationExportFormat = "mp4" | "webm" | "gif";
 
 export type AnimationQualityPreset = "fast" | "balanced" | "high";
 

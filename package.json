@@ -53,6 +53,7 @@
     "diff": "^8.0.2",
     "fix-webm-duration": "^1.0.6",
     "flourite": "^1.2.4",
+    "gif.js": "^0.2.0",
     "highlight.js": "^11.8.0",
     "html-to-image": "^1.11.11",
     "motion": "^12.23.24",
@@ -87,6 +88,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@types/diff": "^7.0.2",
+    "@types/gif.js": "^0.2.5",
     "@types/node": "24.10.1",
     "@types/react": "19.2.6",
     "@types/react-dom": "19.2.3",

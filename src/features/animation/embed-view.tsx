@@ -170,23 +170,16 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
 					href="https://jollycode.dev"
 					target="_blank"
 					rel="noopener noreferrer"
-					className="absolute bottom-6 right-6 flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer"
+					className="absolute bottom-6 right-6 flex items-center gap-0 hover:opacity-80 transition-opacity cursor-pointer"
 				>
 					<span
 						className={cn(
-							"text-base font-medium tracking-wide",
+							"text-xs font-medium tracking-wide",
 							isDarkBackground ? "text-white/90" : "text-foreground/90"
 						)}
 					>
 						jollycode.dev
 					</span>
-					<Logo
-						variant="short"
-						className={cn(
-							"scale-60 grayscale contrast-150",
-							isDarkBackground ? "text-white/90" : "text-foreground/90"
-						)}
-					/>
 				</a>
 			</div>
 		</QueryClientProvider>

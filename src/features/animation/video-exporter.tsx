@@ -71,7 +71,6 @@ export const VideoExporter = ({
 
     const processAnimation = async () => {
       try {
-        const { width, height } = getResolutionDimensions(settings.resolution);
         const fps = settings.fps;
         const format = settings.exportFormat;
         const isMp4 = format === "mp4" && supportsWebCodecsEncoding();
@@ -214,7 +213,6 @@ export const VideoExporter = ({
             mediaRecorder!.onstop = () => resolve();
           });
           const blob = new Blob(chunks, { type: "video/webm" });
-          // TODO: Fix duration if needed
           onComplete(blob);
         }
 
