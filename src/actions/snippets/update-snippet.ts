@@ -33,8 +33,8 @@ export async function updateSnippet(
 
         const payload = parsedInput.data
 
-        const data = await withAuthAction(payload, async ({ id, title, code, language, url }, { user, supabase }) =>
-            updateSnippetInDb({
+        return withAuthAction(payload, async ({ id, title, code, language, url }, { user, supabase }) => {
+            const data = await updateSnippetInDb({
                 id,
                 user_id: user.id,
                 title,
@@ -43,17 +43,17 @@ export async function updateSnippet(
                 url,
                 supabase
             } as any)
-        )
 
-        if (!data || data.length === 0) {
-            return error('Failed to update snippet')
-        }
+            if (!data || data.length === 0) {
+                return error('Failed to update snippet')
+            }
 
-        // Revalidate relevant paths
-        revalidatePath('/snippets')
-        revalidatePath('/')
+            // Revalidate relevant paths
+            revalidatePath('/snippets')
+            revalidatePath('/')
 
-        return success(data[0])
+            return success(data[0])
+        })
     } catch (err) {
         console.error('Error updating snippet:', err)
 

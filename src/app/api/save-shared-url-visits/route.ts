@@ -33,7 +33,7 @@ export const POST = wrapRouteHandlerWithSentry(
     if (limitResponse) return limitResponse;
 
     try {
-      const { id } = await await validateContentType(request).json();
+      const { id } = await validateContentType(request).json();
 
       if (!id) {
         applyResponseContextToSentry(400);

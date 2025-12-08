@@ -35,6 +35,7 @@ export const AnimationDownloadMenu = () => {
 
   const loadTimestampRef = useRef<number | null>(null);
   const firstExportTrackedRef = useRef(false);
+  const exportCountIncrementedRef = useRef(false);
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -200,6 +201,7 @@ export const AnimationDownloadMenu = () => {
     setIsExporting(true);
     setExportProgress(0);
     setCancelExport(false);
+    exportCountIncrementedRef.current = false;
     const isFirstExport = !firstExportTrackedRef.current;
     if (isFirstExport) {
       firstExportTrackedRef.current = true;
@@ -234,54 +236,64 @@ export const AnimationDownloadMenu = () => {
   };
 
   const onExportComplete = async (blob: Blob) => {
-    setIsExporting(false);
-    setExportProgress(0);
-    setCancelExport(false);
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `animation-${Date.now()}.${currentExportFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `animation-${Date.now()}.${currentExportFormat}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    trackAnimationEvent("export_completed", user, {
-      format: currentExportFormat,
-      resolution: animationSettings.resolution,
-      slide_count: serializedSlides.length,
-      file_size_mb: Number((blob.size / (1024 * 1024)).toFixed(2)),
-      duration_seconds: totalDuration,
-      transition_type: animationSettings.transitionType,
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-      source: "download_menu",
-    });
-
-    if (user?.id) {
-      const { error } = await supabase.rpc("increment_video_export_count", {
-        p_user_id: user.id,
+      trackAnimationEvent("export_completed", user, {
+        format: currentExportFormat,
+        resolution: animationSettings.resolution,
+        slide_count: serializedSlides.length,
+        file_size_mb: Number((blob.size / (1024 * 1024)).toFixed(2)),
+        duration_seconds: totalDuration,
+        transition_type: animationSettings.transitionType,
+        export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+        transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+        source: "download_menu",
       });
 
-      if (error) {
-        console.error("Error incrementing video export count:", error);
-      }
-    }
+      // Increment count only after everything succeeds
+      if (user?.id) {
+        const { error } = await supabase.rpc("increment_video_export_count", {
+          p_user_id: user.id,
+        });
 
-    toast.success(`${currentExportFormat.toUpperCase()} downloaded successfully.`);
+        if (error) {
+          console.error("Error incrementing video export count:", error);
+          // If increment fails, we don't mark it as incremented
+        } else {
+          exportCountIncrementedRef.current = true;
+        }
+      }
+
+      toast.success(`${currentExportFormat.toUpperCase()} downloaded successfully.`);
+    } finally {
+      setIsExporting(false);
+      setExportProgress(0);
+      setCancelExport(false);
+    }
   };
 
   const onExportError = async (err: Error) => {
     console.error(err);
-    setIsExporting(false);
-    setCancelExport(false);
 
-    if (user?.id && exportProgress > 0) {
-      // Defensive rollback if we ever incremented before failure (future-proofing).
-      await supabase.rpc("decrement_video_export_count", {
+    // Only decrement if we actually incremented the counter
+    if (user?.id && exportCountIncrementedRef.current) {
+      const { error: decrementError } = await supabase.rpc("decrement_video_export_count", {
         p_user_id: user.id,
       });
+
+      if (decrementError) {
+        console.error("Error decrementing video export count:", decrementError);
+      }
+
+      exportCountIncrementedRef.current = false;
     }
 
     trackAnimationEvent("export_failed", user, {
@@ -295,6 +307,9 @@ export const AnimationDownloadMenu = () => {
       transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
       source: "download_menu",
     });
+
+    setIsExporting(false);
+    setCancelExport(false);
     toast.error("Export failed. Please try again.");
   };
 
@@ -382,7 +397,14 @@ export const AnimationDownloadMenu = () => {
                 onComplete={onExportComplete}
                 onError={onExportError}
                 cancelled={cancelExport}
-                onCancelled={() => {
+                onCancelled={async () => {
+                  // Decrement if we incremented (shouldn't happen on cancel, but defensive)
+                  if (user?.id && exportCountIncrementedRef.current) {
+                    await supabase.rpc("decrement_video_export_count", {
+                      p_user_id: user.id,
+                    });
+                    exportCountIncrementedRef.current = false;
+                  }
                   setIsExporting(false);
                   setExportProgress(0);
                   setCancelExport(false);

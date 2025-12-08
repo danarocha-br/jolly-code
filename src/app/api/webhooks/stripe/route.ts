@@ -12,12 +12,18 @@ type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
 
 // Map Stripe price IDs to plan IDs
 function getPlanIdFromPriceId(priceId: string): PlanId | null {
-  const priceIdMap: Record<string, PlanId> = {
-    [process.env.NEXT_PUBLIC_STRIPE_STARTED_MONTHLY_PRICE_ID || '']: 'started',
-    [process.env.NEXT_PUBLIC_STRIPE_STARTED_YEARLY_PRICE_ID || '']: 'started',
-    [process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID || '']: 'pro',
-    [process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID || '']: 'pro',
-  };
+  // Build map only from non-empty environment variables to prevent collisions
+  const priceIdMap: Record<string, PlanId> = {};
+  
+  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTED_MONTHLY_PRICE_ID;
+  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTED_YEARLY_PRICE_ID;
+  const proMonthly = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID;
+  const proYearly = process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
+
+  if (startedMonthly) priceIdMap[startedMonthly] = 'started';
+  if (startedYearly) priceIdMap[startedYearly] = 'started';
+  if (proMonthly) priceIdMap[proMonthly] = 'pro';
+  if (proYearly) priceIdMap[proYearly] = 'pro';
 
   return priceIdMap[priceId] || null;
 }
