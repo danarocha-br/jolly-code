@@ -46,6 +46,7 @@ export const VideoExporter = ({
   const frameRenderedResolver = useRef<(() => void) | null>(null);
   const processingRef = useRef(false);
   const cancelRef = useRef(cancelled);
+  const { width, height } = getResolutionDimensions(settings.resolution);
 
   useEffect(() => {
     cancelRef.current = cancelled;
@@ -226,8 +227,6 @@ export const VideoExporter = ({
 
     processAnimation();
   }, [settings, slides, editorSettings, onProgress, onComplete, onError, cancelled, onCancelled, width, height]); // Added editorSettings to deps
-
-  const { width, height } = getResolutionDimensions(settings.resolution);
 
   // Render content similar to UnifiedAnimationCanvas but scaled/fixed
   const renderContent = () => {

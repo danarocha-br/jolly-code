@@ -165,7 +165,7 @@ const callLimitRpc = async (
   userId: string,
   kind: UsageLimitKind
 ): Promise<UsageLimitCheck> => {
-  const { data, error } = await supabase.rpc(fn, { p_user_id: userId });
+  const { data, error } = await supabase.rpc(fn as any, { p_user_id: userId });
 
   if (error) {
     console.error(`RPC ${fn} failed`, error);

@@ -279,7 +279,11 @@ export const EnhancedAnimationShareDialog = () => {
       }
 
       const publicShares = usage?.publicShares;
-      if (publicShares?.max !== null && publicShares.current >= publicShares.max) {
+      if (
+        publicShares &&
+        publicShares.max !== null &&
+        publicShares.current >= publicShares.max
+      ) {
         openUpgradeForShares(publicShares.current, publicShares.max);
         toast.error("You’ve reached your public view limit. Upgrade for more views.");
         return undefined;

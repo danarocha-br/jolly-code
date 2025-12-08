@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createCustomerPortalSession } from '@/lib/services/stripe';
+import { enforceRateLimit, strictLimiter } from '@/lib/arcjet/limiters';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const limitResponse = await enforceRateLimit(strictLimiter, request, {
+      tags: ["customer-portal"],
+    });
+    if (limitResponse) return limitResponse;
+
     // Get authenticated user
     const supabase = await createClient();
     const {
@@ -16,6 +22,12 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const userLimited = await enforceRateLimit(strictLimiter, request, {
+      userId: user.id,
+      tags: ["customer-portal", "user"],
+    });
+    if (userLimited) return userLimited;
 
     // Get user's Stripe customer ID
     const { data: profile } = await supabase

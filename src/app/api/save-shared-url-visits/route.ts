@@ -3,6 +3,7 @@ import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient, createClient } from "@supabase/supabase-js";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
+import { enforceRateLimit, publicLimiter } from "@/lib/arcjet/limiters";
 
 const supabase: SupabaseClient = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +19,10 @@ const supabase: SupabaseClient = createClient<Database>(
 export const POST = wrapRouteHandlerWithSentry(
   async function POST(request: NextRequest) {
     applyRequestContextToSentry({ request });
+    const limitResponse = await enforceRateLimit(publicLimiter, request, {
+      tags: ["shared-url:visits"],
+    });
+    if (limitResponse) return limitResponse;
 
     try {
       const { id } = await await validateContentType(request).json();

@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { Logo } from "@/components/ui/logo";
+import { enforceRateLimit, publicLimiter } from "@/lib/arcjet/limiters";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,11 @@ const safeDecodePayload = (raw: string | null): Payload | null => {
 
 export async function GET(request: Request) {
   try {
+    const limitResponse = await enforceRateLimit(publicLimiter, request, {
+      tags: ["og-image"],
+    });
+    if (limitResponse) return limitResponse;
+
     const { searchParams } = new URL(request.url);
     const payloadParam = searchParams.get("payload");
     const slugParam = searchParams.get("slug");

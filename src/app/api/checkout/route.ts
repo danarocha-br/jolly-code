@@ -6,6 +6,7 @@ import {
   getStripePriceId,
 } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
+import { authedLimiter, enforceRateLimit, strictLimiter } from '@/lib/arcjet/limiters';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,11 @@ type CheckoutRequestBody = {
 
 export async function POST(request: NextRequest) {
   try {
+    const limitResponse = await enforceRateLimit(strictLimiter, request, {
+      tags: ["checkout:create"],
+    });
+    if (limitResponse) return limitResponse;
+
     // Get authenticated user
     const supabase = await createClient();
     const {
@@ -26,6 +32,12 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const userLimited = await enforceRateLimit(strictLimiter, request, {
+      userId: user.id,
+      tags: ["checkout:create", "user"],
+    });
+    if (userLimited) return userLimited;
 
     // Parse request body
     const body: CheckoutRequestBody = await request.json();

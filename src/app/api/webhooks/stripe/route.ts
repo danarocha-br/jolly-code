@@ -5,6 +5,7 @@ import { constructWebhookEvent } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
 import type { Json } from '@/types/database';
 import Stripe from 'stripe';
+import { enforceRateLimit, webhookLimiter } from '@/lib/arcjet/limiters';
 
 export const dynamic = 'force-dynamic';
 type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
@@ -172,6 +173,10 @@ async function handleSubscriptionDeleted(
 
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const limitResponse = await enforceRateLimit(webhookLimiter, request, {
+    tags: ["webhook:stripe"],
+  });
+  if (limitResponse) return limitResponse;
   
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET not set');

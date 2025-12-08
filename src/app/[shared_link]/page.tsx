@@ -64,9 +64,17 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
   const hashedFallback = createHash("sha256").update(fallbackTokenSource || shared_link).digest("hex");
   const viewerToken = viewerCookie ?? hashedFallback;
 
+  type ViewResult = {
+    allowed?: boolean;
+    counted?: boolean;
+    current?: number | null;
+    max?: number | null;
+    plan?: string | null;
+  };
+
   const supabase = await createClient();
-  const { data: viewResult, error: viewError } = await supabase.rpc(
-    "record_public_share_view" as never,
+  const { data: viewResult, error: viewError } = await (supabase as any).rpc(
+    "record_public_share_view",
     { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
   );
 
@@ -74,7 +82,9 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
     console.error("Failed to record public share view", viewError);
   }
 
-  if (viewResult && (viewResult as any).allowed === false) {
+  const view = viewResult as ViewResult | null;
+
+  if (view && view.allowed === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
         <div className="max-w-md space-y-3 text-center">

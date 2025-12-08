@@ -9,6 +9,7 @@ import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { enforceRateLimit, publicLimiter, strictLimiter } from "@/lib/arcjet/limiters";
 
 export const runtime = "edge";
 
@@ -23,6 +24,11 @@ const keySet: Set<string> = new Set();
 export const GET = wrapRouteHandlerWithSentry(
   async function GET(request: NextRequest) {
     applyRequestContextToSentry({ request });
+    const limitResponse = await enforceRateLimit(publicLimiter, request, {
+      tags: ["shorten-url:get"],
+    });
+    if (limitResponse) return limitResponse;
+
     const supabase = await createClient();
     const url = new URL(request.url);
 
@@ -66,13 +72,19 @@ export const GET = wrapRouteHandlerWithSentry(
       viewerToken = nanoid(24);
     }
 
-    let viewResult:
-      | { allowed?: boolean; counted?: boolean; current?: number; max?: number | null; plan?: string }
-      | null = null;
+    type ViewResult = {
+      allowed?: boolean;
+      counted?: boolean;
+      current?: number | null;
+      max?: number | null;
+      plan?: string | null;
+    };
+
+    let viewResult: ViewResult | null = null;
 
     try {
-      const { data: recordViewData, error: recordViewError } = await supabase.rpc(
-        "record_public_share_view" as never,
+      const { data: recordViewData, error: recordViewError } = await (supabase as any).rpc(
+        "record_public_share_view",
         { p_owner_id: link.user_id, p_link_id: link.id, p_viewer_token: viewerToken }
       );
 
@@ -80,7 +92,7 @@ export const GET = wrapRouteHandlerWithSentry(
         throw recordViewError;
       }
 
-      viewResult = recordViewData as typeof viewResult;
+      viewResult = (recordViewData as ViewResult) ?? null;
     } catch (recordError) {
       console.error("Failed to record share view", recordError);
     }
@@ -138,6 +150,11 @@ export const GET = wrapRouteHandlerWithSentry(
 export const POST = wrapRouteHandlerWithSentry(
   async function POST(request: NextRequest) {
     applyRequestContextToSentry({ request });
+    const limitResponse = await enforceRateLimit(strictLimiter, request, {
+      tags: ["shorten-url:create"],
+    });
+    if (limitResponse) return limitResponse;
+
     const supabase = await createClient();
     try {
       const contentType = await request.headers.get("content-type");
@@ -172,6 +189,12 @@ export const POST = wrapRouteHandlerWithSentry(
         applyResponseContextToSentry(401);
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+
+      const userLimited = await enforceRateLimit(strictLimiter, request, {
+        userId: user.id,
+        tags: ["shorten-url:create", "user"],
+      });
+      if (userLimited) return userLimited;
 
       const { data: existingUrl, error } = await supabase
         .from("links")

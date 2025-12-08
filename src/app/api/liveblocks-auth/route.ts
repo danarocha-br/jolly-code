@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Liveblocks } from "@liveblocks/node";
 import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
+import { authedLimiter, enforceRateLimit } from "@/lib/arcjet/limiters";
 
 const API_KEY = process.env.LIVEBLOCKS_SECRET_KEY!;
 
@@ -11,6 +12,10 @@ const liveblocks = new Liveblocks({ secret: API_KEY });
 export const POST = wrapRouteHandlerWithSentry(
   async function POST(request: NextRequest) {
     applyRequestContextToSentry({ request });
+    const limitResponse = await enforceRateLimit(authedLimiter, request, {
+      tags: ["liveblocks-auth"],
+    });
+    if (limitResponse) return limitResponse;
 
     const supabase = await createClient();
 
@@ -21,6 +26,12 @@ export const POST = wrapRouteHandlerWithSentry(
     let userId = "anonymous";
     if (data && data.user?.id) {
       userId = data.user.id;
+
+      const userLimited = await enforceRateLimit(authedLimiter, request, {
+        userId,
+        tags: ["liveblocks-auth", "user"],
+      });
+      if (userLimited) return userLimited;
     }
 
     applyRequestContextToSentry({

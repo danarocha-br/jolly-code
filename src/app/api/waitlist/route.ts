@@ -3,10 +3,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { FEATURE_FLAG_KEYS } from "@/lib/services/tracking/feature-flag-keys";
 import type { Json } from "@/types/database";
+import { enforceRateLimit, publicLimiter } from "@/lib/arcjet/limiters";
 
 const allowedFeatures = new Set<string>(Object.values(FEATURE_FLAG_KEYS));
 
 export async function POST(request: Request) {
+  const limitResponse = await enforceRateLimit(publicLimiter, request, {
+    tags: ["waitlist"],
+  });
+  if (limitResponse) return limitResponse;
+
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user ?? null;
