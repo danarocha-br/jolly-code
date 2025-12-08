@@ -65,7 +65,8 @@ const RPC_MAP: Record<
     | "decrement_snippet_count"
     | "decrement_animation_count"
     | "decrement_folder_count"
-    | "decrement_public_share_count";
+    | "decrement_public_share_count"
+    | "decrement_video_export_count";
     planKey: PlanLimitKey;
   }
 > = {
@@ -90,6 +91,7 @@ const RPC_MAP: Record<
   videoExports: {
     check: "check_video_export_limit",
     increment: "increment_video_export_count",
+    decrement: "decrement_video_export_count",
     planKey: "maxVideoExportCount",
   },
   publicShares: {
@@ -112,6 +114,7 @@ type LimitRpcName =
   | (typeof RPC_MAP)["folders"]["decrement"]
   | (typeof RPC_MAP)["videoExports"]["check"]
   | (typeof RPC_MAP)["videoExports"]["increment"]
+  | (typeof RPC_MAP)["videoExports"]["decrement"]
   | (typeof RPC_MAP)["publicShares"]["check"]
   | (typeof RPC_MAP)["publicShares"]["increment"]
   | (typeof RPC_MAP)["publicShares"]["decrement"];

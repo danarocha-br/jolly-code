@@ -225,7 +225,7 @@ export const VideoExporter = ({
     };
 
     processAnimation();
-  }, [settings, slides, editorSettings, onProgress, onComplete, onError, cancelled, onCancelled]); // Added editorSettings to deps
+  }, [settings, slides, editorSettings, onProgress, onComplete, onError, cancelled, onCancelled, width, height]); // Added editorSettings to deps
 
   const { width, height } = getResolutionDimensions(settings.resolution);
 

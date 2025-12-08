@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -79,7 +79,7 @@ export const CopyURLToClipboard = () => {
     },
   });
 
-  const handleCopyLinkToClipboard = useCallback(async () => {
+  const handleCopyLinkToClipboard = async () => {
     if (!user) {
       setShowLogin(true);
       return;
@@ -106,12 +106,9 @@ export const CopyURLToClipboard = () => {
     });
 
     toast.success("Link copied to clipboard.");
-  }, [postLinkDataToDatabase, currentUrl, code, currentEditorState]);
+  };
 
-  const copyLink = useMemo(
-    () => hotKeyList.filter((item) => item.label === "Copy link"),
-    []
-  );
+  const copyLink = hotKeyList.filter((item) => item.label === "Copy link");
 
   useHotkeys(copyLink[0]?.hotKey, () => {
     if (copyLink[0]) {

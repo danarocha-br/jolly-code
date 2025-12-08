@@ -373,12 +373,6 @@ export const EnhancedAnimationShareDialog = () => {
     }
   };
 
-  useEffect(() => {
-    if (user && isLoginDialogOpen) {
-      setIsLoginDialogOpen(false);
-    }
-  }, [user, isLoginDialogOpen]);
-
   const handlePlatformCopy = (platform: "hashnode" | "medium" | "devto" | "notion") => {
     if (!shareUrl) return;
 
@@ -431,14 +425,10 @@ export const EnhancedAnimationShareDialog = () => {
     });
   };
 
-  const embedCode = useMemo(
-    () =>
-      generateEmbedCode(shareUrl, {
-        width: embedWidth || defaultEmbedSizes.width,
-        height: embedHeight || defaultEmbedSizes.height,
-      }),
-    [embedHeight, embedWidth, shareUrl]
-  );
+  const embedCode = generateEmbedCode(shareUrl, {
+    width: embedWidth || defaultEmbedSizes.width,
+    height: embedHeight || defaultEmbedSizes.height,
+  });
 
   const isGenerating = shortenUrlMutation.isPending;
 
@@ -573,7 +563,11 @@ export const EnhancedAnimationShareDialog = () => {
         maxCount={upgradeContext.max ?? null}
         currentPlan={usage?.plan}
       />
-      <LoginDialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} hideTrigger />
+      <LoginDialog
+        open={isLoginDialogOpen && !user}
+        onOpenChange={setIsLoginDialogOpen}
+        hideTrigger
+      />
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <Tooltip content="Share animation link">
