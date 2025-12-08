@@ -5,8 +5,8 @@ import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 
 type Supabase = SupabaseClient<Database>;
 
-type UsageLimitKind = "snippets" | "animations" | "publicShares";
-type PlanLimitKey = "maxSnippets" | "maxAnimations" | "shareAsPublicURL";
+type UsageLimitKind = "snippets" | "animations" | "folders" | "publicShares";
+type PlanLimitKey = "maxSnippets" | "maxAnimations" | "maxSnippetsFolder" | "shareAsPublicURL";
 
 export type UsageLimitCheck = {
   canSave: boolean;
@@ -26,6 +26,10 @@ export type UsageSummary = {
     current: number;
     max: number | null;
   };
+  folders: {
+    current: number;
+    max: number | null;
+  };
   publicShares: {
     current: number;
     max: number | null;
@@ -36,9 +40,21 @@ export type UsageSummary = {
 const RPC_MAP: Record<
   UsageLimitKind,
   {
-    check: "check_snippet_limit" | "check_animation_limit" | "check_public_share_limit";
-    increment: "increment_snippet_count" | "increment_animation_count" | "increment_public_share_count";
-    decrement: "decrement_snippet_count" | "decrement_animation_count" | "decrement_public_share_count";
+    check:
+    | "check_snippet_limit"
+    | "check_animation_limit"
+    | "check_folder_limit"
+    | "check_public_share_limit";
+    increment:
+    | "increment_snippet_count"
+    | "increment_animation_count"
+    | "increment_folder_count"
+    | "increment_public_share_count";
+    decrement:
+    | "decrement_snippet_count"
+    | "decrement_animation_count"
+    | "decrement_folder_count"
+    | "decrement_public_share_count";
     planKey: PlanLimitKey;
   }
 > = {
@@ -53,6 +69,12 @@ const RPC_MAP: Record<
     increment: "increment_animation_count",
     decrement: "decrement_animation_count",
     planKey: "maxAnimations",
+  },
+  folders: {
+    check: "check_folder_limit",
+    increment: "increment_folder_count",
+    decrement: "decrement_folder_count",
+    planKey: "maxSnippetsFolder",
   },
   publicShares: {
     check: "check_public_share_limit",
@@ -69,6 +91,9 @@ type LimitRpcName =
   | (typeof RPC_MAP)["animations"]["check"]
   | (typeof RPC_MAP)["animations"]["increment"]
   | (typeof RPC_MAP)["animations"]["decrement"]
+  | (typeof RPC_MAP)["folders"]["check"]
+  | (typeof RPC_MAP)["folders"]["increment"]
+  | (typeof RPC_MAP)["folders"]["decrement"]
   | (typeof RPC_MAP)["publicShares"]["check"]
   | (typeof RPC_MAP)["publicShares"]["increment"]
   | (typeof RPC_MAP)["publicShares"]["decrement"];
@@ -87,7 +112,9 @@ const normalizeLimitPayload = (
       ? planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets
       : limitKey === "maxAnimations"
         ? planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations
-        : planConfig.shareAsPublicURL === Infinity ? null : planConfig.shareAsPublicURL;
+        : limitKey === "maxSnippetsFolder"
+          ? planConfig.maxSnippetsFolder === Infinity ? null : planConfig.maxSnippetsFolder
+          : planConfig.shareAsPublicURL === Infinity ? null : planConfig.shareAsPublicURL;
 
   const max =
     payload?.max === null || typeof payload?.max === "undefined"
@@ -95,7 +122,13 @@ const normalizeLimitPayload = (
       : Number(payload.max);
 
   return {
-    canSave: Boolean(payload?.can_save ?? payload?.canSave ?? true),
+    canSave: Boolean(
+      payload?.can_save ??
+      payload?.canSave ??
+      payload?.can_create ??
+      payload?.canCreate ??
+      true
+    ),
     current: Number(payload?.current ?? 0),
     max,
     plan,
@@ -140,6 +173,13 @@ export const checkPublicShareLimit = async (
   return callLimitRpc(supabase, RPC_MAP.publicShares.check, userId, "publicShares");
 };
 
+export const checkFolderLimit = async (
+  supabase: Supabase,
+  userId: string
+): Promise<UsageLimitCheck> => {
+  return callLimitRpc(supabase, RPC_MAP.folders.check, userId, "folders");
+};
+
 export const incrementUsageCount = async (
   supabase: Supabase,
   userId: string,
@@ -174,7 +214,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
 
   const { data: usage, error: usageError } = await supabase
     .from("usage_limits")
-    .select("snippet_count, animation_count, public_share_count, last_reset_at")
+    .select("snippet_count, animation_count, folder_count, public_share_count, last_reset_at")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -187,9 +227,16 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
   const [
     { count: actualSnippetCount, error: snippetCountError },
     { count: actualAnimationCount, error: animationCountError },
+    { count: actualFolderCount, error: folderCountError },
+    { count: actualAnimationFolderCount, error: animationFolderCountError },
   ] = await Promise.all([
     supabase.from("snippet").select("id", { count: "exact", head: true }).eq("user_id", userId),
     supabase.from("animation").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase.from("collection").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase
+      .from("animation_collection")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
   ]);
 
   if (snippetCountError) {
@@ -198,14 +245,25 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
   if (animationCountError) {
     console.error("Failed to count animations for usage", animationCountError);
   }
+  if (folderCountError) {
+    console.error("Failed to count snippet folders for usage", folderCountError);
+  }
+  if (animationFolderCountError) {
+    console.error("Failed to count animation folders for usage", animationFolderCountError);
+  }
 
   const plan = (profile.plan as PlanId | null) ?? "free";
   const planConfig = getPlanConfig(plan);
   const snippetCountFromLimits = usage?.snippet_count ?? 0;
   const animationCountFromLimits = usage?.animation_count ?? 0;
+  const folderCountFromLimits = usage?.folder_count ?? 0;
   const publicShareCountFromLimits = usage?.public_share_count ?? 0;
   const snippetCount = Math.max(snippetCountFromLimits, actualSnippetCount ?? 0);
   const animationCount = Math.max(animationCountFromLimits, actualAnimationCount ?? 0);
+  const folderCount = Math.max(
+    folderCountFromLimits,
+    (actualFolderCount ?? 0) + (actualAnimationFolderCount ?? 0)
+  );
   const publicShareCount = publicShareCountFromLimits;
 
   return {
@@ -217,6 +275,10 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     animations: {
       current: animationCount,
       max: planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations,
+    },
+    folders: {
+      current: folderCount,
+      max: planConfig.maxSnippetsFolder === Infinity ? null : planConfig.maxSnippetsFolder,
     },
     publicShares: {
       current: publicShareCount,

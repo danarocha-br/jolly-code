@@ -5,6 +5,7 @@ import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { insertCollection } from '@/lib/services/database/collections'
 import type { Collection, Snippet } from '@/features/snippets/dtos'
+import type { PlanId } from '@/lib/config/plans'
 
 export type CreateCollectionInput = {
     title: string
@@ -27,6 +28,34 @@ export async function createCollection(
 
         const { user, supabase } = await requireAuth()
 
+        const { data: folderLimit, error: folderLimitError } = await supabase.rpc('check_folder_limit', {
+            p_user_id: user.id
+        })
+
+        if (folderLimitError) {
+            console.error('Error checking folder limit:', folderLimitError)
+            return error('Failed to verify folder limit. Please try again.')
+        }
+
+        const canCreateFolder = Boolean(
+            folderLimit?.can_create ??
+            folderLimit?.canCreate ??
+            folderLimit?.can_save ??
+            folderLimit?.canSave ??
+            false
+        )
+
+        if (!canCreateFolder) {
+            const plan = (folderLimit?.plan as PlanId | undefined) ?? 'free'
+            if (plan === 'free') {
+                return error('Free plan does not include folders. Upgrade to Started to organize your snippets.')
+            }
+            if (plan === 'started') {
+                return error('You have reached your 10 folder limit. Upgrade to Pro for unlimited folders.')
+            }
+            return error('Folder limit reached. Please upgrade your plan.')
+        }
+
         const data = await insertCollection({
             user_id: user.id,
             title: sanitizedTitle,
@@ -36,6 +65,14 @@ export async function createCollection(
 
         if (!data || data.length === 0) {
             return error('Failed to create collection')
+        }
+
+        const { error: incrementError } = await supabase.rpc('increment_folder_count', {
+            p_user_id: user.id
+        })
+
+        if (incrementError) {
+            console.error('Error incrementing folder count:', incrementError)
         }
 
         // Revalidate the collections list

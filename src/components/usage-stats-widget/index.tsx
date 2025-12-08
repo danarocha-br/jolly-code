@@ -100,6 +100,16 @@ export function UsageStatsWidget({
           current={usage.animations.current}
           max={usage.animations.max}
         />
+        <UsageRow
+          label="Folders"
+          current={usage.folders.current}
+          max={usage.folders.max}
+        />
+        <UsageRow
+          label="Public views"
+          current={usage.publicShares.current}
+          max={usage.publicShares.max}
+        />
 
         {usage.plan !== "pro" && onUpgrade && (
           <Button size="sm" className="w-full mt-3" onClick={onUpgrade} variant="default">
@@ -110,4 +120,3 @@ export function UsageStatsWidget({
     </Card>
   );
 }
-

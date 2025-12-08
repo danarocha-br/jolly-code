@@ -27,6 +27,14 @@ export async function deleteCollection(
             supabase
         })
 
+        const { error: decrementError } = await supabase.rpc('decrement_folder_count', {
+            p_user_id: user.id
+        })
+
+        if (decrementError) {
+            console.error('Error decrementing folder count:', decrementError)
+        }
+
         // Revalidate relevant paths
         revalidatePath('/collections')
         revalidatePath('/')
