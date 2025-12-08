@@ -5,8 +5,13 @@ import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 
 type Supabase = SupabaseClient<Database>;
 
-type UsageLimitKind = "snippets" | "animations" | "folders" | "publicShares";
-type PlanLimitKey = "maxSnippets" | "maxAnimations" | "maxSnippetsFolder" | "shareAsPublicURL";
+type UsageLimitKind = "snippets" | "animations" | "folders" | "publicShares" | "videoExports";
+type PlanLimitKey =
+  | "maxSnippets"
+  | "maxAnimations"
+  | "maxSnippetsFolder"
+  | "shareAsPublicURL"
+  | "maxVideoExportCount";
 
 export type UsageLimitCheck = {
   canSave: boolean;
@@ -30,6 +35,10 @@ export type UsageSummary = {
     current: number;
     max: number | null;
   };
+  videoExports: {
+    current: number;
+    max: number | null;
+  };
   publicShares: {
     current: number;
     max: number | null;
@@ -44,13 +53,15 @@ const RPC_MAP: Record<
     | "check_snippet_limit"
     | "check_animation_limit"
     | "check_folder_limit"
-    | "check_public_share_limit";
+    | "check_public_share_limit"
+    | "check_video_export_limit";
     increment:
     | "increment_snippet_count"
     | "increment_animation_count"
     | "increment_folder_count"
+    | "increment_video_export_count"
     | "increment_public_share_count";
-    decrement:
+    decrement?:
     | "decrement_snippet_count"
     | "decrement_animation_count"
     | "decrement_folder_count"
@@ -76,6 +87,11 @@ const RPC_MAP: Record<
     decrement: "decrement_folder_count",
     planKey: "maxSnippetsFolder",
   },
+  videoExports: {
+    check: "check_video_export_limit",
+    increment: "increment_video_export_count",
+    planKey: "maxVideoExportCount",
+  },
   publicShares: {
     check: "check_public_share_limit",
     increment: "increment_public_share_count",
@@ -94,6 +110,8 @@ type LimitRpcName =
   | (typeof RPC_MAP)["folders"]["check"]
   | (typeof RPC_MAP)["folders"]["increment"]
   | (typeof RPC_MAP)["folders"]["decrement"]
+  | (typeof RPC_MAP)["videoExports"]["check"]
+  | (typeof RPC_MAP)["videoExports"]["increment"]
   | (typeof RPC_MAP)["publicShares"]["check"]
   | (typeof RPC_MAP)["publicShares"]["increment"]
   | (typeof RPC_MAP)["publicShares"]["decrement"];
@@ -125,6 +143,8 @@ const normalizeLimitPayload = (
     canSave: Boolean(
       payload?.can_save ??
       payload?.canSave ??
+      payload?.can_export ??
+      payload?.canExport ??
       payload?.can_create ??
       payload?.canCreate ??
       true
@@ -166,6 +186,13 @@ export const checkAnimationLimit = async (
   return callLimitRpc(supabase, RPC_MAP.animations.check, userId, "animations");
 };
 
+export const checkVideoExportLimit = async (
+  supabase: Supabase,
+  userId: string
+): Promise<UsageLimitCheck> => {
+  return callLimitRpc(supabase, RPC_MAP.videoExports.check, userId, "videoExports");
+};
+
 export const checkPublicShareLimit = async (
   supabase: Supabase,
   userId: string
@@ -197,7 +224,11 @@ export const decrementUsageCount = async (
   userId: string,
   kind: UsageLimitKind
 ): Promise<UsageLimitCheck> => {
-  return callLimitRpc(supabase, RPC_MAP[kind].decrement, userId, kind);
+  const decrementFn = RPC_MAP[kind].decrement;
+  if (!decrementFn) {
+    throw new Error(`No decrement RPC configured for usage kind: ${kind}`);
+  }
+  return callLimitRpc(supabase, decrementFn, userId, kind);
 };
 
 export const getUserUsage = async (supabase: Supabase, userId: string): Promise<UsageSummary> => {
@@ -214,7 +245,9 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
 
   const { data: usage, error: usageError } = await supabase
     .from("usage_limits")
-    .select("snippet_count, animation_count, folder_count, public_share_count, last_reset_at")
+    .select(
+      "snippet_count, animation_count, folder_count, video_export_count, public_share_count, last_reset_at"
+    )
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -257,6 +290,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
   const snippetCountFromLimits = usage?.snippet_count ?? 0;
   const animationCountFromLimits = usage?.animation_count ?? 0;
   const folderCountFromLimits = usage?.folder_count ?? 0;
+  const videoExportCountFromLimits = usage?.video_export_count ?? 0;
   const publicShareCountFromLimits = usage?.public_share_count ?? 0;
   const snippetCount = Math.max(snippetCountFromLimits, actualSnippetCount ?? 0);
   const animationCount = Math.max(animationCountFromLimits, actualAnimationCount ?? 0);
@@ -279,6 +313,10 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     folders: {
       current: folderCount,
       max: planConfig.maxSnippetsFolder === Infinity ? null : planConfig.maxSnippetsFolder,
+    },
+    videoExports: {
+      current: videoExportCountFromLimits,
+      max: planConfig.maxVideoExportCount === Infinity ? null : planConfig.maxVideoExportCount,
     },
     publicShares: {
       current: publicShareCount,

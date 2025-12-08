@@ -15,6 +15,10 @@ import { useAnimationStore, useEditorStore, useUserStore } from "@/app/store";
 import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { LoginDialog } from "@/features/login";
+import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
+import { useUserUsage } from "@/features/user/queries";
+import { getPlanConfig, type PlanId } from "@/lib/config/plans";
+import { createClient } from "@/utils/supabase/client";
 import { ExportOverlay } from "./share-dialog/export-overlay";
 import { GifExporter } from "./gif-exporter";
 
@@ -39,6 +43,14 @@ export const AnimationDownloadMenu = () => {
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 	const [currentExportFormat, setCurrentExportFormat] = useState<"mp4" | "webm" | "gif">("mp4");
 	const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+	const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+	const [upgradeContext, setUpgradeContext] = useState<{
+		current?: number;
+		max?: number | null;
+		plan?: PlanId;
+	}>({});
+	const supabase = useMemo(() => createClient(), []);
+	const { data: usage } = useUserUsage(user?.id ?? undefined);
 
 	useEffect(() => {
 		if (user && isLoginDialogOpen) {
@@ -64,7 +76,112 @@ export const AnimationDownloadMenu = () => {
 		loadTimestampRef.current = Date.now();
 	}
 
-	const handleExport = (format: "mp4" | "webm" | "gif" = "mp4") => {
+	const buildVideoLimitMessage = ({
+		plan,
+		current,
+		max,
+	}: {
+		plan?: PlanId | null;
+		current?: number | null;
+		max?: number | null;
+	}) => {
+		const safePlan = plan ?? "free";
+		const planConfig = getPlanConfig(safePlan);
+		const effectiveMax =
+			typeof max === "number"
+				? max
+				: planConfig.maxVideoExportCount === Infinity
+					? null
+					: planConfig.maxVideoExportCount;
+
+		if (!effectiveMax) {
+			return "Video export limit reached. Please upgrade your plan.";
+		}
+
+		return `You've reached your video export limit (${Math.min(
+			current ?? effectiveMax,
+			effectiveMax
+		)}/${effectiveMax}). Upgrade to continue exporting videos.`;
+	};
+
+	const openUpgradeForVideoExports = (payload: { current?: number; max?: number | null; plan?: PlanId }) => {
+		setUpgradeContext(payload);
+		setIsUpgradeOpen(true);
+	};
+
+	const verifyVideoExportAllowance = async () => {
+		if (!user?.id) return false;
+
+		const plan = usage?.plan ?? "free";
+		const current = usage?.videoExports?.current ?? 0;
+		const max = usage?.videoExports?.max ?? getPlanConfig(plan).maxVideoExportCount ?? 0;
+
+		if (max !== null && max <= 0) {
+			trackAnimationEvent("upgrade_prompt_shown", user, {
+				limit_type: "video_exports",
+				trigger: "download_menu",
+			});
+			openUpgradeForVideoExports({ current, max, plan });
+			return false;
+		}
+
+		// If we know the user already exhausted the limit from cached usage, prompt immediately.
+		if (max !== null && current >= max) {
+			trackAnimationEvent("limit_reached", user, {
+				limit_type: "video_exports",
+				current,
+				max,
+			});
+			trackAnimationEvent("upgrade_prompt_shown", user, {
+				limit_type: "video_exports",
+				trigger: "download_menu",
+			});
+			openUpgradeForVideoExports({ current, max, plan });
+			return false;
+		}
+
+		const { data, error } = await supabase.rpc("check_video_export_limit", {
+			p_user_id: user.id,
+		});
+
+		if (error) {
+			console.error("Error checking video export limit:", error);
+			// If the function is missing (404) or fails, fall back to local plan limits to avoid a silent bypass.
+			if (max !== null && current >= max) {
+				openUpgradeForVideoExports({ current, max, plan });
+				return false;
+			}
+			toast.error("Unable to verify video export limit. Please try again.");
+			return false;
+		}
+
+		const canExport = Boolean(data?.canExport ?? data?.can_export ?? false);
+		const rpcPlan = (data?.plan as PlanId | undefined) ?? plan;
+		const rpcCurrent = typeof data?.current === "number" ? data.current : current;
+		const rpcMax =
+			data?.max === null || typeof data?.max === "undefined" ? max : Number(data.max);
+
+		if (!canExport) {
+			trackAnimationEvent("export_blocked_limit", user, {
+				limit: "video_exports",
+				plan: rpcPlan,
+				current: rpcCurrent,
+				max: rpcMax,
+				source: "download_menu",
+			});
+			trackAnimationEvent("upgrade_prompt_shown", user, {
+				limit_type: "video_exports",
+				trigger: "download_menu",
+			});
+			openUpgradeForVideoExports({ plan: rpcPlan, current: rpcCurrent, max: rpcMax });
+			toast.error(buildVideoLimitMessage({ plan: rpcPlan, current: rpcCurrent, max: rpcMax }));
+			return false;
+		}
+
+		return true;
+	};
+
+	const handleExport = async (format: "mp4" | "webm" | "gif" = "mp4") => {
 		if (!user) {
 			setDropdownOpen(false);
 			setIsLoginDialogOpen(true);
@@ -78,6 +195,9 @@ export const AnimationDownloadMenu = () => {
 			toast.error("Add at least two slides to export.");
 			return;
 		}
+
+		const allowed = await verifyVideoExportAllowance();
+		if (!allowed) return;
 
 		setCurrentExportFormat(format);
 		setDropdownOpen(false);
@@ -117,7 +237,7 @@ export const AnimationDownloadMenu = () => {
 		});
 	};
 
-	const onExportComplete = (blob: Blob) => {
+	const onExportComplete = async (blob: Blob) => {
 		setIsExporting(false);
 		setExportProgress(0);
 		setCancelExport(false);
@@ -143,12 +263,30 @@ export const AnimationDownloadMenu = () => {
 			source: "download_menu",
 		});
 
+		if (user?.id) {
+			const { error } = await supabase.rpc("increment_video_export_count", {
+				p_user_id: user.id,
+			});
+
+			if (error) {
+				console.error("Error incrementing video export count:", error);
+			}
+		}
+
 		toast.success(`${currentExportFormat.toUpperCase()} downloaded successfully.`);
 	};
 
 	return (
 		<>
 			<LoginDialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen} hideTrigger />
+			<UpgradeDialog
+				open={isUpgradeOpen}
+				onOpenChange={setIsUpgradeOpen}
+				limitType="videoExports"
+				currentCount={upgradeContext.current}
+				maxCount={upgradeContext.max}
+				currentPlan={upgradeContext.plan}
+			/>
 
 			<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
 				<Tooltip content="Download animation">
