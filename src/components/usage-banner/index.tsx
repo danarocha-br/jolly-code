@@ -30,24 +30,24 @@ export function UsageBanner({ usage, onDismiss, className }: UsageBannerProps) {
   const [isDismissed, setIsDismissed] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
-  // Early returns for performance
-  if (isDismissed || usage?.plan === "pro" || !usage) {
-    return null;
-  }
-
-  // Memoize expensive calculations
-  const resourcePercentages = useMemo(() => calculateAllUsagePercentages(usage), [usage]);
+  // Memoize expensive calculations - must be called before any early returns
+  const resourcePercentages = useMemo(() => {
+    if (!usage) return [];
+    return calculateAllUsagePercentages(usage);
+  }, [usage]);
+  
   const maxPercentage = useMemo(
     () => (resourcePercentages.length > 0 ? Math.max(...resourcePercentages.map((r) => r.percentage)) : 0),
     [resourcePercentages]
   );
+  
   const threshold = useMemo(() => getUsageThreshold(maxPercentage), [maxPercentage]);
 
-  if (!threshold) {
-    return null;
-  }
-
-  const resources = useMemo(() => getResourcesAtThreshold(usage, 80, resourcePercentages), [usage, resourcePercentages]);
+  const resources = useMemo(() => {
+    if (!usage) return [];
+    return getResourcesAtThreshold(usage, 80, resourcePercentages);
+  }, [usage, resourcePercentages]);
+  
   const resourceText = useMemo(() => formatResourceList(resources), [resources]);
 
   const handleDismiss = useCallback(() => {
@@ -57,6 +57,8 @@ export function UsageBanner({ usage, onDismiss, className }: UsageBannerProps) {
 
   // Memoize banner content to avoid recalculating on every render
   const content = useMemo(() => {
+    if (!threshold) return null;
+    
     switch (threshold.level) {
       case "limit":
         return {
@@ -80,7 +82,12 @@ export function UsageBanner({ usage, onDismiss, className }: UsageBannerProps) {
           showUpgrade: true,
         };
     }
-  }, [threshold.level, resourceText, maxPercentage]);
+  }, [threshold, resourceText, maxPercentage]);
+
+  // Early returns for performance - after all hooks
+  if (isDismissed || usage?.plan === "pro" || !usage || !threshold || !content) {
+    return null;
+  }
 
   return (
     <>

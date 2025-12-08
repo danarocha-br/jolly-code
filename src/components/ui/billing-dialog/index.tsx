@@ -19,7 +19,9 @@ import { useUserStore } from "@/app/store";
 import { createPortalSession } from "@/actions/stripe/checkout";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
+import { DowngradeDialog } from "@/components/ui/downgrade-dialog";
 import { useUserPlan } from "@/features/user/queries";
+import { getDowngradeTarget } from "@/lib/utils/downgrade-impact";
 
 type BillingDialogProps = {
   open: boolean;
@@ -30,6 +32,7 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
   const { user } = useUserStore();
   const userId = user?.id;
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const [isDowngradeOpen, setIsDowngradeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const { data: billingInfo, isLoading: isBillingLoading, error: billingError } = useBillingInfo(userId);
@@ -60,12 +63,22 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
     });
   };
 
+  const downgradeTarget = currentPlan ? getDowngradeTarget(currentPlan) : null;
+  const canDowngrade = hasSubscription && downgradeTarget !== null;
+
   return (
     <>
       <UpgradeDialog
         open={isUpgradeOpen}
         onOpenChange={setIsUpgradeOpen}
         currentPlan={currentPlan || "free"}
+      />
+      <DowngradeDialog
+        open={isDowngradeOpen}
+        onOpenChange={setIsDowngradeOpen}
+        currentPlan={currentPlan || "free"}
+        targetPlan={downgradeTarget || undefined}
+        userId={userId}
       />
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -119,24 +132,37 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
 
             <div className="flex flex-col gap-3">
               {hasSubscription ? (
-                <Button
-                  onClick={handleOpenPortal}
-                  disabled={isPending}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isPending ? (
-                    <>
-                      <i className="ri-loader-4-line text-lg mr-2 animate-spin" />
-                      Opening...
-                    </>
-                  ) : (
-                    <>
-                      <i className="ri-external-link-line text-lg mr-2" />
-                      Open Customer Portal
-                    </>
+                <>
+                  <Button
+                    onClick={handleOpenPortal}
+                    disabled={isPending}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isPending ? (
+                      <>
+                        <i className="ri-loader-4-line text-lg mr-2 animate-spin" />
+                        Opening...
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-external-link-line text-lg mr-2" />
+                        Open Customer Portal
+                      </>
+                    )}
+                  </Button>
+                  {canDowngrade && (
+                    <Button
+                      onClick={() => setIsDowngradeOpen(true)}
+                      variant="outline"
+                      className="w-full"
+                      size="lg"
+                    >
+                      <i className="ri-arrow-down-line text-lg mr-2" />
+                      Downgrade Plan
+                    </Button>
                   )}
-                </Button>
+                </>
               ) : (
                 <Button
                   onClick={() => setIsUpgradeOpen(true)}

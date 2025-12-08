@@ -1,6 +1,20 @@
 import arcjet, { shield, tokenBucket } from "@arcjet/next";
 import { NextResponse } from "next/server";
 
+/**
+ * Arcjet Rate Limiting Configuration
+ * 
+ * This app supports both authenticated and guest (unauthenticated) users.
+ * 
+ * Usage patterns:
+ * - For guest users: Use `publicLimiter` (IP-based only)
+ * - For authenticated users: Use `authedLimiter` or `strictLimiter` (userId + IP)
+ * 
+ * IMPORTANT: Never call `authedLimiter` or `strictLimiter` without a valid userId.
+ * Use `enforceRateLimit` which handles guest users gracefully by skipping 
+ * limiters that require userId when the user is not authenticated.
+ */
+
 type LimiterConfig = {
   capacity: number;
   refillRate: number;
@@ -20,10 +34,15 @@ const baseShield = shield({ mode: process.env.NODE_ENV === "production" ? "LIVE"
 
 type ArcjetInstance = ReturnType<typeof arcjet>;
 
-const createLimiter = (config: LimiterConfig): ArcjetInstance | null => {
+export type RateLimiter = {
+  instance: ArcjetInstance;
+  requiresUserId: boolean;
+};
+
+const createLimiter = (config: LimiterConfig): RateLimiter | null => {
   if (!key) return null;
 
-  return arcjet({
+  const instance = arcjet({
     key,
     rules: [
       baseShield,
@@ -36,6 +55,11 @@ const createLimiter = (config: LimiterConfig): ArcjetInstance | null => {
       }),
     ],
   });
+
+  return {
+    instance,
+    requiresUserId: config.characteristics?.includes("userId") ?? false,
+  };
 };
 
 export const publicLimiter = createLimiter({
@@ -45,18 +69,20 @@ export const publicLimiter = createLimiter({
   characteristics: ["ip.src"],
 });
 
+// For authenticated users with valid user.id
+// NOTE: These limiters REQUIRE a valid userId - do not call if user is guest/unauthenticated
 export const authedLimiter = createLimiter({
   capacity: 60,
   refillRate: 30,
   interval: 60,
-  characteristics: ["user.id", "ip.src"],
+  characteristics: ["userId", "ip.src"], // Changed from "user.id" to "userId"
 });
 
 export const strictLimiter = createLimiter({
   capacity: 10,
   refillRate: 5,
   interval: 60,
-  characteristics: ["user.id", "ip.src"],
+  characteristics: ["userId", "ip.src"], // Changed from "user.id" to "userId"
 });
 
 export const webhookLimiter = createLimiter({
@@ -66,64 +92,53 @@ export const webhookLimiter = createLimiter({
   characteristics: ["ip.src"],
 });
 
-// Track which limiters require user.id for safer checking
-const LIMITERS_REQUIRING_USER_ID = new WeakSet<ArcjetInstance>();
-
-// Mark limiters that require user.id
-if (authedLimiter) LIMITERS_REQUIRING_USER_ID.add(authedLimiter);
-if (strictLimiter) LIMITERS_REQUIRING_USER_ID.add(strictLimiter);
-
 export async function enforceRateLimit(
-  limiter: ArcjetInstance | null,
+  limiter: RateLimiter | null,
   req: Request,
   options?: { requested?: number; userId?: string; tags?: string[] },
 ) {
-  if (!limiter) return null;
-
-  // Check if this limiter requires user.id
-  const requiresUserId = LIMITERS_REQUIRING_USER_ID.has(limiter);
-
-  // Validate and normalize userId
-  const rawUserId = options?.userId;
-  const userId = typeof rawUserId === "string" ? rawUserId.trim() : "";
-  const hasValidUserId = userId.length > 0;
-
-  // If limiter requires user.id but userId is not provided or empty, skip rate limiting
-  // This prevents Arcjet errors about missing required characteristics
-  if (requiresUserId) {
-    if (!hasValidUserId) {
-      console.warn(
-        "Rate limiter requires user.id but userId is missing or empty. Skipping rate limit check.",
-        { userId: rawUserId, hasValidUserId },
-      );
-      return null;
-    }
+  // If no limiter configured, skip
+  if (!limiter) {
+    return null;
   }
 
-  // Build protect options - NEVER include user if it's empty/undefined
+  const { instance, requiresUserId } = limiter;
+
+  // Validate and normalize userId - be very strict about what constitutes a valid userId
+  const rawUserId = options?.userId;
+  const userId = 
+    typeof rawUserId === "string" && rawUserId.trim().length > 0
+      ? rawUserId.trim()
+      : null;
+  
+  const hasValidUserId = userId !== null && userId !== "";
+
+  // CRITICAL: If limiter requires userId but we don't have a valid one,
+  // we MUST skip rate limiting entirely to avoid Arcjet errors
+  // This handles guest/unauthenticated users gracefully
+  if (requiresUserId && !hasValidUserId) {
+    // Silently skip - this is expected behavior for guest users
+    return null;
+  }
+
+  // Build protect options - NEVER include userId field if empty
   const protectOptions: {
     requested: number;
-    user?: string;
+    userId?: string;
     tags?: string[];
   } = {
     requested: options?.requested ?? 1,
     tags: options?.tags,
   };
 
-  // Only pass user if we have a valid, non-empty userId
-  // This is critical - Arcjet will error if user.id characteristic is required but user is empty
+  // Only add userId field if we have a valid userId
+  // This is critical - arcjet will error if userId is in characteristics but value is empty
   if (hasValidUserId) {
-    protectOptions.user = userId;
-  } else if (requiresUserId) {
-    // Double-check: if limiter requires user.id but we don't have it, don't call protect
-    console.warn(
-      "Rate limiter requires user.id but userId is invalid. Skipping protect call.",
-    );
-    return null;
+    protectOptions.userId = userId;
   }
 
   try {
-    const decision = await (limiter as any).protect(req, protectOptions);
+    const decision = await (instance as any).protect(req, protectOptions);
 
     if (decision.isDenied()) {
       const status = decision.reason.isRateLimit() ? 429 : 403;
@@ -133,9 +148,15 @@ export async function enforceRateLimit(
 
     return null;
   } catch (error: any) {
-    // Catch any Arcjet errors related to missing user.id
-    if (error?.message?.includes("user.id") || error?.message?.includes("characteristic")) {
-      console.error("Arcjet error with user.id characteristic:", error.message);
+    // Catch any Arcjet errors related to missing or empty userId
+    if (
+      error?.message?.includes("user") || 
+      error?.message?.includes("userId") ||
+      error?.message?.includes("characteristic") ||
+      error?.message?.includes("fingerprint") ||
+      error?.message?.includes("identifier")
+    ) {
+      console.warn("[Arcjet] Error with userId characteristic - allowing request to proceed:", error.message);
       // Return null to allow the request to proceed without rate limiting
       return null;
     }
