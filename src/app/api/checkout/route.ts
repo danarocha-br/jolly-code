@@ -94,8 +94,8 @@ export async function POST(request: NextRequest) {
     const session = await createCheckoutSession({
       customerId: customer.id,
       priceId,
-      successUrl: `${appUrl}/?checkout=success`,
-      cancelUrl: `${appUrl}/?checkout=canceled`,
+      successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${appUrl}/checkout/canceled?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         userId: user.id,
         plan,
