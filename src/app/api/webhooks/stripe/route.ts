@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createServiceRoleClient } from '@/utils/supabase/admin';
 import { constructWebhookEvent } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
 import Stripe from 'stripe';
@@ -18,9 +18,21 @@ function getPlanIdFromPriceId(priceId: string): PlanId | null {
   return priceIdMap[priceId] || null;
 }
 
+function resolvePlan(subscription: Stripe.Subscription): PlanId | null {
+  const metadataPlan = subscription.metadata?.plan;
+  if (metadataPlan === 'started' || metadataPlan === 'pro') {
+    return metadataPlan;
+  }
+
+  const priceId = subscription.items.data[0]?.price.id;
+  if (!priceId) return null;
+
+  return getPlanIdFromPriceId(priceId);
+}
+
 // Handle subscription created or updated
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   
   const userId = subscription.metadata.userId;
   if (!userId) {
@@ -29,14 +41,9 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 
   const priceId = subscription.items.data[0]?.price.id;
-  if (!priceId) {
-    console.error('No price ID in subscription');
-    return;
-  }
-
-  const planId = getPlanIdFromPriceId(priceId);
+  const planId = resolvePlan(subscription);
   if (!planId) {
-    console.error('Could not determine plan from price ID:', priceId);
+    console.error('Could not determine plan from subscription metadata/price');
     return;
   }
 
@@ -66,7 +73,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
 
 // Handle subscription deleted (downgrade to free)
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   
   const userId = subscription.metadata.userId;
   if (!userId) {
