@@ -5,12 +5,13 @@ import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { insertSnippet } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/features/snippets/dtos'
+import { createSnippetInputSchema, formatZodError } from '@/actions/utils/validation'
 export type CreateSnippetInput = {
-    id: string
-    title?: string
-    code: string
-    language: string
-    url?: string
+	id: string
+	title?: string
+	code: string
+	language: string
+	url?: string
 }
 
 /**
@@ -20,64 +21,65 @@ export type CreateSnippetInput = {
  * @returns ActionResult with created snippet or error message
  */
 export async function createSnippet(
-    input: CreateSnippetInput
+	input: CreateSnippetInput
 ): Promise<ActionResult<Snippet>> {
-    try {
-        const { id, title, code, language, url } = input
+	try {
+		const parsedInput = createSnippetInputSchema.safeParse(input)
 
-        // Validation
-        if (!id || !code || !language) {
-            return error('Missing required fields: id, code, and language are required')
-        }
+		if (!parsedInput.success) {
+			return error(formatZodError(parsedInput.error) ?? 'Invalid snippet data')
+		}
 
-        const { user, supabase } = await requireAuth()
+		const { id, title, code, language, url } = parsedInput.data
 
-        // Check snippet limit before allowing save
-        const { data: limitCheck, error: limitError } = await supabase.rpc('check_snippet_limit', {
-            p_user_id: user.id
-        })
+		const { user, supabase } = await requireAuth()
 
-        if (limitError) {
-            console.error('Error checking snippet limit:', limitError)
-            return error('Failed to verify save limit. Please try again.')
-        }
+		// Check snippet limit before allowing save
+		const { data: limitCheck, error: limitError } = await supabase.rpc('check_snippet_limit', {
+			p_user_id: user.id
+		})
 
-        if (!limitCheck.canSave) {
-            const plan = limitCheck.plan
-            if (plan === 'free') {
-                return error('Free plan doesn\'t allow saving snippets. Upgrade to Started to save up to 50 snippets!')
-            } else if (plan === 'started') {
-                return error('You\'ve reached your limit (50/50 snippets). Upgrade to Pro for unlimited snippets!')
-            }
-            return error('Snippet limit reached. Please upgrade your plan.')
-        }
+		if (limitError) {
+			console.error('Error checking snippet limit:', limitError)
+			return error('Failed to verify save limit. Please try again.')
+		}
 
-        const data = await insertSnippet({
-            id,
-            user_id: user.id,
-            title: title || 'Untitled',
-            code,
-            language,
-            url: url || null,
-            supabase
-        })
+		if (!limitCheck.canSave) {
+			const plan = limitCheck.plan
+			if (plan === 'free') {
+				return error('Free plan doesn\'t allow saving snippets. Upgrade to Started to save up to 50 snippets!')
+			} else if (plan === 'started') {
+				return error('You\'ve reached your limit (50/50 snippets). Upgrade to Pro for unlimited snippets!')
+			}
+			return error('Snippet limit reached. Please upgrade your plan.')
+		}
 
-        if (!data || data.length === 0) {
-            return error('Failed to create snippet')
-        }
+		const data = await insertSnippet({
+			id,
+			user_id: user.id,
+			title: title || 'Untitled',
+			code,
+			language,
+			url: url || null,
+			supabase
+		})
 
-        // Revalidate the snippets list
-        revalidatePath('/snippets')
-        revalidatePath('/')
+		if (!data || data.length === 0) {
+			return error('Failed to create snippet')
+		}
 
-        return success(data[0])
-    } catch (err) {
-        console.error('Error creating snippet:', err)
+		// Revalidate the snippets list
+		revalidatePath('/snippets')
+		revalidatePath('/')
 
-        if (err instanceof Error && err.message.includes('authenticated')) {
-            return error('User must be authenticated')
-        }
+		return success(data[0])
+	} catch (err) {
+		console.error('Error creating snippet:', err)
 
-        return error('Failed to create snippet. Please try again later.')
-    }
+		if (err instanceof Error && err.message.includes('authenticated')) {
+			return error('User must be authenticated')
+		}
+
+		return error('Failed to create snippet. Please try again later.')
+	}
 }
