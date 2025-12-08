@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Room } from "../room";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
+import { UsageBannerWrapper } from "@/components/usage-banner-wrapper";
 import { Button } from "@/components/ui/button";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import {
@@ -176,6 +177,10 @@ export default function AnimationClientPage() {
 
           <div className="flex-1 min-h-screen flex flex-col">
             <Nav />
+
+            <div className="fixed top-[64px] left-0 right-0 z-40">
+              <UsageBannerWrapper />
+            </div>
 
             <main className="flex-1 pt-16 flex flex-col justify-center pb-64">
               <div className="flex-1 flex items-center justify-center overflow-auto py-6 relative">

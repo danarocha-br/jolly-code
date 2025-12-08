@@ -125,10 +125,15 @@ async function handleSubscriptionChange(
     throw new Error('Could not determine plan from subscription metadata/price');
   }
 
+  const customerId = getStripeCustomerId(subscription);
+  if (!customerId) {
+    throw new Error('Subscription has no customer ID');
+  }
+
   const updateData: any = {
     plan: planId,
     plan_updated_at: new Date().toISOString(),
-    stripe_customer_id: subscription.customer as string,
+    stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     stripe_subscription_status: subscription.status,
     subscription_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),

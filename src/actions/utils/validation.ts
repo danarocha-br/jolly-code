@@ -98,7 +98,7 @@ export const createAnimationInputSchema = z.object({
 
 export const updateAnimationInputSchema = z.object({
     id: idSchema,
-    title: optionalTitleToStringSchema,
+    title: optionalTitleSchema,
     slides: z.array(animationSlideSchema).optional(),
     settings: animationSettingsSchema.optional(),
     url: urlSchema.nullish()

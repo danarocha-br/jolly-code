@@ -50,10 +50,10 @@ export async function updateAnimation(
             const data = await updateAnimationDb({
                 id,
                 user_id: user.id,
-                title: title || 'Untitled',
-                slides: slides || [],
-                settings: settings || ({} as AnimationSettings),
-                url: url || null,
+                title,
+                slides,
+                settings,
+                url,
                 supabase
             })
 
