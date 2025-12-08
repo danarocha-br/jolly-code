@@ -39,6 +39,23 @@ Save your code snippets for future reference directly in the tool. Group your sa
 - Supabase
 - TailwindCSS
 
+## Environment Variables
+
+We validate configuration with `@t3-oss/env-nextjs`; `pnpm env:check` runs automatically before `pnpm dev`, `pnpm build`, and `pnpm start`. Copy `.env.example` to `.env.local` and fill in the required values.
+
+**Required**
+- Supabase access: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- Liveblocks auth: `LIVEBLOCKS_SECRET_KEY`
+- Stripe billing: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_STARTED_MONTHLY_PRICE_ID`, `NEXT_PUBLIC_STRIPE_STARTED_YEARLY_PRICE_ID`, `NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID`, `NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID`
+- App domains: `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_VERCEL_ENV`, `NEXT_PUBLIC_VERCEL_URL`
+
+**Optional**
+- Observability: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`, `SENTRY_TRACE_PROPAGATION_TARGETS`, `SENTRY_RELEASE`, `SENTRY_REPLAYS_SESSION_SAMPLE_RATE`, `SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_TUNNEL`
+- Analytics/marketing: `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_POSTHOG_ENABLE_LOCAL`, `POSTHOG_API_KEY`, `NEXT_PUBLIC_HOTJAR_SITE_ID`, `NEXT_PUBLIC_SITE_URL`, `CANNY_API_KEY`
+- Feature flags & experiments: `NEXT_PUBLIC_EXPORT_EXPERIMENT`, `NEXT_PUBLIC_TRANSITION_EXPERIMENT`
+- Security & rate limiting: `ARCJET_KEY`, `CORS_ALLOWED_ORIGIN`, `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_API_KEY`, `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`, `VERCEL_GIT_COMMIT_SHA`
+- Maintenance helpers: `KEEPALIVE_ENDPOINT`, `KEEPALIVE_API_KEY`, `SKIP_ENV_VALIDATION`
+
 ## Roadmap
 
 For any additional feature request 👉: [Check it out](https://jollycode.canny.io/feature-requests)

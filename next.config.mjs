@@ -1,3 +1,4 @@
+import "./src/env.mjs";
 import { withSentryConfig } from '@sentry/nextjs';
 
 const appOrigin =

@@ -4,6 +4,10 @@
   "private": true,
   "author": "Dana Rocha",
   "scripts": {
+    "env:check": "node --enable-source-maps scripts/check-env.mjs",
+    "predev": "pnpm env:check",
+    "prestart": "pnpm env:check",
+    "prebuild": "pnpm env:check",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -43,6 +47,7 @@
     "@stripe/stripe-js": "^8.5.3",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.84.0",
+    "@t3-oss/env-nextjs": "^0.13.8",
     "@tanstack/react-query": "^5.90.10",
     "@vercel/analytics": "^1.1.0",
     "@vercel/og": "^0.5.20",
