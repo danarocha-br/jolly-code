@@ -4,12 +4,13 @@ import {
 } from "@/lib/sentry-context";
 import { isValidURL } from "@/lib/utils/is-valid-url";
 import { validateContentType } from "@/lib/utils/validate-content-type-request";
-import { createClient } from "@/utils/supabase/server";
 import { wrapRouteHandlerWithSentry } from "@sentry/nextjs";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { enforceRateLimit, publicLimiter, strictLimiter } from "@/lib/arcjet/limiters";
+import { withAuthRoute } from "@/lib/auth/with-auth-route";
+import { createClient } from "@/utils/supabase/server";
 
 export const runtime = "edge";
 
@@ -148,14 +149,13 @@ export const GET = wrapRouteHandlerWithSentry(
 );
 
 export const POST = wrapRouteHandlerWithSentry(
-  async function POST(request: NextRequest) {
+  withAuthRoute(async function POST({ request, supabase, user }) {
     applyRequestContextToSentry({ request });
     const limitResponse = await enforceRateLimit(strictLimiter, request, {
       tags: ["shorten-url:create"],
     });
     if (limitResponse) return limitResponse;
 
-    const supabase = await createClient();
     try {
       const contentType = await request.headers.get("content-type");
       if (contentType !== "application/json") {
@@ -178,16 +178,6 @@ export const POST = wrapRouteHandlerWithSentry(
           { message: `${longUrl} is not a valid url.` },
           { status: 400 }
         );
-      }
-
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        applyResponseContextToSentry(401);
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
       const userLimited = await enforceRateLimit(strictLimiter, request, {
@@ -282,7 +272,7 @@ export const POST = wrapRouteHandlerWithSentry(
       applyResponseContextToSentry(500);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-  },
+  }),
   {
     method: "POST",
     parameterizedRoute: "/api/shorten-url",

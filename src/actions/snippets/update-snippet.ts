@@ -1,11 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { updateSnippet as updateSnippetInDb } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/features/snippets/dtos'
 import { formatZodError, updateSnippetInputSchema } from '@/actions/utils/validation'
+import { withAuthAction } from '@/actions/utils/with-auth'
 
 export type UpdateSnippetInput = {
 	id: string
@@ -22,45 +22,41 @@ export type UpdateSnippetInput = {
  * @returns ActionResult with updated snippet or error message
  */
 export async function updateSnippet(
-	input: UpdateSnippetInput
+    input: UpdateSnippetInput
 ): Promise<ActionResult<Snippet>> {
-	try {
-		const parsedInput = updateSnippetInputSchema.safeParse(input)
+    try {
+        const parsedInput = updateSnippetInputSchema.safeParse(input)
 
-		if (!parsedInput.success) {
-			return error(formatZodError(parsedInput.error) ?? 'Invalid snippet data')
-		}
+        if (!parsedInput.success) {
+            return error(formatZodError(parsedInput.error) ?? 'Invalid snippet data')
+        }
 
-		const { id, title, code, language, url } = parsedInput.data
+        const payload = parsedInput.data
 
-		const { user, supabase } = await requireAuth()
+        const data = await withAuthAction(payload, async ({ id, title, code, language, url }, { user, supabase }) =>
+            updateSnippetInDb({
+                id,
+                user_id: user.id,
+                title,
+                code,
+                language,
+                url,
+                supabase
+            } as any)
+        )
 
-		const data = await updateSnippetInDb({
-			id,
-			user_id: user.id,
-			title,
-			code,
-			language,
-			url,
-			supabase
-		} as any)
+        if (!data || data.length === 0) {
+            return error('Failed to update snippet')
+        }
 
-		if (!data || data.length === 0) {
-			return error('Failed to update snippet')
-		}
+        // Revalidate relevant paths
+        revalidatePath('/snippets')
+        revalidatePath('/')
 
-		// Revalidate relevant paths
-		revalidatePath('/snippets')
-		revalidatePath('/')
+        return success(data[0])
+    } catch (err) {
+        console.error('Error updating snippet:', err)
 
-		return success(data[0])
-	} catch (err) {
-		console.error('Error updating snippet:', err)
-
-		if (err instanceof Error && err.message.includes('authenticated')) {
-			return error('User must be authenticated')
-		}
-
-		return error('Failed to update snippet. Please try again later.')
-	}
+        return error('Failed to update snippet. Please try again later.')
+    }
 }
