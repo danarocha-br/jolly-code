@@ -56,6 +56,7 @@ export const POST = wrapRouteHandlerWithSentry(
     } catch (e) {
       console.error("Error authorizing session:", e);
       applyResponseContextToSentry(500);
+      return new NextResponse("Internal Server Error", { status: 500 });
     }
   },
   {

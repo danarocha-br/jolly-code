@@ -592,6 +592,12 @@ export type Database = {
         }
         Returns: Json
       }
+      get_user_usage_v2: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: Json
+      }
       increment_animation_count: {
         Args: {
           p_user_id: string

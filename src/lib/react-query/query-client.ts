@@ -3,12 +3,63 @@ import {
     QueryClient,
     defaultShouldDehydrateQuery,
 } from '@tanstack/react-query'
+import * as Sentry from '@sentry/nextjs'
 
 function makeQueryClient() {
     return new QueryClient({
         defaultOptions: {
             queries: {
                 staleTime: 60 * 1000,
+                onError: (error, query) => {
+                    // Report React Query errors to Sentry
+                    // This catches errors that might be swallowed by React Query
+                    if (error instanceof Error) {
+                        const isClient = typeof window !== 'undefined';
+                        
+                        if (isClient && Sentry.getCurrentHub) {
+                            // Client-side: use withScope and flush
+                            Sentry.withScope((scope) => {
+                                scope.setLevel('error');
+                                scope.setTag('error_source', 'react_query');
+                                scope.setTag('query_key', JSON.stringify(query.queryKey));
+                                scope.setContext('react_query_error', {
+                                    query_key: query.queryKey,
+                                    query_hash: query.queryHash,
+                                    error_message: error.message,
+                                    error_name: error.name,
+                                });
+                                scope.setExtra('query_key', query.queryKey);
+                                scope.setExtra('query_hash', query.queryHash);
+                                
+                                Sentry.captureException(error);
+                                
+                                // Flush to ensure event is sent immediately on client-side
+                                Sentry.flush(2000).catch((flushError) => {
+                                    console.warn('[React Query] Sentry flush failed:', flushError);
+                                });
+                            });
+                        } else {
+                            // Server-side: simpler capture
+                            Sentry.captureException(error, {
+                                level: 'error',
+                                tags: {
+                                    error_source: 'react_query',
+                                    query_key: JSON.stringify(query.queryKey),
+                                },
+                                extra: {
+                                    query_key: query.queryKey,
+                                    query_hash: query.queryHash,
+                                },
+                            });
+                        }
+                    }
+                    
+                    // Also log to console for debugging
+                    console.error('[React Query] Query error:', {
+                        query_key: query.queryKey,
+                        error: error,
+                    });
+                },
             },
             dehydrate: {
                 // include pending queries in dehydration
