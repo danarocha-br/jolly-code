@@ -66,16 +66,6 @@ export async function createSnippet(
             return error('Failed to create snippet')
         }
 
-        // Increment snippet count after successful creation
-        const { error: incrementError } = await supabase.rpc('increment_snippet_count', {
-            p_user_id: user.id
-        })
-
-        if (incrementError) {
-            console.error('Error incrementing snippet count:', incrementError)
-            // Don't fail the operation, but log it
-        }
-
         // Revalidate the snippets list
         revalidatePath('/snippets')
         revalidatePath('/')

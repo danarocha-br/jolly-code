@@ -67,14 +67,6 @@ export async function createCollection(
             return error('Failed to create collection')
         }
 
-        const { error: incrementError } = await supabase.rpc('increment_folder_count', {
-            p_user_id: user.id
-        })
-
-        if (incrementError) {
-            console.error('Error incrementing folder count:', incrementError)
-        }
-
         // Revalidate the collections list
         revalidatePath('/collections')
         revalidatePath('/')

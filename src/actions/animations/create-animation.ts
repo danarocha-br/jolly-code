@@ -87,16 +87,6 @@ export async function createAnimation(
             return error('Failed to create animation')
         }
 
-        // Increment animation count after successful creation
-        const { error: incrementError } = await supabase.rpc('increment_animation_count', {
-            p_user_id: user.id
-        })
-
-        if (incrementError) {
-            console.error('Error incrementing animation count:', incrementError)
-            // Don't fail the operation, but log it
-        }
-
         revalidatePath('/animate')
         revalidatePath('/animations')
 
