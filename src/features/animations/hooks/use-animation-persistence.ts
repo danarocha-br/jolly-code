@@ -12,6 +12,8 @@ import { USAGE_QUERY_KEY } from "@/features/user/queries";
 import { AnimationSlide, AnimationSettings } from "@/types/animation";
 import { User } from "@supabase/supabase-js";
 import { calculateTotalDuration } from "@/features/animation";
+import { toast } from "sonner";
+import { useAnimationLimits } from "./use-animation-limits";
 
 type UseAnimationPersistenceProps = {
   user: User | null;
@@ -39,11 +41,18 @@ export function useAnimationPersistence({
 
   const getTimestamp = () => new Date().getTime();
 
+  const { setIsUpgradeOpen } = useAnimationLimits({ user, slidesCount: slides.length });
+
   // --- Mutations ---
 
   const { mutate: handleCreateAnimation, isPending: isCreating } = useMutation({
     mutationFn: createAnimation,
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
+      if (result?.error) {
+        toast.error(result.error);
+        setIsUpgradeOpen(true);
+        return;
+      }
       if (result?.data) {
         updateActiveAnimation(result.data);
         trackAnimationEvent("create_animation", user, {
@@ -59,6 +68,10 @@ export function useAnimationPersistence({
       if (user_id) {
         queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
       }
+    },
+    onError: (err: any) => {
+      toast.error(err?.message ?? "Failed to save animation.");
+      setIsUpgradeOpen(true);
     },
   });
 

@@ -203,9 +203,10 @@ export const Editor = forwardRef<any, EditorProps>(
     const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
     const snippetLimit = usage?.snippets;
     const snippetLimitReached =
-      snippetLimit?.max !== null &&
-      typeof snippetLimit?.max !== "undefined" &&
-      snippetLimit.current >= snippetLimit.max;
+      (snippetLimit?.max !== null &&
+        typeof snippetLimit?.max !== "undefined" &&
+        snippetLimit.current >= snippetLimit.max) ||
+      (snippetLimit?.overLimit ?? 0) > 0;
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
     useHotkeys(focusEditor[0].hotKey, () => {
@@ -251,12 +252,22 @@ export const Editor = forwardRef<any, EditorProps>(
         if (context) {
           queryClient.setQueryData(queryKey, context.previousSnippets);
         }
+        if (err instanceof Error && err.message.toLowerCase().includes("upgrade")) {
+          setIsUpgradeOpen(true);
+        }
       },
 
       onSettled: (data, error, variables, context) => {
-        if (data) {
+        const actionResult: any = data as any;
+
+        if (actionResult?.error) {
+          toast.error(actionResult.error);
+          setIsUpgradeOpen(true);
+        }
+
+        if (actionResult && !actionResult.error && actionResult.data) {
           analytics.track("create_snippet", {
-            snippet_id: data.data.id,
+            snippet_id: actionResult.data.id,
             language: variables.language,
           });
         }

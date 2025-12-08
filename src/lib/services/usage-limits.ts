@@ -18,6 +18,7 @@ export type UsageLimitCheck = {
   current: number;
   max: number | null;
   plan: PlanId;
+  overLimit?: number;
   error?: string;
 };
 
@@ -26,10 +27,12 @@ export type UsageSummary = {
   snippets: {
     current: number;
     max: number | null;
+    overLimit?: number;
   };
   animations: {
     current: number;
     max: number | null;
+    overLimit?: number;
   };
   folders: {
     current: number;
@@ -142,6 +145,13 @@ const normalizeLimitPayload = (
       ? defaultMax
       : Number(payload.max);
 
+  const overLimit =
+    typeof payload?.over_limit !== "undefined"
+      ? Number(payload.over_limit)
+      : typeof payload?.overLimit !== "undefined"
+        ? Number(payload.overLimit)
+        : 0;
+
   return {
     canSave: Boolean(
       payload?.can_save ??
@@ -155,6 +165,7 @@ const normalizeLimitPayload = (
     current: Number(payload?.current ?? 0),
     max,
     plan,
+    overLimit,
     error: payload?.error as string | undefined,
   };
 };
@@ -249,7 +260,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
   const { data: usage, error: usageError } = await supabase
     .from("usage_limits")
     .select(
-      "snippet_count, animation_count, folder_count, video_export_count, public_share_count, last_reset_at"
+      "snippet_count, animation_count, folder_count, video_export_count, public_share_count, last_reset_at, over_limit_snippets, over_limit_animations"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -258,6 +269,8 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     console.error("Failed to load usage limits", usageError);
     throw new Error("Unable to load usage");
   }
+
+  const usageRow: any = usage ?? {};
 
   // Reconcile against actual table counts to avoid stale counters in usage_limits/profiles
   const [
@@ -290,11 +303,13 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
 
   const plan = (profile.plan as PlanId | null) ?? "free";
   const planConfig = getPlanConfig(plan);
-  const snippetCountFromLimits = usage?.snippet_count ?? 0;
-  const animationCountFromLimits = usage?.animation_count ?? 0;
-  const folderCountFromLimits = usage?.folder_count ?? 0;
-  const videoExportCountFromLimits = usage?.video_export_count ?? 0;
-  const publicShareCountFromLimits = usage?.public_share_count ?? 0;
+  const snippetCountFromLimits = usageRow.snippet_count ?? 0;
+  const animationCountFromLimits = usageRow.animation_count ?? 0;
+  const overLimitSnippets = usageRow.over_limit_snippets ?? null;
+  const overLimitAnimations = usageRow.over_limit_animations ?? null;
+  const folderCountFromLimits = usageRow.folder_count ?? 0;
+  const videoExportCountFromLimits = usageRow.video_export_count ?? 0;
+  const publicShareCountFromLimits = usageRow.public_share_count ?? 0;
   const snippetCount = Math.max(snippetCountFromLimits, actualSnippetCount ?? 0);
   const animationCount = Math.max(animationCountFromLimits, actualAnimationCount ?? 0);
   const folderCount = Math.max(
@@ -302,16 +317,28 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     (actualFolderCount ?? 0) + (actualAnimationFolderCount ?? 0)
   );
   const publicShareCount = publicShareCountFromLimits;
+  const computedSnippetOverLimit =
+    overLimitSnippets ??
+    (planConfig.maxSnippets === Infinity
+      ? 0
+      : Math.max(snippetCount - (planConfig.maxSnippets ?? 0), 0));
+  const computedAnimationOverLimit =
+    overLimitAnimations ??
+    (planConfig.maxAnimations === Infinity
+      ? 0
+      : Math.max(animationCount - (planConfig.maxAnimations ?? 0), 0));
 
   return {
     plan,
     snippets: {
       current: snippetCount,
       max: planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets,
+      overLimit: computedSnippetOverLimit ?? 0,
     },
     animations: {
       current: animationCount,
       max: planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations,
+      overLimit: computedAnimationOverLimit ?? 0,
     },
     folders: {
       current: folderCount,
@@ -325,7 +352,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
       current: publicShareCount,
       max: planConfig.shareAsPublicURL === Infinity ? null : planConfig.shareAsPublicURL,
     },
-    lastResetAt: usage?.last_reset_at ?? undefined,
+    lastResetAt: usageRow.last_reset_at ?? undefined,
   };
 };
 

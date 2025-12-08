@@ -139,6 +139,15 @@ async function handleSubscriptionChange(
     throw error;
   }
 
+  // Reconcile over-limit flags when plan changes (upgrades or downgrades)
+  const { error: reconcileError } = await (supabase as any).rpc('reconcile_over_limit_content', {
+    p_user_id: userId,
+  });
+
+  if (reconcileError) {
+    console.error('Failed to reconcile over-limit content', reconcileError);
+  }
+
   console.log(`Updated user ${userId} to plan ${planId}`);
   return userId;
 }
@@ -165,6 +174,14 @@ async function handleSubscriptionDeleted(
 
   if (error) {
     throw error;
+  }
+
+  const { error: reconcileError } = await (supabase as any).rpc('reconcile_over_limit_content', {
+    p_user_id: userId,
+  });
+
+  if (reconcileError) {
+    console.error('Failed to reconcile over-limit content after cancellation', reconcileError);
   }
 
   console.log(`Downgraded user ${userId} to free plan`);

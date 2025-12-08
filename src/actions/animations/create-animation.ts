@@ -45,10 +45,14 @@ export async function createAnimation(
 
             if (!animationLimitCheck.canSave) {
                 const plan = animationLimitCheck.plan
+                const current = animationLimitCheck.current ?? 0
+                const max = animationLimitCheck.max ?? 0
+                const overLimit = animationLimitCheck.over_limit ?? Math.max(current - max, 0)
+
                 if (plan === 'free') {
-                    return error('Free plan doesn\'t allow saving animations. Upgrade to Started to save up to 50 animations!')
+                    return error(`You have ${current} animations but the Free plan allows ${max}. Delete items or upgrade to save again. Over limit: ${overLimit}.`)
                 } else if (plan === 'started') {
-                    return error('You\'ve reached your limit (50/50 animations). Upgrade to Pro for unlimited animations!')
+                    return error(`You\'ve reached your Started limit (${current}/${max}). Upgrade to Pro for unlimited animations!`)
                 }
                 return error('Animation limit reached. Please upgrade your plan.')
             }

@@ -43,15 +43,19 @@ export async function createSnippet(
                 return error('Failed to verify save limit. Please try again.')
             }
 
-            if (!limitCheck.canSave) {
-                const plan = limitCheck.plan
-                if (plan === 'free') {
-                    return error('Free plan doesn\'t allow saving snippets. Upgrade to Started to save up to 50 snippets!')
-                } else if (plan === 'started') {
-                    return error('You\'ve reached your limit (50/50 snippets). Upgrade to Pro for unlimited snippets!')
-                }
-                return error('Snippet limit reached. Please upgrade your plan.')
+        if (!limitCheck.canSave) {
+            const plan = limitCheck.plan
+            const current = limitCheck.current ?? 0
+            const max = limitCheck.max ?? 0
+            const overLimit = limitCheck.over_limit ?? Math.max(current - max, 0)
+
+            if (plan === 'free') {
+                return error(`You have ${current} snippets but the Free plan allows ${max}. Delete items or upgrade to save again. Over limit: ${overLimit}.`)
+            } else if (plan === 'started') {
+                return error(`You\'ve reached your Started limit (${current}/${max}). Upgrade to Pro for unlimited snippets!`)
             }
+            return error('Snippet limit reached. Please upgrade your plan.')
+        }
 
             const data = await insertSnippet({
                 id,

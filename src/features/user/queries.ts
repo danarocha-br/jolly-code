@@ -43,4 +43,3 @@ export const useUserPlan = (userId?: string) => {
     enabled: Boolean(userId),
   });
 };
-

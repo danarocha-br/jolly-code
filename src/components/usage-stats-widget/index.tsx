@@ -28,10 +28,12 @@ const UsageRow = ({
   label,
   current,
   max,
+  overLimit,
 }: {
   label: string;
   current: number;
   max: number | null;
+  overLimit?: number;
 }) => {
   const ratio = getRatio(current, max);
   const maxLabel = max === null ? "Unlimited" : `${max}`;
@@ -51,6 +53,11 @@ const UsageRow = ({
           style={{ width: progressWidth }}
         />
       </div>
+      {overLimit && overLimit > 0 ? (
+        <p className="text-[11px] text-destructive">
+          {overLimit} item{overLimit > 1 ? "s" : ""} over plan limit. Delete or upgrade to resume saving.
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -94,11 +101,13 @@ export function UsageStatsWidget({
           label="Snippets"
           current={usage.snippets.current}
           max={usage.snippets.max}
+          overLimit={usage.snippets.overLimit}
         />
         <UsageRow
           label="Animations"
           current={usage.animations.current}
           max={usage.animations.max}
+          overLimit={usage.animations.overLimit}
         />
         <UsageRow
           label="Folders"

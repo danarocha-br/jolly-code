@@ -27,9 +27,10 @@ export function useAnimationLimits({ user, slidesCount }: UseAnimationLimitsProp
 
   const animationLimit = usage?.animations;
   const animationLimitReached =
-    animationLimit?.max !== null &&
-    typeof animationLimit?.max !== "undefined" &&
-    animationLimit.current >= animationLimit.max;
+    (animationLimit?.max !== null &&
+      typeof animationLimit?.max !== "undefined" &&
+      animationLimit.current >= animationLimit.max) ||
+    (animationLimit?.overLimit ?? 0) > 0;
 
   const plan = usage?.plan ?? "free";
   const planConfig = getPlanConfig(plan);
