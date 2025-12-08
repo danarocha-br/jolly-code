@@ -157,7 +157,7 @@ export const POST = wrapRouteHandlerWithSentry(
     if (limitResponse) return limitResponse;
 
     try {
-      const contentType = await request.headers.get("content-type");
+      const contentType = request.headers.get("content-type");
       if (contentType !== "application/json") {
         applyResponseContextToSentry(415);
         return NextResponse.json({ error: "Invalid request" }, { status: 415 });

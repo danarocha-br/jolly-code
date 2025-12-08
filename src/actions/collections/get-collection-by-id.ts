@@ -3,7 +3,6 @@
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { getUserCollectionById as getCollectionByIdFromDb } from '@/lib/services/database/collections'
-import { getUsersSnippetsList } from '@/lib/services/database/snippets'
 import type { Collection, Snippet } from '@/features/snippets/dtos'
 
 /**
@@ -22,31 +21,21 @@ export async function getCollectionById(
 
         const { user, supabase } = await requireAuth()
 
-        const [collectionData, snippetsData] = await Promise.all([
-            getCollectionByIdFromDb({
-                id: collectionId,
-                user_id: user.id,
-                supabase
-            }),
-            getUsersSnippetsList({
-                user_id: user.id,
-                supabase
-            })
-        ])
+        const collectionData = await getCollectionByIdFromDb({
+            id: collectionId,
+            user_id: user.id,
+            supabase
+        })
 
         if (!collectionData) {
             return error('Collection not found')
         }
 
-        // Create a map of snippets for faster lookup
-        const snippetsMap = new Map(snippetsData?.map(s => [s.id, s]) || [])
-
-        // Populate collection with snippet objects
+        // Collection already has snippets populated from the service layer
+        // Just ensure snippets array exists and filter out any null values
         const populatedCollection = {
             ...collectionData,
-            snippets: ((collectionData.snippets as unknown as string[]) || [])
-                .map((id: string) => snippetsMap.get(id))
-                .filter((s: Snippet | undefined): s is Snippet => s !== undefined)
+            snippets: (collectionData.snippets || []).filter((s: Snippet | null): s is Snippet => s !== null)
         }
 
         return success(populatedCollection as Collection)

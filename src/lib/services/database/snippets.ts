@@ -46,65 +46,71 @@ export async function insertSnippet({
 
         if (snippet) {
             // Check if a collection named "Home" exists for the user
-            let { data: collections }: { data: any[] | null; error: any } =
-                await supabase
-                    .from("collection")
-                    .select("id")
-                    .eq("user_id", user_id)
-                    .eq("title", "Home");
+            let { data: collections, error: collectionsError } = await supabase
+                .from("collection")
+                .select("id")
+                .eq("user_id", user_id)
+                .eq("title", "Home");
+
+            if (collectionsError) {
+                throw collectionsError;
+            }
 
             let collectionId: string | undefined;
 
             // If the collection does not exist, create one
             if (!collections || collections.length === 0) {
-                const { data: newCollection }: { data: any[] | null; error: any } =
-                    await supabase.from("collection").insert([
+                const { data: newCollection, error: createError } = await supabase
+                    .from("collection")
+                    .insert([
                         {
                             user_id,
-                            snippets: [snippet[0].id],
                             title: "Home",
                             updated_at: new Date().toISOString(),
                         },
-                    ]);
+                    ])
+                    .select("id")
+                    .single();
 
-                //@ts-ignore
-                if (newCollection && newCollection.length > 0) {
-                    //@ts-ignore
-                    collectionId = newCollection[0].id;
+                if (createError) {
+                    throw createError;
+                }
+
+                if (newCollection) {
+                    collectionId = newCollection.id;
                 }
             } else if (collections && collections.length > 0) {
                 collectionId = collections[0].id;
+            }
 
-                // Fetch the current collection
-                const { data: currentCollection, error: currentCollectionError } =
-                    await supabase
-                        .from("collection")
-                        .select("snippets")
-                        .eq("user_id", user_id)
-                        .eq("id", collectionId)
-                        .single();
+            // Add snippet to "Home" collection via junction table
+            if (collectionId) {
+                // Check if the snippet is already in the collection
+                const { data: existingJunction, error: checkError } = await supabase
+                    .from("collection_snippets")
+                    .select("snippet_id")
+                    .eq("collection_id", collectionId)
+                    .eq("snippet_id", snippet[0].id)
+                    .single();
 
-                if (currentCollectionError) {
-                    throw currentCollectionError;
+                if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+                    throw checkError;
                 }
 
-                // Check if the snippet id already exists in the collection
-                if (!currentCollection.snippets.includes(snippet[0].id)) {
-                    // Append the new snippet to the existing snippets array
-                    const updatedSnippets = [
-                        ...currentCollection.snippets,
-                        snippet[0].id,
-                    ];
-                    // Update the collection with the new snippets array
-                    const { error: updateError } = await supabase
-                        .from("collection")
-                        .update({ snippets: updatedSnippets, updated_at: new Date().toISOString() })
-                        .eq("user_id", user_id)
-                        .eq("id", collectionId);
+                // Only insert if not already in collection
+                if (!existingJunction) {
+                    const { error: insertJunctionError } = await supabase
+                        .from("collection_snippets")
+                        .insert([
+                            {
+                                collection_id: collectionId,
+                                snippet_id: snippet[0].id,
+                            },
+                        ]);
 
-                    if (updateError) {
-                        console.log(updateError);
-                        throw updateError;
+                    if (insertJunctionError) {
+                        console.error(insertJunctionError);
+                        throw insertJunctionError;
                     }
                 }
             }
@@ -133,37 +139,7 @@ export async function deleteSnippet({
     supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
     try {
-        // Find collections that contain the snippet
-        const { data: collections, error: collectionError } = await supabase
-            .from("collection")
-            .select("*")
-            .eq("user_id", user_id);
-
-        if (collectionError) {
-            throw collectionError;
-        }
-
-        // Remove the snippet from each collection
-        if (collections) {
-            for (const collection of collections) {
-                if (collection.snippets) {
-                    const updatedSnippets = collection.snippets.filter(
-                        (id: string) => id !== snippet_id
-                    );
-
-                    const { error: updateError } = await supabase
-                        .from("collection")
-                        .update({ snippets: updatedSnippets })
-                        .eq("id", collection.id)
-                        .eq("user_id", user_id);
-
-                    if (updateError) {
-                        throw updateError;
-                    }
-                }
-            }
-        }
-
+        // Delete the snippet (CASCADE will automatically delete junction records)
         const { error: deleteError } = await supabase
             .from("snippet")
             .delete()

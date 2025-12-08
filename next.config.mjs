@@ -10,24 +10,8 @@ const appOrigin =
 const nextConfig = {
   async headers() {
     return [
-      // Default API CORS: lock to configured origin for authenticated/private APIs
-      {
-        source: "/api/:path*",
-        headers: [
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: appOrigin },
-          {
-            key: "Access-Control-Allow-Methods",
-            value: "GET,OPTIONS,PATCH,DELETE,POST,PUT",
-          },
-          {
-            key: "Access-Control-Allow-Headers",
-            value:
-              "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization",
-          },
-        ],
-      },
       // Public oEmbed endpoint remains open for external consumers
+      // Must be defined before the catch-all /api/:path* pattern
       {
         source: "/api/oembed",
         headers: [
@@ -43,6 +27,7 @@ const nextConfig = {
         ],
       },
       // Public share visit tracking for embeds
+      // Must be defined before the catch-all /api/:path* pattern
       {
         source: "/api/save-shared-url-visits",
         headers: [
@@ -54,6 +39,24 @@ const nextConfig = {
           {
             key: "Access-Control-Allow-Headers",
             value: "Content-Type",
+          },
+        ],
+      },
+      // Default API CORS: lock to configured origin for authenticated/private APIs
+      // This catch-all pattern must come after specific routes
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+          { key: "Access-Control-Allow-Origin", value: appOrigin },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value:
+              "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization",
           },
         ],
       },

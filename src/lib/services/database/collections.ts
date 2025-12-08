@@ -15,21 +15,49 @@ export async function insertCollection({
     supabase,
 }: Collection): Promise<Collection[]> {
     try {
+        // Insert the collection (without snippets column - using junction table now)
         const { data, error } = await supabase
             .from("collection")
             .insert([
                 {
                     user_id,
                     title,
-                    snippets,
                     updated_at: new Date().toISOString(),
                 },
             ])
-            .eq("user_id", user_id)
             .select();
 
         if (error) {
             throw error;
+        }
+
+        if (!data || data.length === 0) {
+            throw new Error("Failed to create collection");
+        }
+
+        const collectionId = data[0].id;
+
+        // Insert junction records for snippets if provided
+        if (snippets && Array.isArray(snippets) && snippets.length > 0) {
+            // Extract snippet IDs (handle both Snippet objects and string IDs)
+            const snippetIds = snippets.map((s: any) => 
+                typeof s === 'string' ? s : s.id
+            ).filter((id: string) => id);
+
+            if (snippetIds.length > 0) {
+                const junctionRecords = snippetIds.map((snippetId: string) => ({
+                    collection_id: collectionId,
+                    snippet_id: snippetId,
+                }));
+
+                const { error: junctionError } = await supabase
+                    .from("collection_snippets")
+                    .insert(junctionRecords);
+
+                if (junctionError) {
+                    throw junctionError;
+                }
+            }
         }
 
         return data;
@@ -53,22 +81,70 @@ export async function updateCollection({
     supabase,
 }: Collection): Promise<any> {
     try {
+        // Update collection metadata (title, etc.)
+        const updateData: any = {
+            updated_at: new Date().toISOString(),
+        };
+
+        if (title !== undefined) {
+            updateData.title = title;
+        }
+
         const { data, error } = await supabase
             .from("collection")
-            .update([
-                {
-                    user_id,
-                    title,
-                    snippets,
-                    updated_at: new Date().toISOString(),
-                },
-            ])
+            .update(updateData)
             .eq("id", id)
             .eq("user_id", user_id)
             .select();
 
         if (error) {
             throw error;
+        }
+
+        // Update junction table if snippets are provided
+        if (snippets !== undefined) {
+            // Delete existing junction records
+            const { error: deleteError } = await supabase
+                .from("collection_snippets")
+                .delete()
+                .eq("collection_id", id);
+
+            if (deleteError) {
+                throw deleteError;
+            }
+
+            // Insert new junction records if snippets array is provided and not empty
+            if (Array.isArray(snippets) && snippets.length > 0) {
+                // Extract snippet IDs (handle both Snippet objects and string IDs)
+                const snippetIds = snippets.map((s: any) => 
+                    typeof s === 'string' ? s : s.id
+                ).filter((id: string) => id);
+
+                if (snippetIds.length > 0) {
+                    const junctionRecords = snippetIds.map((snippetId: string) => ({
+                        collection_id: id,
+                        snippet_id: snippetId,
+                    }));
+
+                    const { error: insertError } = await supabase
+                        .from("collection_snippets")
+                        .insert(junctionRecords);
+
+                    if (insertError) {
+                        throw insertError;
+                    }
+                }
+            }
+
+            // Refetch the collection with snippets populated if snippets were updated
+            if (data && data.length > 0) {
+                const fullCollection = await getUserCollectionById({
+                    id,
+                    user_id,
+                    supabase
+                });
+                return [fullCollection];
+            }
         }
 
         return data;
@@ -95,10 +171,10 @@ export async function deleteCollection({
     supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
     try {
-        // Fetch the collection
+        // Verify the collection exists and belongs to the user
         const { data: collection, error: fetchError } = await supabase
             .from("collection")
-            .select("snippets")
+            .select("id")
             .eq("id", collection_id)
             .eq("user_id", user_id)
             .single();
@@ -107,22 +183,11 @@ export async function deleteCollection({
             throw fetchError;
         }
 
-        // Delete all snippets that belong to the collection
-        if (collection && collection.snippets) {
-            for (const snippet_id of collection.snippets) {
-                const { error: deleteSnippetError } = await supabase
-                    .from("snippet")
-                    .delete()
-                    .eq("id", snippet_id)
-                    .eq("user_id", user_id);
-
-                if (deleteSnippetError) {
-                    throw deleteSnippetError;
-                }
-            }
+        if (!collection) {
+            throw new Error("Collection not found");
         }
 
-        // Delete the collection
+        // Delete the collection (CASCADE will automatically delete junction records)
         const { error: deleteError } = await supabase
             .from("collection")
             .delete()
@@ -154,14 +219,46 @@ export async function getUsersCollectionList({
     supabase: SupabaseClient<Database, "public", any>;
 }): Promise<Snippet[]> {
     try {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from("collection")
-            .select("*")
+            .select(`
+                *,
+                collection_snippets (
+                    snippet_id,
+                    snippet (
+                        id,
+                        user_id,
+                        title,
+                        code,
+                        language,
+                        url,
+                        created_at,
+                        updated_at
+                    )
+                )
+            `)
             .eq("user_id", user_id);
 
+        if (error) {
+            throw error;
+        }
+
         if (data) {
+            // Transform the data to match the expected format
+            const transformedData = data.map((collection: any) => {
+                // Extract snippets from the junction table join
+                const snippets = collection.collection_snippets
+                    ?.map((cs: any) => cs.snippet)
+                    .filter((s: any) => s !== null) || [];
+
+                return {
+                    ...collection,
+                    snippets: snippets,
+                };
+            });
+
             // Sort the data to ensure the collection titled "Home" is always first
-            const sortedData = data.sort((a, b) => {
+            const sortedData = transformedData.sort((a, b) => {
                 if (a.title === "Home") return -1;
                 if (b.title === "Home") return 1;
                 return 0;
@@ -195,14 +292,42 @@ export async function getUserCollectionById({
     supabase: SupabaseClient<Database, "public", any>;
 }): Promise<Collection> {
     try {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from("collection")
-            .select("*")
+            .select(`
+                *,
+                collection_snippets (
+                    snippet_id,
+                    snippet (
+                        id,
+                        user_id,
+                        title,
+                        code,
+                        language,
+                        url,
+                        created_at,
+                        updated_at
+                    )
+                )
+            `)
             .eq("user_id", user_id)
-            .eq("id", id);
+            .eq("id", id)
+            .single();
 
-        if (data && data.length > 0) {
-            return data[0] as Collection;
+        if (error) {
+            throw error;
+        }
+
+        if (data) {
+            // Extract snippets from the junction table join
+            const snippets = data.collection_snippets
+                ?.map((cs: any) => cs.snippet)
+                .filter((s: any) => s !== null) || [];
+
+            return {
+                ...data,
+                snippets: snippets,
+            } as Collection;
         } else {
             throw new Error("No collection found.");
         }
