@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix && pnpm run lint"
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix && pnpm run lint",
+    "validate:plans": "node scripts/validate-plan-limits.js"
   },
   "dependencies": {
     "@arcjet/inspect": "1.0.0-beta.15",
