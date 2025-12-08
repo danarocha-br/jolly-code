@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useCallback, memo } from "react";
-import { getMaxUsagePercentage, getUsageThreshold } from "@/lib/utils/usage-helpers";
 import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";

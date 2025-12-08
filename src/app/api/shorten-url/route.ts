@@ -151,7 +151,7 @@ export const GET = wrapRouteHandlerWithSentry(
 export const POST = wrapRouteHandlerWithSentry(
   withAuthRoute(async function POST({ request, supabase, user }) {
     applyRequestContextToSentry({ request });
-    const limitResponse = await enforceRateLimit(strictLimiter, request, {
+    const limitResponse = await enforceRateLimit(publicLimiter, request, {
       tags: ["shorten-url:create"],
     });
     if (limitResponse) return limitResponse;

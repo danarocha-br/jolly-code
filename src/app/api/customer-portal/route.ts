@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createCustomerPortalSession } from '@/lib/services/stripe';
-import { enforceRateLimit, strictLimiter } from '@/lib/arcjet/limiters';
+import { enforceRateLimit, publicLimiter, strictLimiter } from '@/lib/arcjet/limiters';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const limitResponse = await enforceRateLimit(strictLimiter, request, {
+    const limitResponse = await enforceRateLimit(publicLimiter, request, {
       tags: ["customer-portal"],
     });
     if (limitResponse) return limitResponse;

@@ -6,7 +6,7 @@ import {
   getStripePriceId,
 } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
-import { authedLimiter, enforceRateLimit, strictLimiter } from '@/lib/arcjet/limiters';
+import { authedLimiter, enforceRateLimit, publicLimiter, strictLimiter } from '@/lib/arcjet/limiters';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ type CheckoutRequestBody = {
 
 export async function POST(request: NextRequest) {
   try {
-    const limitResponse = await enforceRateLimit(strictLimiter, request, {
+    const limitResponse = await enforceRateLimit(publicLimiter, request, {
       tags: ["checkout:create"],
     });
     if (limitResponse) return limitResponse;

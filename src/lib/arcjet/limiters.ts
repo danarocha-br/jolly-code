@@ -66,6 +66,13 @@ export const webhookLimiter = createLimiter({
   characteristics: ["ip.src"],
 });
 
+// Track which limiters require user.id for safer checking
+const LIMITERS_REQUIRING_USER_ID = new WeakSet<ArcjetInstance>();
+
+// Mark limiters that require user.id
+if (authedLimiter) LIMITERS_REQUIRING_USER_ID.add(authedLimiter);
+if (strictLimiter) LIMITERS_REQUIRING_USER_ID.add(strictLimiter);
+
 export async function enforceRateLimit(
   limiter: ArcjetInstance | null,
   req: Request,
@@ -73,17 +80,66 @@ export async function enforceRateLimit(
 ) {
   if (!limiter) return null;
 
-  const decision = await (limiter as any).protect(req, {
-    requested: options?.requested ?? 1,
-    user: options?.userId,
-    tags: options?.tags,
-  });
+  // Check if this limiter requires user.id
+  const requiresUserId = LIMITERS_REQUIRING_USER_ID.has(limiter);
 
-  if (decision.isDenied()) {
-    const status = decision.reason.isRateLimit() ? 429 : 403;
-    const message = decision.reason.isRateLimit() ? "Too many requests" : "Forbidden";
-    return NextResponse.json({ error: message }, { status });
+  // Validate and normalize userId
+  const rawUserId = options?.userId;
+  const userId = typeof rawUserId === "string" ? rawUserId.trim() : "";
+  const hasValidUserId = userId.length > 0;
+
+  // If limiter requires user.id but userId is not provided or empty, skip rate limiting
+  // This prevents Arcjet errors about missing required characteristics
+  if (requiresUserId) {
+    if (!hasValidUserId) {
+      console.warn(
+        "Rate limiter requires user.id but userId is missing or empty. Skipping rate limit check.",
+        { userId: rawUserId, hasValidUserId },
+      );
+      return null;
+    }
   }
 
-  return null;
+  // Build protect options - NEVER include user if it's empty/undefined
+  const protectOptions: {
+    requested: number;
+    user?: string;
+    tags?: string[];
+  } = {
+    requested: options?.requested ?? 1,
+    tags: options?.tags,
+  };
+
+  // Only pass user if we have a valid, non-empty userId
+  // This is critical - Arcjet will error if user.id characteristic is required but user is empty
+  if (hasValidUserId) {
+    protectOptions.user = userId;
+  } else if (requiresUserId) {
+    // Double-check: if limiter requires user.id but we don't have it, don't call protect
+    console.warn(
+      "Rate limiter requires user.id but userId is invalid. Skipping protect call.",
+    );
+    return null;
+  }
+
+  try {
+    const decision = await (limiter as any).protect(req, protectOptions);
+
+    if (decision.isDenied()) {
+      const status = decision.reason.isRateLimit() ? 429 : 403;
+      const message = decision.reason.isRateLimit() ? "Too many requests" : "Forbidden";
+      return NextResponse.json({ error: message }, { status });
+    }
+
+    return null;
+  } catch (error: any) {
+    // Catch any Arcjet errors related to missing user.id
+    if (error?.message?.includes("user.id") || error?.message?.includes("characteristic")) {
+      console.error("Arcjet error with user.id characteristic:", error.message);
+      // Return null to allow the request to proceed without rate limiting
+      return null;
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
