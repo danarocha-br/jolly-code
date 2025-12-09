@@ -8,7 +8,7 @@ import { withAuthRoute } from "@/lib/auth/with-auth-route";
 import { createClient } from "@/utils/supabase/server";
 import type { Database } from "@/types/database";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const VIEWER_COOKIE = "jc_viewer_token";
 
@@ -53,18 +53,26 @@ export async function GET(request: NextRequest) {
   }
 
   let data;
-  let error;
   try {
     const result = await supabase
       .from("links")
       .select("id, url, title, description, user_id")
       .eq("short_url", slug);
 
-    data = result.data;
+    const dbError = result.error;
+    if (dbError) {
+      return NextResponse.json(
+        { error: "Database error", details: dbError.message },
+        { status: 500 }
+      );
+    }
 
-    error = result.error;
-  } catch (error: Error | any) {
-    error = error.message;
+    data = result.data;
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Database error", details: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
   }
 
   if (!data || !data[0]) {
