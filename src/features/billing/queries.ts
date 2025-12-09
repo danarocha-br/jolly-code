@@ -30,10 +30,9 @@ export const fetchBillingInfo = async (
 
 export const useBillingInfo = (userId?: string) => {
   return useQuery<BillingInfo | null>({
-    queryKey: ["billing-info", userId],
+    queryKey: ["billing-info", userId ?? "current"],
     queryFn: () => fetchBillingInfo(userId),
     staleTime: BILLING_QUERY_STALE_TIME_MS,
-    enabled: Boolean(userId),
   });
 };
 
@@ -45,7 +44,7 @@ export const fetchPaymentMethod = async (
   }
 
   try {
-    const response = await fetch(`/api/billing/payment-method?customerId=${customerId}`);
+    const response = await fetch(`/api/billing/payment-method?customerId=${encodeURIComponent(customerId)}`);
     if (!response.ok) {
       return null;
     }
@@ -78,16 +77,12 @@ export const fetchInvoices = async (
   try {
     const response = await fetch(`/api/billing/invoices?customerId=${encodeURIComponent(customerId)}`);
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        throw new Error("Unauthorized");
-      }
       return [];
     }
     const data = await response.json();
     return data.invoices || [];
   } catch (error) {
-    console.error("Error fetching invoices:", error);
-    throw error;
+    return [];
   }
 };
 

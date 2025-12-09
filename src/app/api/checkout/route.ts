@@ -6,7 +6,9 @@ import {
   getStripePriceId,
 } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
-import { authedLimiter, enforceRateLimit, publicLimiter, strictLimiter } from '@/lib/arcjet/limiters';
+import { enforceRateLimit, publicLimiter, strictLimiter } from '@/lib/arcjet/limiters';
+import { resolveBaseUrl } from '@/lib/utils/resolve-base-url';
+import type { Database } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +42,12 @@ export async function POST(request: NextRequest) {
     if (userLimited) return userLimited;
 
     // Parse request body
-    const body: CheckoutRequestBody = await request.json();
+    let body: CheckoutRequestBody;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { plan, interval } = body;
 
     // Validate plan
@@ -62,9 +69,14 @@ export async function POST(request: NextRequest) {
     // Get user profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select('username, stripe_customer_id')
       .eq('id', user.id)
       .single();
+
+    const typedProfile: Pick<
+      Database['public']['Tables']['profiles']['Row'],
+      'username' | 'stripe_customer_id'
+    > | null = profile;
 
     if (!user.email) {
       return NextResponse.json({ error: 'User email not found' }, { status: 400 });
@@ -74,23 +86,26 @@ export async function POST(request: NextRequest) {
     const customer = await getOrCreateStripeCustomer({
       userId: user.id,
       email: user.email,
-      name: (profile as any)?.username || undefined,
+      name: typedProfile?.username ?? undefined,
     });
 
     // Update profile with Stripe customer ID if not already set
-    const existingCustomerId = (profile as any)?.stripe_customer_id;
+    const existingCustomerId = typedProfile?.stripe_customer_id;
     if (!existingCustomerId) {
-      await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
-        .update({ stripe_customer_id: customer.id } as any)
+        .update({ stripe_customer_id: customer.id })
         .eq('id', user.id);
+      if (updateError) {
+        console.warn('Failed to update stripe_customer_id:', updateError);
+      }
     }
 
     // Get price ID for the plan
     const priceId = getStripePriceId(plan, interval);
 
     // Create checkout session
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = resolveBaseUrl(request.headers);
     const session = await createCheckoutSession({
       customerId: customer.id,
       priceId,

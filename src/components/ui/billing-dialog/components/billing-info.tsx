@@ -5,13 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 import type { BillingInfo } from "@/lib/services/billing";
+import { hasActiveSubscription } from "@/lib/services/billing";
 
 type BillingInfoProps = {
   billingInfo: BillingInfo | null;
   isLoading?: boolean;
 };
 
-export function BillingInfo({ billingInfo, isLoading }: BillingInfoProps) {
+export function BillingInfoView({ billingInfo, isLoading }: BillingInfoProps) {
   if (isLoading) {
     return (
       <Card>
@@ -36,11 +37,25 @@ export function BillingInfo({ billingInfo, isLoading }: BillingInfoProps) {
   const planId = billingInfo.plan as PlanId;
   if (!["free", "started", "pro"].includes(planId)) {
     console.error("Invalid plan type:", billingInfo.plan);
-    return null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Plan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <p className="font-medium mb-1">Invalid billing data</p>
+            <p className="text-destructive/80">
+              Your plan information could not be loaded. Please refresh the page or contact support if the issue persists.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const planConfig = getPlanConfig(planId);
-  const hasSubscription = Boolean(billingInfo.stripeCustomerId);
+  const hasSubscription = hasActiveSubscription(billingInfo);
   const isCanceling =
     billingInfo.subscriptionCancelAtPeriodEnd === true;
   const nextBillingDate = billingInfo.subscriptionPeriodEnd
@@ -49,16 +64,12 @@ export function BillingInfo({ billingInfo, isLoading }: BillingInfoProps) {
 
   // Determine pricing display
   let priceDisplay = "Free";
-  let billingInterval = "";
+  let billingIntervalText = "";
   if (planConfig.pricing) {
-    // Try to determine if monthly or yearly based on price ID
-    // This is a simple heuristic - in production you might want to store this
-    const isYearly =
-      billingInfo.stripePriceId?.includes("yearly") ||
-      billingInfo.stripePriceId?.includes("annual");
-    const interval = isYearly ? "yearly" : "monthly";
+    // Use concrete billing interval from billing info, fallback to monthly
+    const interval = billingInfo.billingInterval || "monthly";
     priceDisplay = planConfig.pricing[interval].displayAmount;
-    billingInterval = interval === "yearly" ? "/month • billed yearly" : "/month";
+    billingIntervalText = interval === "yearly" ? "/month • billed yearly" : "/month";
   }
 
   return (
@@ -88,7 +99,7 @@ export function BillingInfo({ billingInfo, isLoading }: BillingInfoProps) {
             <div className="text-2xl font-semibold">{priceDisplay}</div>
             {planConfig.pricing && (
               <div className="text-sm text-muted-foreground">
-                {billingInterval}
+                {billingIntervalText}
               </div>
             )}
           </div>

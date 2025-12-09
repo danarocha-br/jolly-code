@@ -33,25 +33,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     let stripeCustomerId = searchParams.get("customerId");
 
-    // If not provided, get from database
-    if (!stripeCustomerId) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id")
-        .eq("id", user.id)
-        .single();
+    // Fetch profile once
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .single();
 
-      stripeCustomerId = (profile as any)?.stripe_customer_id;
+    // Handle profile query errors
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: "Profile not found" },
+        { status: 404 }
+      );
     }
 
-    // Verify the customer ID belongs to the user
-    if (stripeCustomerId) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id")
-        .eq("id", user.id)
-        .single();
-
+    // If not provided, get from database
+    if (!stripeCustomerId) {
+      stripeCustomerId = (profile as any)?.stripe_customer_id;
+    } else {
+      // Verify the customer ID belongs to the user
       if ((profile as any)?.stripe_customer_id !== stripeCustomerId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
       }
@@ -69,10 +70,8 @@ export async function GET(request: NextRequest) {
       const invoices = await getInvoices(stripeCustomerId);
       return NextResponse.json({ invoices });
     } catch (error: any) {
-      // Handle Stripe API errors
-      if (error?.code === "resource_missing") {
-        return NextResponse.json({ invoices: [] });
-      }
+      // getInvoices already handles resource_missing and returns []
+      // This catch only handles unexpected errors
       console.error("Invoices API error:", error);
       return NextResponse.json(
         { error: "Failed to fetch invoices" },

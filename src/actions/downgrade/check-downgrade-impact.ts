@@ -1,10 +1,10 @@
 'use server'
 
-import { requireAuth } from '@/actions/utils/auth'
+import { requireAuth, AuthError } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { getUserUsage } from '@/lib/services/usage-limits'
 import { calculateDowngradeImpact, getDowngradeTarget, type DowngradeImpact } from '@/lib/utils/downgrade-impact'
-import type { PlanId } from '@/lib/config/plans'
+import { planOrder, type PlanId } from '@/lib/config/plans'
 
 /**
  * Server Action: Check downgrade impact for a target plan
@@ -30,7 +30,6 @@ export async function checkDowngradeImpact(
     }
 
     // Check if trying to upgrade instead of downgrade
-    const planOrder: PlanId[] = ['free', 'started', 'pro']
     const currentIndex = planOrder.indexOf(currentPlan)
     const targetIndex = planOrder.indexOf(finalTargetPlan)
 
@@ -44,7 +43,7 @@ export async function checkDowngradeImpact(
   } catch (err) {
     console.error('Error checking downgrade impact:', err)
 
-    if (err instanceof Error && err.message.includes('authenticated')) {
+    if (err instanceof AuthError) {
       return error('User must be authenticated')
     }
 

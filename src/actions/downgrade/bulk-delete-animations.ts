@@ -77,7 +77,8 @@ export async function bulkDeleteAnimations(
     const deletedCount = deletedRows?.length ?? 0
 
     if (deletedCount === 0) {
-      return error('No animations were deleted. They may have already been deleted or you do not have permission.')
+      console.warn('No animations deleted — none found or already removed')
+      return success({ deletedCount: 0 })
     }
 
     if (deletedCount < validIds.length) {

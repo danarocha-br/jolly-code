@@ -39,7 +39,8 @@ export async function bulkDeleteSnippets(
     const deletedCount = deletedRows?.length ?? 0
 
     if (deletedCount === 0) {
-      return error('No snippets were deleted. They may have already been deleted or you do not have permission.')
+      console.warn('No snippets deleted — none found or already removed')
+      return success({ deletedCount: 0 })
     }
 
     if (deletedCount < validIds.length) {

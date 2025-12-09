@@ -1,6 +1,14 @@
 'use server';
 
 import type { PlanId } from '@/lib/config/plans';
+import { createClient } from '@/utils/supabase/server';
+import {
+  getOrCreateStripeCustomer,
+  createCheckoutSession as createStripeCheckoutSession,
+  getStripePriceId,
+  createCustomerPortalSession,
+} from '@/lib/services/stripe';
+import { resolveBaseUrl } from '@/lib/utils/resolve-base-url';
 
 type CheckoutResponse = {
   url?: string;
@@ -13,28 +21,82 @@ type CheckoutResponse = {
 export async function createCheckoutSession({
   plan,
   interval,
+  headers,
 }: {
   plan: PlanId;
   interval: 'monthly' | 'yearly';
+  headers?: { get(name: string): string | null } | null;
 }): Promise<CheckoutResponse> {
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    
-    const response = await fetch(`${appUrl}/api/checkout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ plan, interval }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return { error: data.error || 'Failed to create checkout session' };
+    // Validate plan
+    if (plan === 'free') {
+      return { error: 'Cannot create checkout session for free plan' };
     }
 
-    return { url: data.url };
+    if (!['started', 'pro'].includes(plan)) {
+      return { error: 'Invalid plan' };
+    }
+
+    if (!['monthly', 'yearly'].includes(interval)) {
+      return { error: 'Invalid billing interval' };
+    }
+
+    // Get authenticated user
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { error: 'Unauthorized' };
+    }
+
+    if (!user.email) {
+      return { error: 'User email not found' };
+    }
+
+    // Get user profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    // Get or create Stripe customer
+    const customer = await getOrCreateStripeCustomer({
+      userId: user.id,
+      email: user.email,
+      name: (profile as any)?.username || undefined,
+    });
+
+    // Update profile with Stripe customer ID if not already set
+    const existingCustomerId = (profile as any)?.stripe_customer_id;
+    if (!existingCustomerId) {
+      await supabase
+        .from('profiles')
+        .update({ stripe_customer_id: customer.id } as any)
+        .eq('id', user.id);
+    }
+
+    // Get price ID for the plan
+    const priceId = getStripePriceId(plan, interval);
+
+    // Create checkout session
+    const appUrl = resolveBaseUrl(headers);
+    const session = await createStripeCheckoutSession({
+      customerId: customer.id,
+      priceId,
+      successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${appUrl}/checkout/canceled?session_id={CHECKOUT_SESSION_ID}`,
+      metadata: {
+        userId: user.id,
+        plan,
+        interval,
+      },
+    });
+
+    return { url: session.url || undefined };
   } catch (error) {
     console.error('Checkout action error:', error);
     return { error: 'Failed to create checkout session' };
@@ -44,24 +106,43 @@ export async function createCheckoutSession({
 /**
  * Create a Stripe customer portal session
  */
-export async function createPortalSession(): Promise<CheckoutResponse> {
+export async function createPortalSession({
+  headers,
+}: {
+  headers?: { get(name: string): string | null } | null;
+} = {}): Promise<CheckoutResponse> {
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    
-    const response = await fetch(`${appUrl}/api/customer-portal`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Get authenticated user
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return { error: data.error || 'Failed to create portal session' };
+    if (authError || !user) {
+      return { error: 'Unauthorized' };
     }
 
-    return { url: data.url };
+    // Get user's Stripe customer ID
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    const stripeCustomerId = (profile as any)?.stripe_customer_id;
+    if (!stripeCustomerId) {
+      return { error: 'No active subscription found' };
+    }
+
+    // Create customer portal session
+    const appUrl = resolveBaseUrl(headers);
+    const portalSession = await createCustomerPortalSession({
+      customerId: stripeCustomerId,
+      returnUrl: `${appUrl}/`,
+    });
+
+    return { url: portalSession.url || undefined };
   } catch (error) {
     console.error('Portal action error:', error);
     return { error: 'Failed to create portal session' };

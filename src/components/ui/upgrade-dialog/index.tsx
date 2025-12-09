@@ -12,21 +12,36 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { PLANS, type BillingInterval, type PlanConfig, type PlanId } from "@/lib/config/plans";
+import {
+  PLANS,
+  type BillingInterval,
+  type PlanConfig,
+  type PlanId,
+} from "@/lib/config/plans";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type UpgradeDialogProps = {
   open: boolean;
   onOpenChange: (next: boolean) => void;
-  limitType?: "snippets" | "animations" | "slides" | "folders" | "videoExports" | "publicShares";
+  limitType?:
+    | "snippets"
+    | "animations"
+    | "slides"
+    | "folders"
+    | "videoExports"
+    | "publicShares";
   currentCount?: number;
   maxCount?: number | null;
   currentPlan?: PlanId;
 };
 
-const LIMIT_COPY: Record<NonNullable<UpgradeDialogProps["limitType"]>, string> = {
-  snippets: "Upgrade to save more snippets and keep every idea without friction.",
+const LIMIT_COPY: Record<
+  NonNullable<UpgradeDialogProps["limitType"]>,
+  string
+> = {
+  snippets:
+    "Upgrade to save more snippets and keep every idea without friction.",
   animations: "Upgrade to create more animations with higher save limits.",
   slides: "Upgrade to add more slides and craft richer stories.",
   folders: "Upgrade to organize with more folders.",
@@ -35,11 +50,15 @@ const LIMIT_COPY: Record<NonNullable<UpgradeDialogProps["limitType"]>, string> =
 };
 
 const formatLimit = (count?: number | null) => {
-  if (count === null || typeof count === "undefined" || count === Infinity) return "Unlimited";
+  if (count === null || typeof count === "undefined" || count === Infinity)
+    return "Unlimited";
   return `${count}`;
 };
 
-const getLimitForPlan = (plan: PlanConfig, limitType: NonNullable<UpgradeDialogProps["limitType"]>) => {
+const getLimitForPlan = (
+  plan: PlanConfig,
+  limitType: NonNullable<UpgradeDialogProps["limitType"]>
+) => {
   switch (limitType) {
     case "snippets":
       return plan.maxSnippets;
@@ -78,6 +97,8 @@ const CheckItem = ({ children }: { children: ReactNode }) => (
   </li>
 );
 
+const plans = PLAN_ORDER.map((id) => PLANS[id]);
+
 export function UpgradeDialog({
   open,
   onOpenChange,
@@ -86,9 +107,14 @@ export function UpgradeDialog({
   maxCount,
   currentPlan = "free",
 }: UpgradeDialogProps) {
-  const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
+  const [billingInterval, setBillingInterval] =
+    useState<BillingInterval>("monthly");
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
-    currentPlan === "pro" ? "pro" : currentPlan === "started" ? "pro" : "started",
+    currentPlan === "pro"
+      ? "pro"
+      : currentPlan === "started"
+        ? "pro"
+        : "started"
   );
   const [isPending, startTransition] = useTransition();
 
@@ -103,9 +129,8 @@ export function UpgradeDialog({
             ? "public views/month"
             : limitType;
 
-  const upgradeTitle = currentPlan === "free" ? "Upgrade plan" : "Change your plan";
-
-  const plans = useMemo(() => PLAN_ORDER.map((id) => PLANS[id]), []);
+  const upgradeTitle =
+    currentPlan === "free" ? "Upgrade plan" : "Change your plan";
 
   const currentPlanLimit = getLimitForPlan(PLANS[currentPlan], limitType);
 
@@ -119,7 +144,10 @@ export function UpgradeDialog({
         const response = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan: planToCheckout, interval: billingInterval }),
+          body: JSON.stringify({
+            plan: planToCheckout,
+            interval: billingInterval,
+          }),
         });
 
         const data = await response.json();
@@ -159,7 +187,7 @@ export function UpgradeDialog({
                     "rounded-full px-3 py-2 transition",
                     billingInterval === interval
                       ? "bg-foreground text-background hover:bg-foreground/90"
-                      : "bg-foreground/10 text-foreground/70 hover:text-foreground hover:bg-foreground/20",
+                      : "bg-foreground/10 text-foreground/70 hover:text-foreground hover:bg-foreground/20"
                   )}
                 >
                   {interval === "monthly" ? "Monthly" : "Yearly"}
@@ -189,9 +217,11 @@ export function UpgradeDialog({
                     }
                   }}
                   className={cn(
-                    "group relative flex h-full flex-col justify-between gap-3 rounded-xl border bg-card/70 p-5 text-left transition",
+                    "group relative flex h-full w-full flex-col justify-between gap-3 rounded-xl border bg-card/70 p-5 text-left transition",
                     "hover:border-foreground/30 hover:bg-card",
-                    isSelected && "border-primary bg-primary/5 ring-2 ring-primary/30",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    isSelected &&
+                      "border-primary bg-primary/5 ring-2 ring-primary/30"
                   )}
                 >
                   <div className="flex flex-col gap-4">
@@ -200,9 +230,7 @@ export function UpgradeDialog({
                         {plan.name}
                       </Badge>
                       {plan.id === "started" && (
-                        <Badge variant="success" >
-                          Most popular
-                        </Badge>
+                        <Badge variant="success">Most popular</Badge>
                       )}
                       {isCurrent && <Badge>Current</Badge>}
                     </div>
@@ -214,7 +242,9 @@ export function UpgradeDialog({
                           {plan.pricing ? intervalLabel[billingInterval] : ""}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{plan.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.description}
+                      </p>
                       <p className="text-xs text-foreground">
                         {limit} {limitLabel}
                       </p>
@@ -232,7 +262,9 @@ export function UpgradeDialog({
                   <Button
                     className="w-full"
                     variant={isSelected ? "default" : "secondary"}
-                    disabled={isPending || plan.id === currentPlan || !canCheckout}
+                    disabled={
+                      isPending || plan.id === currentPlan || !canCheckout
+                    }
                     onClick={(event) => {
                       event.stopPropagation();
                       setSelectedPlan(plan.id);
@@ -260,8 +292,11 @@ export function UpgradeDialog({
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Selected plan</p>
               <p className="text-base font-semibold text-foreground">
-                {PLANS[selectedPlan].name} • {formatPrice(PLANS[selectedPlan], billingInterval)}{" "}
-                {PLANS[selectedPlan].pricing ? intervalLabel[billingInterval] : ""}
+                {PLANS[selectedPlan].name} •{" "}
+                {formatPrice(PLANS[selectedPlan], billingInterval)}{" "}
+                {PLANS[selectedPlan].pricing
+                  ? intervalLabel[billingInterval]
+                  : ""}
               </p>
             </div>
           </div>

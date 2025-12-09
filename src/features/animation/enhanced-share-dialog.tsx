@@ -31,7 +31,7 @@ import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { debounce } from "@/lib/utils/debounce";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
-import { useUserUsage, USAGE_QUERY_KEY } from "@/features/user/queries";
+import { useUserUsage, USAGE_QUERY_KEY, fetchUserUsage } from "@/features/user/queries";
 
 import { ShareMetadataForm } from "./share-dialog/share-metadata-form";
 import { ShareTabPublic } from "./share-dialog/tabs/share-tab-public";
@@ -278,14 +278,22 @@ export const EnhancedAnimationShareDialog = () => {
         return undefined;
       }
 
-      const publicShares = usage?.publicShares;
+      // Refresh usage data immediately before checking limits to minimize race conditions
+      // with server-side state. The server-side validation in the API endpoint is the
+      // source of truth and will return 429 if limits are exceeded.
+      const freshUsage = await queryClient.fetchQuery({
+        queryKey: [USAGE_QUERY_KEY, user.id],
+        queryFn: () => fetchUserUsage(user.id),
+      });
+
+      const publicShares = freshUsage?.publicShares;
       if (
         publicShares &&
         publicShares.max !== null &&
         publicShares.current >= publicShares.max
       ) {
         openUpgradeForShares(publicShares.current, publicShares.max);
-        toast.error("You’ve reached your public view limit. Upgrade for more views.");
+        toast.error("You've reached your public view limit. Upgrade for more views.");
         return undefined;
       }
 
@@ -356,7 +364,7 @@ export const EnhancedAnimationShareDialog = () => {
         return undefined;
       }
     },
-    [currentUrl, form, payload, queryClient, serializedSlides.length, shortenUrlMutation, usage?.publicShares, user]
+    [currentUrl, form, payload, queryClient, serializedSlides.length, shortenUrlMutation, user]
   );
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -429,10 +437,14 @@ export const EnhancedAnimationShareDialog = () => {
     });
   };
 
-  const embedCode = generateEmbedCode(shareUrl, {
-    width: embedWidth || defaultEmbedSizes.width,
-    height: embedHeight || defaultEmbedSizes.height,
-  });
+  const embedCode = useMemo(
+    () =>
+      generateEmbedCode(shareUrl, {
+        width: embedWidth || defaultEmbedSizes.width,
+        height: embedHeight || defaultEmbedSizes.height,
+      }),
+    [shareUrl, embedWidth, embedHeight]
+  );
 
   const isGenerating = shortenUrlMutation.isPending;
 

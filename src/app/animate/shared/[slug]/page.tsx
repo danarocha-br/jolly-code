@@ -12,6 +12,7 @@ import { siteConfig } from "@/lib/utils/site-config";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createHash } from "crypto";
+import { FriendlyError } from "@/components/errors/friendly-error";
 
 type SharedAnimationPageProps = {
   params: Promise<{
@@ -89,16 +90,8 @@ export default async function SharedAnimationPage({ params }: SharedAnimationPag
   const hashedFallback = createHash("sha256").update(fallbackTokenSource || slug).digest("hex");
   const viewerToken = viewerCookie ?? hashedFallback;
 
-  type ViewResult = {
-    allowed?: boolean;
-    counted?: boolean;
-    current?: number | null;
-    max?: number | null;
-    plan?: string | null;
-  };
-
   const supabase = await createClient();
-  const { data: viewResult, error: viewError } = await (supabase as any).rpc(
+  const { data: viewResult, error: viewError } = await supabase.rpc(
     "record_public_share_view",
     { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
   );
@@ -107,18 +100,15 @@ export default async function SharedAnimationPage({ params }: SharedAnimationPag
     console.error("Failed to record public share view", viewError);
   }
 
-  const view = viewResult as ViewResult | null;
+  const view = viewResult;
 
   if (view && view.allowed === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
-        <div className="max-w-md space-y-3 text-center">
-          <h1 className="text-2xl font-semibold">View limit reached</h1>
-          <p className="text-muted-foreground">
-            This shared link has reached its monthly view limit. Please ask the owner to upgrade their plan to enable more views.
-          </p>
-        </div>
-      </div>
+      <FriendlyError
+        title="View limit reached"
+        description="This shared link has reached its monthly view limit. Please ask the owner to upgrade their plan to enable more views."
+        className="min-h-screen"
+      />
     );
   }
 

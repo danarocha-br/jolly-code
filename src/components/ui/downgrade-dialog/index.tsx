@@ -68,9 +68,7 @@ const ImpactRow = ({
         <p className="text-sm font-semibold text-destructive">
           {current} / {formatLimit(max)}
         </p>
-        <p className="text-xs text-destructive/80">
-          {overLimit} over limit
-        </p>
+        <p className="text-xs text-destructive/80">{overLimit} over limit</p>
       </div>
     </div>
   );
@@ -84,12 +82,18 @@ export function DowngradeDialog({
   userId,
 }: DowngradeDialogProps) {
   const [impact, setImpact] = useState<DowngradeImpact | null>(null);
-  const [selectedSnippets, setSelectedSnippets] = useState<Set<string>>(new Set());
-  const [selectedAnimations, setSelectedAnimations] = useState<Set<string>>(new Set());
+  const [selectedSnippets, setSelectedSnippets] = useState<Set<string>>(
+    new Set()
+  );
+  const [selectedAnimations, setSelectedAnimations] = useState<Set<string>>(
+    new Set()
+  );
   const [isLoadingImpact, setIsLoadingImpact] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [isProceeding, startProceedTransition] = useTransition();
-  const [isLoadingImpactTransition, startLoadingImpactTransition] = useTransition();
+  const [isLoadingImpactTransition, startLoadingImpactTransition] =
+    useTransition();
+  const [deletionCompleted, setDeletionCompleted] = useState(false);
   const queryClient = useQueryClient();
   const hasAutoSelectedSnippets = useRef(false);
   const hasAutoSelectedAnimations = useRef(false);
@@ -108,7 +112,9 @@ export function DowngradeDialog({
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   });
 
-  const { data: animations, isLoading: isLoadingAnimations } = useQuery<Animation[]>({
+  const { data: animations, isLoading: isLoadingAnimations } = useQuery<
+    Animation[]
+  >({
     queryKey: ["animations-for-downgrade", userId],
     queryFn: async () => {
       const result = await getAnimations();
@@ -127,11 +133,12 @@ export function DowngradeDialog({
         setImpact(null);
         setSelectedSnippets(new Set());
         setSelectedAnimations(new Set());
+        setDeletionCompleted(false);
       });
       hasAutoSelectedSnippets.current = false;
       hasAutoSelectedAnimations.current = false;
     }
-  }, [open, startLoadingImpactTransition]);
+  }, [open]);
 
   // Load impact when dialog opens
   useEffect(() => {
@@ -142,10 +149,8 @@ export function DowngradeDialog({
     let cancelled = false;
 
     // Load impact asynchronously
-    startLoadingImpactTransition(() => {
-      setIsLoadingImpact(true);
-    });
-    
+    setIsLoadingImpact(true);
+
     checkDowngradeImpact(targetPlan)
       .then((result) => {
         if (cancelled) return;
@@ -158,6 +163,7 @@ export function DowngradeDialog({
         if (result.data) {
           startLoadingImpactTransition(() => {
             setImpact(result.data);
+            setDeletionCompleted(false); // Reset flag when loading new impact
           });
         }
       })
@@ -242,35 +248,52 @@ export function DowngradeDialog({
             bulkDeleteSnippets(Array.from(selectedSnippets)).then((result) => {
               if (result.error) {
                 toast.error(result.error);
-                return;
+                throw new Error(result.error);
               }
-              toast.success(`Deleted ${result.data?.deletedCount || 0} snippet(s)`);
+              toast.success(
+                `Deleted ${result.data?.deletedCount || 0} snippet(s)`
+              );
             })
           );
         }
 
         if (selectedAnimations.size > 0) {
           promises.push(
-            bulkDeleteAnimations(Array.from(selectedAnimations)).then((result) => {
-              if (result.error) {
-                toast.error(result.error);
-                return;
+            bulkDeleteAnimations(Array.from(selectedAnimations)).then(
+              (result) => {
+                if (result.error) {
+                  toast.error(result.error);
+                  return;
+                }
+                toast.success(
+                  `Deleted ${result.data?.deletedCount || 0} animation(s)`
+                );
               }
-              toast.success(`Deleted ${result.data?.deletedCount || 0} animation(s)`);
-            })
+            )
           );
         }
 
         await Promise.all(promises);
 
+        // Mark deletion as completed successfully
+        setDeletionCompleted(true);
+
         // Batch invalidate queries for better performance
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["snippets-for-downgrade", userId] }),
-          queryClient.invalidateQueries({ queryKey: ["animations-for-downgrade", userId] }),
+          queryClient.invalidateQueries({
+            queryKey: ["snippets-for-downgrade", userId],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["animations-for-downgrade", userId],
+          }),
           queryClient.invalidateQueries({ queryKey: ["collections"] }),
-          queryClient.invalidateQueries({ queryKey: ["animation-collections"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["animation-collections"],
+          }),
           userId
-            ? queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, userId] })
+            ? queryClient.invalidateQueries({
+                queryKey: [USAGE_QUERY_KEY, userId],
+              })
             : Promise.resolve(),
         ]);
 
@@ -283,16 +306,23 @@ export function DowngradeDialog({
             if (!newImpact.data.hasAnyImpact) {
               setSelectedSnippets(new Set());
               setSelectedAnimations(new Set());
+              // Reset flag since impact is now resolved
+              setDeletionCompleted(false);
             }
           } else if (newImpact.error) {
-            console.warn("Failed to re-check impact after deletion:", newImpact.error);
+            console.warn(
+              "Failed to re-check impact after deletion:",
+              newImpact.error
+            );
             // Still clear selections to allow user to proceed
+            // deletionCompleted flag remains true to allow proceeding
             setSelectedSnippets(new Set());
             setSelectedAnimations(new Set());
           }
         } catch (err) {
           console.error("Error re-checking impact:", err);
           // Clear selections anyway to allow user to proceed
+          // deletionCompleted flag remains true to allow proceeding
           setSelectedSnippets(new Set());
           setSelectedAnimations(new Set());
         }
@@ -309,7 +339,11 @@ export function DowngradeDialog({
       return;
     }
 
-    if (impact.hasAnyImpact) {
+    // If deletions were completed successfully, allow proceeding even if impact re-check failed
+    if (deletionCompleted) {
+      // Deletions were successful, proceed to downgrade
+      // The impact state may be stale, but we trust that deletions resolved the issue
+    } else if (impact.hasAnyImpact) {
       // Check if user has resolved all over-limit issues
       // Note: After deletion, impact is re-checked, so we validate against current impact state
       const hasUnresolvedSnippets =
@@ -348,7 +382,6 @@ export function DowngradeDialog({
   const currentPlanConfig = getPlanConfig(currentPlan);
   const targetPlanConfig = impact ? getPlanConfig(impact.targetPlan) : null;
 
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -356,9 +389,12 @@ export function DowngradeDialog({
           <Badge variant="outline" className="w-fit mb-2">
             Downgrade Plan
           </Badge>
-          <DialogTitle>Downgrade to {targetPlanConfig?.name || "Lower Plan"}</DialogTitle>
+          <DialogTitle>
+            Downgrade to {targetPlanConfig?.name || "Lower Plan"}
+          </DialogTitle>
           <DialogDescription>
-            Review the impact of downgrading and manage your content before proceeding
+            Review the impact of downgrading and manage your content before
+            proceeding
           </DialogDescription>
         </DialogHeader>
 
@@ -371,14 +407,17 @@ export function DowngradeDialog({
               </div>
             ) : impact ? (
               <>
-                <Alert variant="destructive">
-                  <i className="ri-alert-line" />
-                  <AlertTitle>Content Over Limit</AlertTitle>
-                  <AlertDescription>
-                    Your current usage exceeds the limits of the {targetPlanConfig?.name} plan.
-                    You&apos;ll need to delete or archive excess items before downgrading.
-                  </AlertDescription>
-                </Alert>
+                {impact.hasAnyImpact && (
+                  <Alert variant="destructive">
+                    <i className="ri-alert-line" />
+                    <AlertTitle>Content Over Limit</AlertTitle>
+                    <AlertDescription>
+                      Your current usage exceeds the limits of the{" "}
+                      {targetPlanConfig?.name} plan. You&apos;ll need to delete
+                      or archive excess items before downgrading.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold">Impact Summary</h3>
@@ -424,27 +463,33 @@ export function DowngradeDialog({
                     <i className="ri-checkbox-circle-line text-success" />
                     <AlertTitle>No Impact</AlertTitle>
                     <AlertDescription>
-                      Your current usage is within the limits of the {targetPlanConfig?.name} plan.
-                      You can proceed with the downgrade.
+                      Your current usage is within the limits of the{" "}
+                      {targetPlanConfig?.name} plan. You can proceed with the
+                      downgrade.
                     </AlertDescription>
                   </Alert>
                 )}
 
                 {/* Item Management */}
-                {(impact.snippets.willBeOverLimit || impact.animations.willBeOverLimit) && (
+                {(impact.snippets.willBeOverLimit ||
+                  impact.animations.willBeOverLimit) && (
                   <>
                     <Separator />
                     <div className="space-y-4">
-                      <h3 className="text-sm font-semibold">Manage Excess Items</h3>
+                      <h3 className="text-sm font-semibold">
+                        Manage Excess Items
+                      </h3>
                       <p className="text-sm text-muted-foreground">
-                        Select items to delete. We recommend deleting the oldest items first.
+                        Select items to delete. We recommend deleting the oldest
+                        items first.
                       </p>
 
                       {impact.snippets.willBeOverLimit && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium">
-                              Snippets ({selectedSnippets.size} of {impact.snippets.overLimit} selected)
+                              Snippets ({selectedSnippets.size} of{" "}
+                              {impact.snippets.overLimit} selected)
                             </p>
                             {selectedSnippets.size > 0 && (
                               <Button
@@ -469,32 +514,38 @@ export function DowngradeDialog({
                                   </p>
                                 ) : (
                                   snippets.map((snippet) => (
-                                  <div
-                                    key={snippet.id}
-                                    className="flex items-center gap-2 p-2 rounded hover:bg-muted/50"
-                                  >
-                                    <Checkbox
-                                      checked={selectedSnippets.has(snippet.id)}
-                                      onCheckedChange={(checked) => {
-                                        const newSet = new Set(selectedSnippets);
-                                        if (checked) {
-                                          newSet.add(snippet.id);
-                                        } else {
-                                          newSet.delete(snippet.id);
-                                        }
-                                        setSelectedSnippets(newSet);
-                                      }}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">
-                                        {snippet.title || "Untitled"}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {snippet.language} •{" "}
-                                        {new Date(snippet.created_at || 0).toLocaleDateString()}
-                                      </p>
+                                    <div
+                                      key={snippet.id}
+                                      className="flex items-center gap-2 p-2 rounded hover:bg-muted/50"
+                                    >
+                                      <Checkbox
+                                        checked={selectedSnippets.has(
+                                          snippet.id
+                                        )}
+                                        onCheckedChange={(checked) => {
+                                          const newSet = new Set(
+                                            selectedSnippets
+                                          );
+                                          if (checked) {
+                                            newSet.add(snippet.id);
+                                          } else {
+                                            newSet.delete(snippet.id);
+                                          }
+                                          setSelectedSnippets(newSet);
+                                        }}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {snippet.title || "Untitled"}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {snippet.language} •{" "}
+                                          {new Date(
+                                            snippet.created_at || 0
+                                          ).toLocaleDateString()}
+                                        </p>
+                                      </div>
                                     </div>
-                                  </div>
                                   ))
                                 )}
                               </div>
@@ -507,7 +558,8 @@ export function DowngradeDialog({
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium">
-                              Animations ({selectedAnimations.size} of {impact.animations.overLimit} selected)
+                              Animations ({selectedAnimations.size} of{" "}
+                              {impact.animations.overLimit} selected)
                             </p>
                             {selectedAnimations.size > 0 && (
                               <Button
@@ -532,31 +584,37 @@ export function DowngradeDialog({
                                   </p>
                                 ) : (
                                   animations.map((animation) => (
-                                  <div
-                                    key={animation.id}
-                                    className="flex items-center gap-2 p-2 rounded hover:bg-muted/50"
-                                  >
-                                    <Checkbox
-                                      checked={selectedAnimations.has(animation.id)}
-                                      onCheckedChange={(checked) => {
-                                        const newSet = new Set(selectedAnimations);
-                                        if (checked) {
-                                          newSet.add(animation.id);
-                                        } else {
-                                          newSet.delete(animation.id);
-                                        }
-                                        setSelectedAnimations(newSet);
-                                      }}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">
-                                        {animation.title || "Untitled"}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {new Date(animation.created_at || 0).toLocaleDateString()}
-                                      </p>
+                                    <div
+                                      key={animation.id}
+                                      className="flex items-center gap-2 p-2 rounded hover:bg-muted/50"
+                                    >
+                                      <Checkbox
+                                        checked={selectedAnimations.has(
+                                          animation.id
+                                        )}
+                                        onCheckedChange={(checked) => {
+                                          const newSet = new Set(
+                                            selectedAnimations
+                                          );
+                                          if (checked) {
+                                            newSet.add(animation.id);
+                                          } else {
+                                            newSet.delete(animation.id);
+                                          }
+                                          setSelectedAnimations(newSet);
+                                        }}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {animation.title || "Untitled"}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {new Date(
+                                            animation.created_at || 0
+                                          ).toLocaleDateString()}
+                                        </p>
+                                      </div>
                                     </div>
-                                  </div>
                                   ))
                                 )}
                               </div>
@@ -565,7 +623,8 @@ export function DowngradeDialog({
                         </div>
                       )}
 
-                      {(selectedSnippets.size > 0 || selectedAnimations.size > 0) && (
+                      {(selectedSnippets.size > 0 ||
+                        selectedAnimations.size > 0) && (
                         <Button
                           variant="destructive"
                           onClick={handleDeleteSelected}
@@ -580,7 +639,10 @@ export function DowngradeDialog({
                           ) : (
                             <>
                               <i className="ri-delete-bin-line text-lg mr-2" />
-                              Delete Selected ({selectedSnippets.size + selectedAnimations.size} items)
+                              Delete Selected (
+                              {selectedSnippets.size +
+                                selectedAnimations.size}{" "}
+                              items)
                             </>
                           )}
                         </Button>
@@ -598,40 +660,78 @@ export function DowngradeDialog({
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="text-left p-3 font-medium">Feature</th>
-                          <th className="text-center p-3 font-medium">{currentPlanConfig.name}</th>
-                          <th className="text-center p-3 font-medium">{targetPlanConfig?.name}</th>
+                          <th className="text-center p-3 font-medium">
+                            {currentPlanConfig.name}
+                          </th>
+                          <th className="text-center p-3 font-medium">
+                            {targetPlanConfig?.name}
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr className="border-t">
                           <td className="p-3">Snippets</td>
-                          <td className="p-3 text-center">{formatLimit(currentPlanConfig.maxSnippets)}</td>
-                          <td className="p-3 text-center">{formatLimit(targetPlanConfig?.maxSnippets || 0)}</td>
+                          <td className="p-3 text-center">
+                            {formatLimit(currentPlanConfig.maxSnippets)}
+                          </td>
+                          <td className="p-3 text-center">
+                            {formatLimit(targetPlanConfig?.maxSnippets || 0)}
+                          </td>
                         </tr>
                         <tr className="border-t">
                           <td className="p-3">Animations</td>
-                          <td className="p-3 text-center">{formatLimit(currentPlanConfig.maxAnimations)}</td>
-                          <td className="p-3 text-center">{formatLimit(targetPlanConfig?.maxAnimations || 0)}</td>
+                          <td className="p-3 text-center">
+                            {formatLimit(currentPlanConfig.maxAnimations)}
+                          </td>
+                          <td className="p-3 text-center">
+                            {formatLimit(targetPlanConfig?.maxAnimations || 0)}
+                          </td>
                         </tr>
                         <tr className="border-t">
                           <td className="p-3">Slides per Animation</td>
-                          <td className="p-3 text-center">{formatLimit(currentPlanConfig.maxSlidesPerAnimation)}</td>
-                          <td className="p-3 text-center">{formatLimit(targetPlanConfig?.maxSlidesPerAnimation || 0)}</td>
+                          <td className="p-3 text-center">
+                            {formatLimit(
+                              currentPlanConfig.maxSlidesPerAnimation
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            {formatLimit(
+                              targetPlanConfig?.maxSlidesPerAnimation || 0
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t">
                           <td className="p-3">Folders</td>
-                          <td className="p-3 text-center">{formatLimit(currentPlanConfig.maxSnippetsFolder)}</td>
-                          <td className="p-3 text-center">{formatLimit(targetPlanConfig?.maxSnippetsFolder || 0)}</td>
+                          <td className="p-3 text-center">
+                            {formatLimit(currentPlanConfig.maxSnippetsFolder)}
+                          </td>
+                          <td className="p-3 text-center">
+                            {formatLimit(
+                              targetPlanConfig?.maxSnippetsFolder || 0
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t">
                           <td className="p-3">Video Exports</td>
-                          <td className="p-3 text-center">{formatLimit(currentPlanConfig.maxVideoExportCount)}</td>
-                          <td className="p-3 text-center">{formatLimit(targetPlanConfig?.maxVideoExportCount || 0)}</td>
+                          <td className="p-3 text-center">
+                            {formatLimit(currentPlanConfig.maxVideoExportCount)}
+                          </td>
+                          <td className="p-3 text-center">
+                            {formatLimit(
+                              targetPlanConfig?.maxVideoExportCount || 0
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t">
                           <td className="p-3">Public Shares</td>
-                          <td className="p-3 text-center">{formatLimit(currentPlanConfig.shareAsPublicURL)}</td>
-                          <td className="p-3 text-center">{formatLimit(targetPlanConfig?.shareAsPublicURL || 0)}</td>
+                          <td className="p-3 text-center">
+                            {formatLimit(currentPlanConfig.shareAsPublicURL)}
+                          </td>
+                          <td className="p-3 text-center">
+                            {formatLimit(
+                              targetPlanConfig?.shareAsPublicURL || 0
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t">
                           <td className="p-3">Watermark Removal</td>
@@ -680,7 +780,9 @@ export function DowngradeDialog({
                 isDeleting ||
                 isLoadingImpact ||
                 !impact ||
-                (impact.hasAnyImpact &&
+                // Allow proceeding if deletions were completed successfully
+                (!deletionCompleted &&
+                  impact.hasAnyImpact &&
                   ((impact.snippets.willBeOverLimit &&
                     selectedSnippets.size < impact.snippets.overLimit) ||
                     (impact.animations.willBeOverLimit &&
@@ -703,11 +805,11 @@ export function DowngradeDialog({
             </Button>
           </div>
           <p className="text-xs text-center text-muted-foreground">
-            You&apos;ll be redirected to Stripe Customer Portal to complete the downgrade
+            You&apos;ll be redirected to Stripe Customer Portal to complete the
+            downgrade
           </p>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-

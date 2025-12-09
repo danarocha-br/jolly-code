@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    const userCustomerId = (profile as any)?.stripe_customer_id;
+    const userCustomerId = (profile?.stripe_customer_id ?? null) as string | null;
 
     // If customerId provided in query, verify it matches
     if (customerId && customerId !== userCustomerId) {
@@ -61,11 +61,8 @@ export async function GET(request: NextRequest) {
     try {
       const paymentMethod = await getPaymentMethod(customerId);
       return NextResponse.json({ paymentMethod });
-    } catch (error: any) {
-      // Handle Stripe API errors
-      if (error?.code === "resource_missing") {
-        return NextResponse.json({ paymentMethod: null });
-      }
+    } catch (error) {
+      // Handle unexpected errors (getPaymentMethod already handles resource_missing)
       console.error("Payment method API error:", error);
       return NextResponse.json(
         { error: "Failed to fetch payment method" },

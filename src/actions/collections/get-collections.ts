@@ -14,7 +14,7 @@ export async function getCollections(): Promise<ActionResult<Collection[]>> {
     try {
         const { user, supabase } = await requireAuth()
 
-        const collectionsData = await getUsersCollectionList({
+        const collectionsData: Collection[] = await getUsersCollectionList({
             user_id: user.id,
             supabase
         })
@@ -25,12 +25,12 @@ export async function getCollections(): Promise<ActionResult<Collection[]>> {
 
         // Collections already have snippets populated from the service layer
         // Just ensure snippets array exists and filter out any null values
-        const populatedCollections = collectionsData.map((collection: any) => ({
+        const populatedCollections = collectionsData.map((collection) => ({
             ...collection,
             snippets: (collection.snippets || []).filter((s: Snippet | null): s is Snippet => s !== null)
         }))
 
-        return success(populatedCollections as Collection[])
+        return success(populatedCollections)
     } catch (err) {
         console.error('Error fetching collections:', err)
 

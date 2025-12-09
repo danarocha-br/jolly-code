@@ -81,9 +81,7 @@ export function CreateAnimationCollectionDialog({
 
   const folderLimit = usage?.folders;
   const folderLimitReached =
-    folderLimit?.max !== null &&
-    typeof folderLimit?.max !== "undefined" &&
-    folderLimit.current >= folderLimit.max;
+    folderLimit?.max != null && folderLimit.current >= folderLimit.max;
 
   function onSubmit(data: z.infer<typeof formSchema>) {
     if (folderLimitReached) {
@@ -138,7 +136,9 @@ export function CreateAnimationCollectionDialog({
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Use collections to organize your animations</DialogTitle>
+            <DialogTitle>
+              Use collections to organize your animations
+            </DialogTitle>
           </DialogHeader>
 
           <form
@@ -151,8 +151,14 @@ export function CreateAnimationCollectionDialog({
                 name="title"
                 control={form.control}
                 render={({ field, fieldState }) => (
-                  <Field orientation="horizontal" data-invalid={fieldState.invalid}>
-                    <FieldLabel className="whitespace-nowrap" htmlFor="collection-title">
+                  <Field
+                    orientation="horizontal"
+                    data-invalid={fieldState.invalid}
+                  >
+                    <FieldLabel
+                      className="whitespace-nowrap"
+                      htmlFor="collection-title"
+                    >
                       Collection name
                     </FieldLabel>
                     <Input

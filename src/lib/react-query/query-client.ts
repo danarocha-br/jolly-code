@@ -27,12 +27,15 @@ function makeQueryClient() {
             const error = event.query.state.error
             const query = event.query
 
+            // Skip Sentry reporting in development
+            const shouldReportToSentry = process.env.NODE_ENV === 'production'
+
             // Report React Query errors to Sentry
             // This catches errors that might be swallowed by React Query
             if (error instanceof Error) {
-                const isClient = typeof window !== 'undefined';
+                const isClient = !isServer
                 
-                if (isClient) {
+                if (isClient && shouldReportToSentry) {
                     // Client-side: use withScope and flush
                     Sentry.withScope((scope) => {
                         scope.setLevel('error');
@@ -54,7 +57,7 @@ function makeQueryClient() {
                             console.warn('[React Query] Sentry flush failed:', flushError);
                         });
                     });
-                } else {
+                } else if (isServer && shouldReportToSentry) {
                     // Server-side: simpler capture
                     Sentry.captureException(error, {
                         level: 'error',

@@ -1,13 +1,14 @@
+import { Metadata } from "next";
+import { cookies, headers } from "next/headers";
+import { createHash } from "crypto";
 import { notFound, redirect } from "next/navigation";
+
 import { getSharedLink, trackSharedLinkVisit } from "@/lib/services/shared-link";
 import { captureServerEvent } from "@/lib/services/tracking/server";
 import { createClient } from "@/utils/supabase/server";
 import { JsonLd } from "@/components/seo/json-ld";
 import { siteConfig } from "@/lib/utils/site-config";
-import Link from "next/link";
-import { Metadata } from "next";
-import { cookies, headers } from "next/headers";
-import { createHash } from "crypto";
+import type { Database } from "@/types/database";
 
 type SharedLinkPageProps = {
   params: Promise<{
@@ -64,25 +65,24 @@ export default async function SharedLinkPage({ params }: SharedLinkPageProps) {
   const hashedFallback = createHash("sha256").update(fallbackTokenSource || shared_link).digest("hex");
   const viewerToken = viewerCookie ?? hashedFallback;
 
-  type ViewResult = {
-    allowed?: boolean;
-    counted?: boolean;
-    current?: number | null;
-    max?: number | null;
-    plan?: string | null;
-  };
-
   const supabase = await createClient();
-  const { data: viewResult, error: viewError } = await (supabase as any).rpc(
-    "record_public_share_view",
-    { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
-  );
+  let viewResult: Database['public']['Functions']['record_public_share_view']['Returns'] | null = null;
+  
+  // Only record view if user_id is present
+  if (data.user_id) {
+    const { data: viewData, error: viewError } = await supabase.rpc(
+      "record_public_share_view",
+      { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
+    );
 
-  if (viewError) {
-    console.error("Failed to record public share view", viewError);
+    if (viewError) {
+      console.error("Failed to record public share view", viewError);
+    } else {
+      viewResult = viewData ?? null;
+    }
   }
 
-  const view = viewResult as ViewResult | null;
+  const view = viewResult;
 
   if (view && view.allowed === false) {
     return (

@@ -11,10 +11,9 @@ import { nanoid } from "nanoid";
 import { enforceRateLimit, publicLimiter, strictLimiter } from "@/lib/arcjet/limiters";
 import { withAuthRoute } from "@/lib/auth/with-auth-route";
 import { createClient } from "@/utils/supabase/server";
+import type { Database } from "@/types/database";
 
 export const runtime = "edge";
-
-const keySet: Set<string> = new Set();
 
 /**
  * Retrieves the URL associated with a given slug.
@@ -73,18 +72,10 @@ export const GET = wrapRouteHandlerWithSentry(
       viewerToken = nanoid(24);
     }
 
-    type ViewResult = {
-      allowed?: boolean;
-      counted?: boolean;
-      current?: number | null;
-      max?: number | null;
-      plan?: string | null;
-    };
-
-    let viewResult: ViewResult | null = null;
+    let viewResult: Database['public']['Functions']['record_public_share_view']['Returns'] | null = null;
 
     try {
-      const { data: recordViewData, error: recordViewError } = await (supabase as any).rpc(
+      const { data: recordViewData, error: recordViewError } = await supabase.rpc(
         "record_public_share_view",
         { p_owner_id: link.user_id, p_link_id: link.id, p_viewer_token: viewerToken }
       );
@@ -93,7 +84,7 @@ export const GET = wrapRouteHandlerWithSentry(
         throw recordViewError;
       }
 
-      viewResult = (recordViewData as ViewResult) ?? null;
+      viewResult = recordViewData ?? null;
     } catch (recordError) {
       console.error("Failed to record share view", recordError);
     }
@@ -157,14 +148,13 @@ export const POST = wrapRouteHandlerWithSentry(
     if (limitResponse) return limitResponse;
 
     try {
-      const contentType = request.headers.get("content-type");
-      if (contentType !== "application/json") {
+      const validated = validateContentType(request);
+      if (validated instanceof NextResponse) {
         applyResponseContextToSentry(415);
-        return NextResponse.json({ error: "Invalid request" }, { status: 415 });
+        return validated;
       }
 
-      const { url, snippet_id, title, description } =
-        await validateContentType(request).json();
+      const { url, snippet_id, title, description } = await request.json();
 
       applyRequestContextToSentry({ request });
 
@@ -230,43 +220,67 @@ export const POST = wrapRouteHandlerWithSentry(
         });
       }
 
-      const key = nanoid(5);
-      if (keySet.has(key)) {
-        applyResponseContextToSentry(400);
-        return NextResponse.json(
-          { error: "Key is duplicated." },
-          { status: 400 }
-        );
-      }
+      // Retry loop to handle potential unique constraint violations
+      const maxRetries = 5;
+      let shortUrl: string | null = null;
 
-      keySet.add(key);
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        shortUrl = nanoid(5);
 
-      const shortUrl = key;
+        const { error: insertError } = await supabase
+          .from("links")
+          .insert([
+            {
+              user_id: user.id,
+              url: longUrl,
+              short_url: shortUrl,
+              snippet_id: snippet_id ? snippet_id : null,
+              title: title ?? null,
+              description: description ?? null,
+            },
+          ]);
 
-      const { error: insertError } = await supabase
-        .from("links")
-        .insert([
-          {
-            user_id: user.id,
-            url: longUrl,
+        if (!insertError) {
+          // Success - return the short URL
+          applyResponseContextToSentry(200);
+          return NextResponse.json({
+            status: 200,
             short_url: shortUrl,
-            snippet_id: snippet_id ? snippet_id : null,
-            title: title ?? null,
-            description: description ?? null,
-          },
-        ]);
+          });
+        }
 
-      if (insertError) {
-        console.error("Insert Error:", insertError);
-        applyResponseContextToSentry(500);
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
+        // Check if it's a unique constraint violation (PostgreSQL error code 23505)
+        const isUniqueViolation =
+          insertError.code === "23505" ||
+          insertError.message?.toLowerCase().includes("unique") ||
+          insertError.message?.toLowerCase().includes("duplicate");
+
+        if (!isUniqueViolation) {
+          // Not a duplicate key error - return the error
+          console.error("Insert Error:", insertError);
+          applyResponseContextToSentry(500);
+          return NextResponse.json({ error: insertError.message }, { status: 500 });
+        }
+
+        // If it's the last attempt, return error
+        if (attempt === maxRetries - 1) {
+          console.error("Failed to generate unique short URL after retries:", insertError);
+          applyResponseContextToSentry(500);
+          return NextResponse.json(
+            { error: "Failed to generate unique short URL. Please try again." },
+            { status: 500 }
+          );
+        }
+
+        // Otherwise, retry with a new key
       }
 
-      applyResponseContextToSentry(200);
-      return NextResponse.json({
-        status: 200,
-        short_url: shortUrl,
-      });
+      // This should never be reached, but TypeScript requires it
+      applyResponseContextToSentry(500);
+      return NextResponse.json(
+        { error: "Failed to generate short URL" },
+        { status: 500 }
+      );
     } catch (error: any) {
       console.error("Shorten URL Error:", error);
       applyResponseContextToSentry(500);

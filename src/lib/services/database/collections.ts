@@ -209,7 +209,7 @@ export async function deleteCollection({
  * Retrieves a list of user collections from the database.
  *
  * @param {Object} params - The parameters for retrieving the collection list.
- * @return {Promise<Snippet[]>} A promise that resolves to an array of Snippet objects representing the user's collections.
+ * @return {Promise<Collection[]>} A promise that resolves to an array of Collection objects representing the user's collections.
  */
 export async function getUsersCollectionList({
     user_id,
@@ -217,7 +217,7 @@ export async function getUsersCollectionList({
 }: {
     user_id: string;
     supabase: SupabaseClient<Database, "public", any>;
-}): Promise<Snippet[]> {
+}): Promise<Collection[]> {
     try {
         const { data, error } = await supabase
             .from("collection")

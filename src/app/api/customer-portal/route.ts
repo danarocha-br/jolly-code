@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createCustomerPortalSession } from '@/lib/services/stripe';
 import { enforceRateLimit, publicLimiter, strictLimiter } from '@/lib/arcjet/limiters';
+import { env } from '@/env.mjs';
+import type { Database } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
+
+type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'stripe_customer_id'>;
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,11 +36,11 @@ export async function POST(request: NextRequest) {
     // Get user's Stripe customer ID
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select('stripe_customer_id')
       .eq('id', user.id)
       .single();
 
-    const stripeCustomerId = (profile as any)?.stripe_customer_id;
+    const stripeCustomerId = profile?.stripe_customer_id;
     if (!stripeCustomerId) {
       return NextResponse.json(
         { error: 'No active subscription found' },
@@ -45,10 +49,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create customer portal session
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const portalSession = await createCustomerPortalSession({
       customerId: stripeCustomerId,
-      returnUrl: `${appUrl}/`,
+      returnUrl: `${env.NEXT_PUBLIC_APP_URL}/`,
     });
 
     return NextResponse.json({ url: portalSession.url });

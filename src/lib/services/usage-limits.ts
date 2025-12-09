@@ -305,6 +305,11 @@ type LimitRpcName =
   | (typeof RPC_MAP)["publicShares"]["increment"]
   | (typeof RPC_MAP)["publicShares"]["decrement"];
 
+const getLimitValue = (key: PlanLimitKey, config: ReturnType<typeof getPlanConfig>): number | null => {
+  const value = config[key];
+  return value === Infinity ? null : value;
+};
+
 const normalizeLimitPayload = (
   payload: any,
   kind: UsageLimitKind,
@@ -314,14 +319,7 @@ const normalizeLimitPayload = (
   const planConfig = getPlanConfig(plan);
   const limitKey = RPC_MAP[kind].planKey;
 
-  const defaultMax =
-    limitKey === "maxSnippets"
-      ? planConfig.maxSnippets === Infinity ? null : planConfig.maxSnippets
-      : limitKey === "maxAnimations"
-        ? planConfig.maxAnimations === Infinity ? null : planConfig.maxAnimations
-        : limitKey === "maxSnippetsFolder"
-          ? planConfig.maxSnippetsFolder === Infinity ? null : planConfig.maxSnippetsFolder
-          : planConfig.shareAsPublicURL === Infinity ? null : planConfig.shareAsPublicURL;
+  const defaultMax = getLimitValue(limitKey, planConfig);
 
   const max =
     payload?.max === null || typeof payload?.max === "undefined"
@@ -644,3 +642,26 @@ export const checkSlideLimit = (slideCount: number, plan: PlanId): UsageLimitChe
     plan,
   };
 };
+
+/**
+ * Check if a plan has unlimited resources based on UsageSummary limits
+ * Returns true if all relevant resource limits are null (unlimited)
+ * Handles missing usage or limits safely
+ */
+export function hasUnlimitedPlan(usage: UsageSummary | null | undefined): boolean {
+  if (!usage) {
+    return false;
+  }
+
+  // Check all relevant resource limits - if all are null, plan is unlimited
+  const limits = [
+    usage.snippets.max,
+    usage.animations.max,
+    usage.folders.max,
+    usage.videoExports.max,
+    usage.publicShares.max,
+  ];
+
+  // All limits must be null (unlimited) for the plan to be considered unlimited
+  return limits.every((limit) => limit === null);
+}

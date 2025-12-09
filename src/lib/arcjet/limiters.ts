@@ -26,13 +26,46 @@ type LimiterConfig = {
 const key = process.env.ARCJET_KEY;
 
 if (!key) {
-  // Fail fast so we don't silently run without protection in prod.
-  console.warn("ARCJET_KEY is not set; rate limiting will be skipped.");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("ARCJET_KEY is required in production");
+  }
+  console.warn("ARCJET_KEY is not set; rate limiting will be skipped in development.");
 }
 
 const baseShield = shield({ mode: process.env.NODE_ENV === "production" ? "LIVE" : "DRY_RUN" });
 
 type ArcjetInstance = ReturnType<typeof arcjet>;
+
+/**
+ * Options for the Arcjet protect method
+ */
+type ProtectOptionsType = {
+  requested: number;
+  userId?: string;
+  tags?: string[];
+};
+
+/**
+ * Decision object returned by Arcjet protect method
+ */
+type DecisionType = {
+  isDenied(): boolean;
+  reason: {
+    isRateLimit(): boolean;
+    isBot?(): boolean;
+  };
+  ip?: {
+    isHosting?(): boolean;
+  };
+  results?: unknown[];
+};
+
+/**
+ * Interface for Arcjet instance that exposes the protect method
+ */
+interface ArcjetProtectable {
+  protect(req: Request, options: ProtectOptionsType): Promise<DecisionType>;
+}
 
 export type RateLimiter = {
   instance: ArcjetInstance;
@@ -106,12 +139,12 @@ export async function enforceRateLimit(
 
   // Validate and normalize userId - be very strict about what constitutes a valid userId
   const rawUserId = options?.userId;
-  const userId = 
+  const userId =
     typeof rawUserId === "string" && rawUserId.trim().length > 0
       ? rawUserId.trim()
       : null;
-  
-  const hasValidUserId = userId !== null && userId !== "";
+
+  const hasValidUserId = userId !== null;
 
   // CRITICAL: If limiter requires userId but we don't have a valid one,
   // we MUST skip rate limiting entirely to avoid Arcjet errors
@@ -122,11 +155,7 @@ export async function enforceRateLimit(
   }
 
   // Build protect options - NEVER include userId field if empty
-  const protectOptions: {
-    requested: number;
-    userId?: string;
-    tags?: string[];
-  } = {
+  const protectOptions: ProtectOptionsType = {
     requested: options?.requested ?? 1,
     tags: options?.tags,
   };
@@ -138,7 +167,8 @@ export async function enforceRateLimit(
   }
 
   try {
-    const decision = await (instance as any).protect(req, protectOptions);
+    const protectableInstance = instance as ArcjetProtectable;
+    const decision = await protectableInstance.protect(req, protectOptions);
 
     if (decision.isDenied()) {
       const status = decision.reason.isRateLimit() ? 429 : 403;
@@ -148,19 +178,31 @@ export async function enforceRateLimit(
 
     return null;
   } catch (error: any) {
-    // Catch any Arcjet errors related to missing or empty userId
-    if (
-      error?.message?.includes("user") || 
-      error?.message?.includes("userId") ||
-      error?.message?.includes("characteristic") ||
-      error?.message?.includes("fingerprint") ||
-      error?.message?.includes("identifier")
-    ) {
-      console.warn("[Arcjet] Error with userId characteristic - allowing request to proceed:", error.message);
+    // Intentional graceful degradation: Only suppress characteristic-specific errors
+    // (e.g., missing userId when required) to allow guest users to proceed without rate limiting.
+    // All other Arcjet errors (configuration, network, validation, etc.) should propagate.
+    const isCharacteristicError =
+      error?.name === "ArcjetCharacteristicError" ||
+      error?.name === "CharacteristicError" ||
+      (typeof error?.message === "string" &&
+        (error.message.toLowerCase().includes("characteristic is required") ||
+          error.message.toLowerCase().includes("characteristic must be") ||
+          error.message.toLowerCase().includes("userId must be") ||
+          error.message.toLowerCase().includes("missing characteristic") ||
+          error.message.toLowerCase().includes("required characteristic")));
+
+    if (isCharacteristicError) {
+      console.warn("[Arcjet] Characteristic error - allowing request to proceed:", error.message);
       // Return null to allow the request to proceed without rate limiting
       return null;
     }
-    // Re-throw other errors
+
+    // All other errors are unexpected and should be logged and rethrown
+    console.error("[Arcjet] Unexpected error during rate limiting:", {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack,
+    });
     throw error;
   }
 }

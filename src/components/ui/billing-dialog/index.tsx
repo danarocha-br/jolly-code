@@ -11,10 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { BillingInfo } from "./components/billing-info";
+import { BillingInfoView } from "./components/billing-info";
 import { PaymentMethod } from "./components/payment-method";
 import { InvoiceList } from "./components/invoice-list";
-import { useBillingInfo, usePaymentMethod, useInvoices } from "@/features/billing/queries";
+import {
+  useBillingInfo,
+  usePaymentMethod,
+  useInvoices,
+} from "@/features/billing/queries";
 import { useUserStore } from "@/app/store";
 import { createPortalSession } from "@/actions/stripe/checkout";
 import { toast } from "sonner";
@@ -23,6 +27,7 @@ import { DowngradeDialog } from "@/components/ui/downgrade-dialog";
 import { useUserPlan } from "@/features/user/queries";
 import { getDowngradeTarget } from "@/lib/utils/downgrade-impact";
 import type { PlanId } from "@/lib/config/plans";
+import { hasActiveSubscription } from "@/lib/services/billing";
 
 type BillingDialogProps = {
   open: boolean;
@@ -36,16 +41,31 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
   const [isDowngradeOpen, setIsDowngradeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const { data: billingInfo, isLoading: isBillingLoading, error: billingError } = useBillingInfo(userId);
-  const hasSubscription = Boolean(billingInfo?.stripeCustomerId);
-  const { data: paymentMethod, isLoading: isPaymentLoading, error: paymentError } = usePaymentMethod(
+  const {
+    data: billingInfo,
+    isLoading: isBillingLoading,
+    error: billingError,
+  } = useBillingInfo(userId);
+  const hasSubscription = hasActiveSubscription(billingInfo);
+  const {
+    data: paymentMethod,
+    isLoading: isPaymentLoading,
+    error: paymentError,
+  } = usePaymentMethod(
     hasSubscription ? billingInfo?.stripeCustomerId || undefined : undefined
   );
-  const { data: invoices, isLoading: isInvoicesLoading, error: invoicesError } = useInvoices(
+  const {
+    data: invoices,
+    isLoading: isInvoicesLoading,
+    error: invoicesError,
+  } = useInvoices(
     hasSubscription ? billingInfo?.stripeCustomerId || undefined : undefined
   );
   const { data: planData } = useUserPlan(userId);
-  const currentPlan = planData as PlanId | undefined;
+  const currentPlan: PlanId | undefined =
+    planData && ["free", "started", "pro"].includes(planData as string)
+      ? (planData as PlanId)
+      : undefined;
 
   const handleOpenPortal = () => {
     startTransition(async () => {
@@ -101,7 +121,7 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
               </div>
             )}
 
-            <BillingInfo
+            <BillingInfoView
               billingInfo={billingInfo || null}
               isLoading={isBillingLoading}
             />
@@ -194,4 +214,3 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
     </>
   );
 }
-

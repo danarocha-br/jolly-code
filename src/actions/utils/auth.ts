@@ -12,6 +12,21 @@ export type AuthResult = {
 }
 
 /**
+ * Custom error class for authentication failures
+ * Allows robust error detection via instanceof checks
+ */
+export class AuthError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = 'AuthError'
+		// Maintains proper stack trace for where our error was thrown (only available on V8)
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, AuthError)
+		}
+	}
+}
+
+/**
  * Ensures the user is authenticated and returns user + supabase client
  * Throws an error if user is not authenticated
  */
@@ -22,11 +37,11 @@ export async function requireAuth(): Promise<AuthResult> {
 
 	if (error) {
 		console.error('Auth error:', error)
-		throw new Error(`Authentication failed: ${error.message}`)
+		throw new AuthError(`Authentication failed: ${error.message}`)
 	}
 
 	if (!user) {
-		throw new Error('User must be authenticated')
+		throw new AuthError('User must be authenticated')
 	}
 
 	return {

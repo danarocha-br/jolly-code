@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import { stripe } from "./stripe";
+import { getStripeClient } from "./stripe";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -12,7 +12,20 @@ export type BillingInfo = {
   subscriptionPeriodEnd: string | null;
   subscriptionCancelAtPeriodEnd: boolean | null;
   stripePriceId: string | null;
+  billingInterval: "monthly" | "yearly" | null;
 };
+
+/**
+ * Check if a subscription is active based on its status
+ * Returns true for 'active' or 'trialing' statuses
+ */
+export function hasActiveSubscription(billingInfo: BillingInfo | null | undefined): boolean {
+  if (!billingInfo?.stripeSubscriptionStatus) {
+    return false;
+  }
+  const status = billingInfo.stripeSubscriptionStatus;
+  return status === "active" || status === "trialing";
+}
 
 export type PaymentMethodInfo = {
   type: string;
@@ -44,13 +57,35 @@ export async function getBillingInfo(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "plan, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, subscription_period_end, subscription_cancel_at_period_end, stripe_price_id"
+      "plan, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, subscription_period_end, subscription_cancel_at_period_end, stripe_price_id, billing_interval"
     )
     .eq("id", userId)
     .single();
 
   if (error || !data) {
+    if (error) {
+      console.error("Error fetching billing info:", error);
+    }
     return null;
+  }
+
+  // Use billing interval from database if available, otherwise fetch from Stripe
+  let billingInterval: "monthly" | "yearly" | null = (data.billing_interval as "monthly" | "yearly" | null) || null;
+  
+  // Fallback to Stripe API if not in database (for backward compatibility)
+  if (!billingInterval && data.stripe_subscription_id) {
+    try {
+      const subscription = await getStripeClient().subscriptions.retrieve(
+        data.stripe_subscription_id
+      );
+      const priceInterval = subscription.items.data[0]?.price?.recurring?.interval;
+      if (priceInterval === "month" || priceInterval === "year") {
+        billingInterval = priceInterval === "month" ? "monthly" : "yearly";
+      }
+    } catch (error) {
+      // If Stripe API call fails, log but don't fail the entire request
+      console.error("Failed to fetch subscription interval from Stripe:", error);
+    }
   }
 
   return {
@@ -61,6 +96,7 @@ export async function getBillingInfo(
     subscriptionPeriodEnd: data.subscription_period_end,
     subscriptionCancelAtPeriodEnd: data.subscription_cancel_at_period_end,
     stripePriceId: data.stripe_price_id,
+    billingInterval,
   };
 }
 
@@ -71,7 +107,7 @@ export async function getPaymentMethod(
   customerId: string
 ): Promise<PaymentMethodInfo | null> {
   try {
-    const customer = await stripe.customers.retrieve(customerId);
+    const customer = await getStripeClient().customers.retrieve(customerId);
 
     if (customer.deleted || typeof customer === "string") {
       return null;
@@ -85,7 +121,7 @@ export async function getPaymentMethod(
           : customer.invoice_settings.default_payment_method.id;
 
       try {
-        const paymentMethod = await stripe.paymentMethods.retrieve(
+        const paymentMethod = await getStripeClient().paymentMethods.retrieve(
           paymentMethodId
         );
 
@@ -129,7 +165,7 @@ export async function getInvoices(
   limit: number = 10
 ): Promise<InvoiceInfo[]> {
   try {
-    const invoices = await stripe.invoices.list({
+    const invoices = await getStripeClient().invoices.list({
       customer: customerId,
       limit,
     });

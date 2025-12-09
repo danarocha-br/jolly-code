@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { stripe } from '@/lib/services/stripe'
+import { getStripeClient } from '@/lib/services/stripe'
 import { redirect } from 'next/navigation'
+import type Stripe from 'stripe'
 
 type Props = {
   searchParams: Promise<{ session_id?: string }>
@@ -27,7 +28,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   }
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    const session = await getStripeClient().checkout.sessions.retrieve(sessionId, {
       expand: ['subscription'],
     })
 
@@ -43,7 +44,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     }
 
     const paymentStatus = session.payment_status
-    const subscriptionStatus = (session.subscription as any)?.status as string | undefined
+    const subscription = session.subscription as Stripe.Subscription | null
+    const subscriptionStatus = subscription?.status
     const plan = session.metadata?.plan ?? 'your plan'
 
     const isPaid = paymentStatus === 'paid' || paymentStatus === 'no_payment_required'
@@ -70,7 +72,17 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       </div>
     )
   } catch (err) {
-    console.error('Failed to verify checkout session', err)
+    const userId = user?.id ?? 'unknown'
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    const errorStack = err instanceof Error ? err.stack : undefined
+    
+    console.error('[CheckoutSuccess] Failed to verify checkout session', {
+      sessionId: sessionId ?? 'unknown',
+      userId,
+      error: errorMessage,
+      stack: errorStack,
+    })
+    
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 text-center">
         <h1 className="text-2xl font-semibold">Couldn&apos;t verify checkout</h1>

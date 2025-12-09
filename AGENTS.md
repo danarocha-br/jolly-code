@@ -32,12 +32,15 @@
 - Stripe webhook endpoint: `/api/webhooks/stripe` - must be configured in Stripe Dashboard with events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `checkout.session.completed`.
 
 ## Usage Limits & Plans
+
 ### Plan Tiers
-- **Free**: 0 saved snippets/animations, 3 slides per animation, 3 public shares
-- **Started** ($5/mo or $3/mo yearly): 50 snippets, 50 animations, 10 slides per animation, 10 folders, 50 video exports, 50 public shares
+
+- **Free**: 0 saved snippets/animations, 3 slides per animation, 50 public shares
+- **Started** ($5/mo or $3/mo yearly): 50 snippets, 50 animations, 10 slides per animation, 10 folders, 50 video exports, 1,000 public shares
 - **Pro** ($9/mo or $7/mo yearly): Unlimited everything + watermark removal + priority support
 
 ### Implementation Details
+
 - Plan configuration lives in `src/lib/config/plans.ts` with helper functions (`getPlanConfig`, `isLimitReached`, `getUsagePercentage`, etc.)
 - Database schema in migration `supabase/migrations/20251207103258_add_usage_limits_and_plans.sql`:
   - `profiles` table has plan columns: `plan` (enum), `plan_updated_at`, usage counters, and Stripe fields
@@ -51,6 +54,7 @@
 - Animation store (`src/app/store/animation-store.ts`) enforces slide limits via `addSlide({ maxSlides, onLimit })` parameter
 
 ### Stripe Integration
+
 - Service layer: `src/lib/services/stripe.ts` handles customer management, checkout sessions, subscriptions, and webhooks
 - Client-side: `src/lib/stripe-client.ts` loads Stripe.js; `src/actions/stripe/checkout.ts` provides `createCheckoutSession()` and `createPortalSession()` server actions
 - API endpoints:

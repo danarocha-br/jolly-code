@@ -19,6 +19,18 @@ const getRequestOrigin = (request: NextRequest) => {
   return `${forwardedProto}://${forwardedHost}`;
 };
 
+const normalizeOrigin = (origin: string | null): string | null => {
+  if (!origin) return null;
+  try {
+    const url = new URL(origin);
+    // Normalize to scheme+host+port (port is included if not default)
+    const port = url.port ? `:${url.port}` : "";
+    return `${url.protocol}//${url.hostname}${port}`;
+  } catch {
+    return null;
+  }
+};
+
 const enforceCsrf = (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
@@ -41,15 +53,23 @@ const enforceCsrf = (request: NextRequest) => {
     }
   })();
 
+  // Only include trusted origins from configuration
   const allowedOrigins = [
     process.env.CORS_ALLOWED_ORIGIN ?? "",
     process.env.NEXT_PUBLIC_APP_URL ?? "",
-    requestOrigin ?? "",
-  ].filter(Boolean);
+  ]
+    .filter(Boolean)
+    .map(normalizeOrigin)
+    .filter((origin): origin is string => origin !== null);
 
-  const candidate = requestOrigin ?? refererOrigin;
+  const candidate = normalizeOrigin(requestOrigin ?? refererOrigin);
 
   if (!candidate) {
+    // Reject non-safe methods when both origin and referer are missing
+    if (!SAFE_METHODS.has(request.method)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+    }
+    // Allow safe methods to proceed
     return null;
   }
 

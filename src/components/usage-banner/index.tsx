@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { UsageSummary } from "@/lib/services/usage-limits";
+import { hasUnlimitedPlan } from "@/lib/services/usage-limits";
 import {
   getMaxUsagePercentage,
   getUsageThreshold,
@@ -85,7 +86,8 @@ export function UsageBanner({ usage, onDismiss, className }: UsageBannerProps) {
   }, [threshold, resourceText, maxPercentage]);
 
   // Early returns for performance - after all hooks
-  if (isDismissed || usage?.plan === "pro" || !usage || !threshold || !content) {
+  // Hide banner for unlimited plans (all resource limits are null/Infinity)
+  if (isDismissed || hasUnlimitedPlan(usage) || !usage || !threshold || !content) {
     return null;
   }
 

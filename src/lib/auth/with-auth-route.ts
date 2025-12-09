@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import type { User, SupabaseClient } from '@supabase/supabase-js'
 
-type RouteAuthContext = {
+export type RouteAuthContext = {
 	request: NextRequest
 	supabase: SupabaseClient
 	user: User

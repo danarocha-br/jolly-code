@@ -26,13 +26,15 @@ import {
   createSnippet,
   removeSnippet,
   updateSnippet,
+  type CreateSnippetProps,
 } from "@/features/snippets/queries";
-import { Collection } from "@/features/snippets/dtos";
+import { Collection, Snippet } from "@/features/snippets/dtos";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import { analytics } from "@/lib/services/tracking";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
+import { ActionResult } from "@/actions/utils/action-result";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -61,6 +63,55 @@ const unfocusEditor = hotKeyList.filter(
   (item) => item.label === "Unfocus code editor"
 );
 
+/**
+ * Determines if an error indicates an upgrade/plan limit condition.
+ * Checks for explicit error codes and upgrade-related keywords in the error message.
+ */
+function isUpgradeError(error: unknown): boolean {
+  if (!error) return false;
+
+  // Handle error objects with code or type properties
+  if (typeof error === "object" && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    
+    // Check for explicit error codes
+    if (errorObj.code === "UPGRADE_REQUIRED" || errorObj.code === "PLAN_LIMIT_EXCEEDED") {
+      return true;
+    }
+    
+    // Check error.type for upgrade markers
+    if (typeof errorObj.type === "string" && errorObj.type.toLowerCase().includes("upgrade")) {
+      return true;
+    }
+
+    // Extract message from error object if available
+    if (typeof errorObj.message === "string") {
+      error = errorObj.message;
+    } else if (typeof errorObj.error === "string") {
+      error = errorObj.error;
+    }
+  }
+
+  // Handle string errors
+  if (typeof error !== "string") {
+    return false;
+  }
+
+  const errorLower = error.toLowerCase();
+
+  // Check for explicit upgrade-related keywords
+  const upgradeKeywords = [
+    "upgrade",
+    "limit reached",
+    "plan limit",
+    "reached your",
+    "exceeded",
+    "over limit",
+  ];
+
+  return upgradeKeywords.some((keyword) => errorLower.includes(keyword));
+}
+
 export const Editor = forwardRef<any, EditorProps>(
   (
     {
@@ -75,6 +126,7 @@ export const Editor = forwardRef<any, EditorProps>(
     ref
   ) => {
     const editorRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const { theme } = useTheme();
     const memoizedTheme = useMemo(() => theme, [theme]);
@@ -84,8 +136,44 @@ export const Editor = forwardRef<any, EditorProps>(
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
       null
     );
+    const [isExporting, setIsExporting] = useState(false);
     const queryClient = useQueryClient();
     const queryKey = ["collections"];
+
+    // Sync data-exporting attribute with DOM changes from export menu
+    // The export menu (src/features/export/export-menu.tsx) directly manipulates
+    // the DOM attribute, so we use MutationObserver to sync React state.
+    // This ensures the watermark visibility (group-data-[exporting=true]/export:flex)
+    // works correctly during exports.
+    useEffect(() => {
+      if (!containerRef.current) return;
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (
+            mutation.type === "attributes" &&
+            mutation.attributeName === "data-exporting"
+          ) {
+            const element = mutation.target as HTMLElement;
+            const exporting = element.dataset.exporting === "true";
+            setIsExporting(exporting);
+          }
+        });
+      });
+
+      observer.observe(containerRef.current, {
+        attributes: true,
+        attributeFilter: ["data-exporting"],
+      });
+
+      // Initial check
+      const initialValue = containerRef.current.dataset.exporting === "true";
+      setIsExporting(initialValue);
+
+      return () => {
+        observer.disconnect();
+      };
+    }, []);
 
     const user = useUserStore((state) => state.user);
 
@@ -225,7 +313,7 @@ export const Editor = forwardRef<any, EditorProps>(
       }
     });
 
-    const { mutate: handleCreateSnippet } = useMutation({
+    const { mutate: handleCreateSnippet } = useMutation<ActionResult<Snippet>, Error, CreateSnippetProps>({
       mutationFn: createSnippet,
 
       onMutate: async () => {
@@ -252,17 +340,21 @@ export const Editor = forwardRef<any, EditorProps>(
         if (context) {
           queryClient.setQueryData(queryKey, context.previousSnippets);
         }
-        if (err instanceof Error && err.message.toLowerCase().includes("upgrade")) {
+        // Only open upgrade dialog if error indicates upgrade/limit condition
+        if (isUpgradeError(err)) {
           setIsUpgradeOpen(true);
         }
       },
 
       onSettled: (data, error, variables, context) => {
-        const actionResult: any = data as any;
+        const actionResult: ActionResult<Snippet> | undefined = data;
 
         if (actionResult?.error) {
           toast.error(actionResult.error);
-          setIsUpgradeOpen(true);
+          // Only open upgrade dialog if error indicates upgrade/limit condition
+          if (isUpgradeError(actionResult.error)) {
+            setIsUpgradeOpen(true);
+          }
         }
 
         if (actionResult && !actionResult.error && actionResult.data) {
@@ -433,9 +525,17 @@ export const Editor = forwardRef<any, EditorProps>(
             "relative overflow-hidden group/export"
           )}
           style={{ padding }}
-          ref={ref}
+          ref={(node) => {
+            // Merge refs: forwardRef and containerRef
+            if (typeof ref === "function") {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+            containerRef.current = node;
+          }}
           id={currentEditor?.id || "editor"}
-          data-exporting="false"
+          data-exporting={isExporting ? "true" : "false"}
         >
           {!user ? (
             <LoginDialog>

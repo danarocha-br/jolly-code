@@ -193,6 +193,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5) Increment/decrement helpers use usage_limits as the source of truth and mirror into profiles for legacy reads
 
+-- Note: PL/pgSQL functions execute within a single transaction and the two UPDATEs are atomic
+-- (no explicit transaction wrapper is needed), so there is no race condition.
 CREATE OR REPLACE FUNCTION increment_snippet_count(p_user_id UUID)
 RETURNS VOID AS $$
 BEGIN
@@ -202,6 +204,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Note: PL/pgSQL functions execute within a single transaction and the two UPDATEs are atomic
+-- (no explicit transaction wrapper is needed), so there is no race condition.
 CREATE OR REPLACE FUNCTION increment_animation_count(p_user_id UUID)
 RETURNS VOID AS $$
 BEGIN

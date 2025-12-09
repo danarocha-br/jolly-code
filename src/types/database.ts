@@ -221,6 +221,7 @@ export type Database = {
         Row: {
           animation_count: number
           avatar_url: string | null
+          billing_interval: string | null
           created_at: string
           email: string | null
           folder_count: number
@@ -245,6 +246,7 @@ export type Database = {
         Insert: {
           animation_count?: number
           avatar_url?: string | null
+          billing_interval?: string | null
           created_at?: string
           email?: string | null
           folder_count?: number
@@ -269,6 +271,7 @@ export type Database = {
         Update: {
           animation_count?: number
           avatar_url?: string | null
+          billing_interval?: string | null
           created_at?: string
           email?: string | null
           folder_count?: number
@@ -661,7 +664,13 @@ export type Database = {
           p_owner_id: string
           p_viewer_token: string
         }
-        Returns: Json
+        Returns: {
+          allowed: boolean | null
+          counted: boolean | null
+          current: number | null
+          max: number | null
+          plan: Database["public"]["Enums"]["plan_type"] | null
+        }
       }
       reset_public_share_usage: {
         Args: {

@@ -80,6 +80,10 @@ export function CreateCollectionDialog({
     folderLimit.current >= folderLimit.max;
 
   function onSubmit(data: z.infer<typeof formSchema>) {
+    if (!usage) {
+      // Usage data not loaded yet - optionally wait or show loading state
+      return;
+    }
     if (folderLimitReached) {
       analytics.track("limit_reached", {
         limit_type: "folders",
@@ -95,9 +99,13 @@ export function CreateCollectionDialog({
       return;
     }
 
+    if (!user?.id) {
+      return;
+    }
+
     handleCreateCollection({
       title: data.title,
-      user_id: user?.id ?? "",
+      user_id: user?.id,
     });
   }
 
@@ -132,7 +140,9 @@ export function CreateCollectionDialog({
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Use collections to organize your snippets.</DialogTitle>
+            <DialogTitle>
+              Use collections to organize your snippets.
+            </DialogTitle>
           </DialogHeader>
 
           <form
@@ -145,7 +155,10 @@ export function CreateCollectionDialog({
                 name="title"
                 control={form.control}
                 render={({ field, fieldState }) => (
-                  <Field orientation="horizontal" data-invalid={fieldState.invalid}>
+                  <Field
+                    orientation="horizontal"
+                    data-invalid={fieldState.invalid}
+                  >
                     <FieldLabel
                       className="whitespace-nowrap"
                       htmlFor="collection-title"

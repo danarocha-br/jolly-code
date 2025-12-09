@@ -238,7 +238,14 @@ export async function updateAnimation({
 }: Pick<Animation, 'id' | 'user_id' | 'supabase'> & Partial<Pick<Animation, 'title' | 'slides' | 'settings' | 'url'>>): Promise<Animation[]> {
   try {
     // Build update object conditionally - only include fields that are provided
-    const updateData: any = {
+    const updateData: Partial<{
+      user_id: string;
+      updated_at: string;
+      title: string;
+      slides: Animation['slides'];
+      settings: Animation['settings'];
+      url: string | null;
+    }> = {
       user_id,
       updated_at: new Date().toISOString(),
     };

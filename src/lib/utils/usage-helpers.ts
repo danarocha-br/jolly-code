@@ -19,50 +19,25 @@ export type ResourcePercentage = {
  */
 export function calculateAllUsagePercentages(usage: UsageSummary): ResourcePercentage[] {
   const resources: ResourcePercentage[] = [];
+  
+  const resourceKeys: Array<ResourcePercentage["type"]> = [
+    "snippets",
+    "animations",
+    "folders",
+    "videoExports",
+    "publicShares",
+  ];
 
-  if (usage.snippets.max !== null && usage.snippets.max !== Infinity) {
-    resources.push({
-      type: "snippets",
-      percentage: getUsagePercentage(usage.snippets.current, usage.snippets.max),
-      current: usage.snippets.current,
-      max: usage.snippets.max,
-    });
-  }
-
-  if (usage.animations.max !== null && usage.animations.max !== Infinity) {
-    resources.push({
-      type: "animations",
-      percentage: getUsagePercentage(usage.animations.current, usage.animations.max),
-      current: usage.animations.current,
-      max: usage.animations.max,
-    });
-  }
-
-  if (usage.folders.max !== null && usage.folders.max !== Infinity) {
-    resources.push({
-      type: "folders",
-      percentage: getUsagePercentage(usage.folders.current, usage.folders.max),
-      current: usage.folders.current,
-      max: usage.folders.max,
-    });
-  }
-
-  if (usage.videoExports.max !== null && usage.videoExports.max !== Infinity) {
-    resources.push({
-      type: "videoExports",
-      percentage: getUsagePercentage(usage.videoExports.current, usage.videoExports.max),
-      current: usage.videoExports.current,
-      max: usage.videoExports.max,
-    });
-  }
-
-  if (usage.publicShares.max !== null && usage.publicShares.max !== Infinity) {
-    resources.push({
-      type: "publicShares",
-      percentage: getUsagePercentage(usage.publicShares.current, usage.publicShares.max),
-      current: usage.publicShares.current,
-      max: usage.publicShares.max,
-    });
+  for (const key of resourceKeys) {
+    const resource = usage[key];
+    if (resource.max !== null && resource.max !== Infinity) {
+      resources.push({
+        type: key,
+        percentage: getUsagePercentage(resource.current, resource.max),
+        current: resource.current,
+        max: resource.max,
+      });
+    }
   }
 
   return resources;

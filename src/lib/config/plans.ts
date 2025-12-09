@@ -1,5 +1,18 @@
+/**
+ * WARNING: This file is parsed by scripts/validate-plan-limits.js
+ * 
+ * Maintainers: Be careful when reordering or reformatting plan definitions,
+ * as the validation script uses regex extraction. Changes to the structure
+ * or formatting may break the extractor.
+ */
 export type PlanId = 'free' | 'started' | 'pro';
 export type BillingInterval = 'monthly' | 'yearly';
+
+/**
+ * Plan order from lowest to highest tier
+ * Used for comparing plan tiers and determining upgrade/downgrade paths
+ */
+export const planOrder: PlanId[] = ['free', 'started', 'pro'];
 
 export type PlanConfig = {
   id: PlanId;
@@ -70,12 +83,12 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       monthly: {
         amount: 500, // $5.00
         displayAmount: '$5',
-        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_STARTED_MONTHLY_PRICE_ID || '',
+        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID || '',
       },
       yearly: {
         amount: 3600, // $36/year ($3/month)
         displayAmount: '$3',
-        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_STARTED_YEARLY_PRICE_ID || '',
+        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID || '',
       },
     },
   },

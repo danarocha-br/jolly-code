@@ -51,7 +51,7 @@ CREATE OR REPLACE FUNCTION get_plan_limits(plan_type plan_type)
 RETURNS JSON AS $$
 BEGIN
   RETURN CASE plan_type
-    WHEN 'free' THEN '{"maxSnippets": 0, "maxAnimations": 0, "maxSlidesPerAnimation": 3, "maxSnippetsFolder": 0, "maxVideoExportCount": 0, "shareAsPublicURL": 3}'::json
+    WHEN 'free' THEN '{"maxSnippets": 10, "maxAnimations": 10, "maxSlidesPerAnimation": 5, "maxSnippetsFolder": 0, "maxVideoExportCount": 0, "shareAsPublicURL": 3}'::json
     WHEN 'started' THEN '{"maxSnippets": 50, "maxAnimations": 50, "maxSlidesPerAnimation": 10, "maxSnippetsFolder": 10, "maxVideoExportCount": 50, "shareAsPublicURL": 50}'::json
     WHEN 'pro' THEN '{"maxSnippets": null, "maxAnimations": null, "maxSlidesPerAnimation": null, "maxSnippetsFolder": null, "maxVideoExportCount": null, "shareAsPublicURL": null}'::json
   END;
@@ -205,7 +205,7 @@ BEGIN
   WHERE id = p_user_id;
 
   v_max_limit := CASE v_plan
-    WHEN 'free' THEN 3
+    WHEN 'free' THEN 5
     WHEN 'started' THEN 10
     WHEN 'pro' THEN NULL
   END;
@@ -299,6 +299,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Function to decrement video export count
+CREATE OR REPLACE FUNCTION decrement_video_export_count(p_user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE public.profiles
+  SET video_export_count = GREATEST(0, video_export_count - 1)
+  WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Function to decrement public share count
 CREATE OR REPLACE FUNCTION decrement_public_share_count(p_user_id UUID)
 RETURNS VOID AS $$
@@ -352,6 +362,7 @@ GRANT EXECUTE ON FUNCTION increment_public_share_count(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION decrement_snippet_count(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION decrement_animation_count(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION decrement_folder_count(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION decrement_video_export_count(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION decrement_public_share_count(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_usage(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_plan_limits(plan_type) TO authenticated;

@@ -14,14 +14,16 @@ const getStripeInstance = () => {
 
 // Lazy initialization
 let stripeInstance: Stripe | null = null;
-export const stripe = new Proxy({} as Stripe, {
-  get: (target, prop) => {
-    if (!stripeInstance) {
-      stripeInstance = getStripeInstance();
-    }
-    return (stripeInstance as any)[prop];
-  },
-});
+
+/**
+ * Get the Stripe client instance, initializing it on first call
+ */
+export function getStripeClient(): Stripe {
+  if (!stripeInstance) {
+    stripeInstance = getStripeInstance();
+  }
+  return stripeInstance;
+}
 
 /**
  * Get or create a Stripe customer for a user
@@ -35,18 +37,36 @@ export async function getOrCreateStripeCustomer({
   email: string;
   name?: string;
 }): Promise<Stripe.Customer> {
-  // Search for existing customer by metadata
-  const existingCustomers = await stripe.customers.list({
+  // First, search for existing customer by metadata.userId (most reliable)
+  const customersByMetadata = await getStripeClient().customers.search({
+    query: `metadata['userId']:'${userId}'`,
+    limit: 1,
+  });
+
+  if (customersByMetadata.data.length > 0) {
+    const customer = customersByMetadata.data[0];
+    // Verify customer is not deleted
+    if (!customer.deleted) {
+      return customer;
+    }
+  }
+
+  // Fallback to email-based lookup
+  const customersByEmail = await getStripeClient().customers.list({
     email,
     limit: 1,
   });
 
-  if (existingCustomers.data.length > 0) {
-    return existingCustomers.data[0];
+  if (customersByEmail.data.length > 0) {
+    const customer = customersByEmail.data[0];
+    // Verify customer is not deleted and belongs to our app
+    if (!customer.deleted && customer.metadata?.userId === userId) {
+      return customer;
+    }
   }
 
-  // Create new customer
-  const customer = await stripe.customers.create({
+  // Create new customer if none found
+  const customer = await getStripeClient().customers.create({
     email,
     name,
     metadata: {
@@ -63,8 +83,8 @@ export async function getOrCreateStripeCustomer({
 export function getStripePriceId(plan: PlanId, interval: 'monthly' | 'yearly'): string {
   const envVarMap = {
     started: {
-      monthly: process.env.NEXT_PUBLIC_STRIPE_STARTED_MONTHLY_PRICE_ID,
-      yearly: process.env.NEXT_PUBLIC_STRIPE_STARTED_YEARLY_PRICE_ID,
+      monthly: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID,
     },
     pro: {
       monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
@@ -101,7 +121,7 @@ export async function createCheckoutSession({
   cancelUrl: string;
   metadata?: Record<string, string>;
 }): Promise<Stripe.Checkout.Session> {
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripeClient().checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
@@ -134,7 +154,7 @@ export async function createCustomerPortalSession({
   customerId: string;
   returnUrl: string;
 }): Promise<Stripe.BillingPortal.Session> {
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripeClient().billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
   });
@@ -148,7 +168,7 @@ export async function createCustomerPortalSession({
 export async function cancelSubscriptionAtPeriodEnd(
   subscriptionId: string
 ): Promise<Stripe.Subscription> {
-  return await stripe.subscriptions.update(subscriptionId, {
+  return await getStripeClient().subscriptions.update(subscriptionId, {
     cancel_at_period_end: true,
   });
 }
@@ -159,7 +179,7 @@ export async function cancelSubscriptionAtPeriodEnd(
 export async function resumeSubscription(
   subscriptionId: string
 ): Promise<Stripe.Subscription> {
-  return await stripe.subscriptions.update(subscriptionId, {
+  return await getStripeClient().subscriptions.update(subscriptionId, {
     cancel_at_period_end: false,
   });
 }
@@ -170,7 +190,7 @@ export async function resumeSubscription(
 export async function getSubscription(
   subscriptionId: string
 ): Promise<Stripe.Subscription> {
-  return await stripe.subscriptions.retrieve(subscriptionId);
+  return await getStripeClient().subscriptions.retrieve(subscriptionId);
 }
 
 /**
@@ -183,15 +203,24 @@ export async function updateSubscriptionPrice({
   subscriptionId: string;
   newPriceId: string;
 }): Promise<Stripe.Subscription> {
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
 
-  return await stripe.subscriptions.update(subscriptionId, {
-    items: [
-      {
-        id: subscription.items.data[0].id,
-        price: newPriceId,
-      },
-    ],
+  // Defensively validate subscription items
+  if (!subscription.items?.data || subscription.items.data.length === 0) {
+    throw new Error(
+      `Subscription ${subscriptionId} has no items. Cannot update price.`
+    );
+  }
+
+  // If multiple items exist, update all of them to the new price
+  // (typically subscriptions have one item, but handle multiple for safety)
+  const itemsToUpdate = subscription.items.data.map((item) => ({
+    id: item.id,
+    price: newPriceId,
+  }));
+
+  return await getStripeClient().subscriptions.update(subscriptionId, {
+    items: itemsToUpdate,
     proration_behavior: 'create_prorations',
   });
 }
@@ -204,5 +233,5 @@ export function constructWebhookEvent(
   signature: string,
   secret: string
 ): Stripe.Event {
-  return stripe.webhooks.constructEvent(payload, signature, secret);
+  return getStripeClient().webhooks.constructEvent(payload, signature, secret);
 }

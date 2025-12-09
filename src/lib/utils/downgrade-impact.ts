@@ -1,5 +1,5 @@
 import type { PlanId } from "@/lib/config/plans";
-import { getPlanConfig, PLANS } from "@/lib/config/plans";
+import { getPlanConfig } from "@/lib/config/plans";
 import type { UsageSummary } from "@/lib/services/usage-limits";
 
 export type DowngradeImpact = {
@@ -44,8 +44,12 @@ export function calculateDowngradeImpact(
   currentUsage: UsageSummary,
   targetPlan: PlanId
 ): DowngradeImpact {
-  const currentPlan = currentUsage.plan;
   const targetPlanConfig = getPlanConfig(targetPlan);
+
+  // Helper to convert Infinity to null for max values
+  const toNullableMax = (value: number): number | null => {
+    return value === Infinity ? null : value;
+  };
 
   // Helper to calculate over-limit for a resource
   const calculateOverLimit = (
@@ -59,49 +63,39 @@ export function calculateDowngradeImpact(
     return { overLimit, willBeOverLimit: overLimit > 0 };
   };
 
+  const snippetsMax = toNullableMax(targetPlanConfig.maxSnippets);
   const snippets = {
     current: currentUsage.snippets.current,
-    max: targetPlanConfig.maxSnippets === Infinity ? null : targetPlanConfig.maxSnippets,
-    ...calculateOverLimit(
-      currentUsage.snippets.current,
-      targetPlanConfig.maxSnippets === Infinity ? null : targetPlanConfig.maxSnippets
-    ),
+    max: snippetsMax,
+    ...calculateOverLimit(currentUsage.snippets.current, snippetsMax),
   };
 
+  const animationsMax = toNullableMax(targetPlanConfig.maxAnimations);
   const animations = {
     current: currentUsage.animations.current,
-    max: targetPlanConfig.maxAnimations === Infinity ? null : targetPlanConfig.maxAnimations,
-    ...calculateOverLimit(
-      currentUsage.animations.current,
-      targetPlanConfig.maxAnimations === Infinity ? null : targetPlanConfig.maxAnimations
-    ),
+    max: animationsMax,
+    ...calculateOverLimit(currentUsage.animations.current, animationsMax),
   };
 
+  const foldersMax = toNullableMax(targetPlanConfig.maxSnippetsFolder);
   const folders = {
     current: currentUsage.folders.current,
-    max: targetPlanConfig.maxSnippetsFolder === Infinity ? null : targetPlanConfig.maxSnippetsFolder,
-    ...calculateOverLimit(
-      currentUsage.folders.current,
-      targetPlanConfig.maxSnippetsFolder === Infinity ? null : targetPlanConfig.maxSnippetsFolder
-    ),
+    max: foldersMax,
+    ...calculateOverLimit(currentUsage.folders.current, foldersMax),
   };
 
+  const videoExportsMax = toNullableMax(targetPlanConfig.maxVideoExportCount);
   const videoExports = {
     current: currentUsage.videoExports.current,
-    max: targetPlanConfig.maxVideoExportCount === Infinity ? null : targetPlanConfig.maxVideoExportCount,
-    ...calculateOverLimit(
-      currentUsage.videoExports.current,
-      targetPlanConfig.maxVideoExportCount === Infinity ? null : targetPlanConfig.maxVideoExportCount
-    ),
+    max: videoExportsMax,
+    ...calculateOverLimit(currentUsage.videoExports.current, videoExportsMax),
   };
 
+  const publicSharesMax = toNullableMax(targetPlanConfig.shareAsPublicURL);
   const publicShares = {
     current: currentUsage.publicShares.current,
-    max: targetPlanConfig.shareAsPublicURL === Infinity ? null : targetPlanConfig.shareAsPublicURL,
-    ...calculateOverLimit(
-      currentUsage.publicShares.current,
-      targetPlanConfig.shareAsPublicURL === Infinity ? null : targetPlanConfig.shareAsPublicURL
-    ),
+    max: publicSharesMax,
+    ...calculateOverLimit(currentUsage.publicShares.current, publicSharesMax),
   };
 
   const hasAnyImpact =

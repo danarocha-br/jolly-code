@@ -16,12 +16,10 @@ import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { LoginDialog } from "@/features/login";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
-import { useUserUsage } from "@/features/user/queries";
-import { getPlanConfig, type PlanId } from "@/lib/config/plans";
-import type { UsageSummary } from "@/lib/services/usage-limits";
-import { createClient } from "@/utils/supabase/client";
+import type { PlanId } from "@/lib/config/plans";
 import { ExportOverlay } from "./share-dialog/export-overlay";
 import { GifExporter } from "./gif-exporter";
+import { useVideoExport } from "./hooks/use-video-export";
 
 export const AnimationDownloadMenu = () => {
   const user = useUserStore((state) => state.user);
@@ -36,12 +34,8 @@ export const AnimationDownloadMenu = () => {
 
   const loadTimestampRef = useRef<number | null>(null);
   const firstExportTrackedRef = useRef(false);
-  const exportCountIncrementedRef = useRef(false);
 
-  // Export state
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [cancelExport, setCancelExport] = useState(false);
+  // UI state
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentExportFormat, setCurrentExportFormat] = useState<"mp4" | "webm" | "gif">("mp4");
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
@@ -51,9 +45,27 @@ export const AnimationDownloadMenu = () => {
     max?: number | null;
     plan?: PlanId;
   }>({});
-  const supabase = useMemo(() => createClient(), []);
-  const { data: usage } = useUserUsage(user?.id ?? undefined);
-  const typedUsage = usage as UsageSummary | undefined;
+
+  const {
+    verifyAllowance,
+    startExport,
+    cancelExportFn,
+    handleExportComplete,
+    handleExportError,
+    incrementAndVerifyExportLimit,
+    decrementExportCount,
+    isExporting,
+    exportProgress,
+    setExportProgress,
+    cancelExport,
+    resetExport,
+  } = useVideoExport({
+    user,
+    onUpgradePrompt: (context) => {
+      setUpgradeContext(context);
+      setIsUpgradeOpen(true);
+    },
+  });
 
   const serializedSlides = useMemo(
     () =>
@@ -68,117 +80,12 @@ export const AnimationDownloadMenu = () => {
     [slides]
   );
 
-	// Track load timestamp
-	useEffect(() => {
-		if (!loadTimestampRef.current) {
-			loadTimestampRef.current = Date.now();
-		}
-	}, []);
-
-  const buildVideoLimitMessage = ({
-    plan,
-    current,
-    max,
-  }: {
-    plan?: PlanId | null;
-    current?: number | null;
-    max?: number | null;
-  }) => {
-    const safePlan = plan ?? "free";
-    const planConfig = getPlanConfig(safePlan);
-    const effectiveMax =
-      typeof max === "number"
-        ? max
-        : planConfig.maxVideoExportCount === Infinity
-          ? null
-          : planConfig.maxVideoExportCount;
-
-    if (!effectiveMax) {
-      return "Video export limit reached. Please upgrade your plan.";
+  // Track load timestamp
+  useEffect(() => {
+    if (!loadTimestampRef.current) {
+      loadTimestampRef.current = Date.now();
     }
-
-    return `You've reached your video export limit (${Math.min(
-      current ?? effectiveMax,
-      effectiveMax
-    )}/${effectiveMax}). Upgrade to continue exporting videos.`;
-  };
-
-  const openUpgradeForVideoExports = (payload: { current?: number; max?: number | null; plan?: PlanId }) => {
-    setUpgradeContext(payload);
-    setIsUpgradeOpen(true);
-  };
-
-  const verifyVideoExportAllowance = async () => {
-    if (!user?.id) return false;
-
-    const plan = typedUsage?.plan ?? "free";
-    const current = typedUsage?.videoExports?.current ?? 0;
-    const max = typedUsage?.videoExports?.max ?? getPlanConfig(plan).maxVideoExportCount ?? 0;
-
-    if (max !== null && max <= 0) {
-      trackAnimationEvent("upgrade_prompt_shown", user, {
-        limit_type: "video_exports",
-        trigger: "download_menu",
-      });
-      openUpgradeForVideoExports({ current, max, plan });
-      return false;
-    }
-
-    // If we know the user already exhausted the limit from cached usage, prompt immediately.
-    if (max !== null && current >= max) {
-      trackAnimationEvent("limit_reached", user, {
-        limit_type: "video_exports",
-        current,
-        max,
-      });
-      trackAnimationEvent("upgrade_prompt_shown", user, {
-        limit_type: "video_exports",
-        trigger: "download_menu",
-      });
-      openUpgradeForVideoExports({ current, max, plan });
-      return false;
-    }
-
-    const { data, error } = await supabase.rpc("check_video_export_limit", {
-      p_user_id: user.id,
-    });
-
-    if (error) {
-      console.error("Error checking video export limit:", error);
-      // If the function is missing (404) or fails, fall back to local plan limits to avoid a silent bypass.
-      if (max !== null && current >= max) {
-        openUpgradeForVideoExports({ current, max, plan });
-        return false;
-      }
-      toast.error("Unable to verify video export limit. Please try again.");
-      return false;
-    }
-
-    const canExport = Boolean(data?.canExport ?? data?.can_export ?? false);
-    const rpcPlan = (data?.plan as PlanId | undefined) ?? plan;
-    const rpcCurrent = typeof data?.current === "number" ? data.current : current;
-    const rpcMax =
-      data?.max === null || typeof data?.max === "undefined" ? max : Number(data.max);
-
-    if (!canExport) {
-      trackAnimationEvent("export_blocked_limit", user, {
-        limit: "video_exports",
-        plan: rpcPlan,
-        current: rpcCurrent,
-        max: rpcMax,
-        source: "download_menu",
-      });
-      trackAnimationEvent("upgrade_prompt_shown", user, {
-        limit_type: "video_exports",
-        trigger: "download_menu",
-      });
-      openUpgradeForVideoExports({ plan: rpcPlan, current: rpcCurrent, max: rpcMax });
-      toast.error(buildVideoLimitMessage({ plan: rpcPlan, current: rpcCurrent, max: rpcMax }));
-      return false;
-    }
-
-    return true;
-  };
+  }, []);
 
   const handleExport = async (format: "mp4" | "webm" | "gif" = "mp4") => {
     if (!user) {
@@ -195,124 +102,80 @@ export const AnimationDownloadMenu = () => {
       return;
     }
 
-    const allowed = await verifyVideoExportAllowance();
-    if (!allowed) return;
+    // Perform optimistic atomic increment before starting export to prevent race conditions
+    const incrementResult = await incrementAndVerifyExportLimit();
+    if (!incrementResult.success) {
+      // If increment failed or limit exceeded, show upgrade prompt if context provided
+      if (incrementResult.context) {
+        setUpgradeContext(incrementResult.context);
+        setIsUpgradeOpen(true);
+        toast.error(
+          `You've reached your video export limit (${incrementResult.context.current}/${incrementResult.context.max}). Upgrade to continue exporting videos.`
+        );
+      } else {
+        toast.error("Unable to start export. Please try again.");
+      }
+      return;
+    }
 
+    // Increment succeeded and limit is valid, proceed with export
     setCurrentExportFormat(format);
     setDropdownOpen(false);
-    setIsExporting(true);
-    setExportProgress(0);
-    setCancelExport(false);
-    exportCountIncrementedRef.current = false;
+
     const isFirstExport = !firstExportTrackedRef.current;
     if (isFirstExport) {
       firstExportTrackedRef.current = true;
     }
-    trackAnimationEvent("export_started", user, {
-      format: format,
-      resolution: animationSettings.resolution,
-      slide_count: serializedSlides.length,
-      total_duration: totalDuration,
-      transition_type: animationSettings.transitionType,
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-      time_to_first_export_ms:
-        isFirstExport && loadTimestampRef.current !== null
-          ? Date.now() - loadTimestampRef.current
-          : undefined,
-      source: "download_menu",
-    });
+
+    try {
+      startExport({
+        format,
+        resolution: animationSettings.resolution,
+        slide_count: serializedSlides.length,
+        total_duration: totalDuration,
+        transition_type: animationSettings.transitionType,
+        time_to_first_export_ms:
+          isFirstExport && loadTimestampRef.current !== null
+            ? Date.now() - loadTimestampRef.current
+            : undefined,
+      });
+    } catch (error) {
+      // If starting export fails, rollback the optimistic increment
+      await decrementExportCount();
+      resetExport();
+      toast.error("Failed to start export. Please try again.");
+      console.error("Error starting export:", error);
+    }
   };
 
   const handleCancelExport = () => {
-    setCancelExport(true);
-    trackAnimationEvent("export_cancelled", user, {
+    cancelExportFn({
       progress_percent: Math.round(exportProgress * 100),
       format: currentExportFormat,
       resolution: animationSettings.resolution,
       slide_count: serializedSlides.length,
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-      source: "download_menu",
     });
   };
 
   const onExportComplete = async (blob: Blob) => {
-    try {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `animation-${Date.now()}.${currentExportFormat}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      trackAnimationEvent("export_completed", user, {
-        format: currentExportFormat,
-        resolution: animationSettings.resolution,
-        slide_count: serializedSlides.length,
-        file_size_mb: Number((blob.size / (1024 * 1024)).toFixed(2)),
-        duration_seconds: totalDuration,
-        transition_type: animationSettings.transitionType,
-        export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-        transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-        source: "download_menu",
-      });
-
-      // Increment count only after everything succeeds
-      if (user?.id) {
-        const { error } = await supabase.rpc("increment_video_export_count", {
-          p_user_id: user.id,
-        });
-
-        if (error) {
-          console.error("Error incrementing video export count:", error);
-          // If increment fails, we don't mark it as incremented
-        } else {
-          exportCountIncrementedRef.current = true;
-        }
-      }
-
-      toast.success(`${currentExportFormat.toUpperCase()} downloaded successfully.`);
-    } finally {
-      setIsExporting(false);
-      setExportProgress(0);
-      setCancelExport(false);
-    }
+    await handleExportComplete(blob, {
+      format: currentExportFormat,
+      resolution: animationSettings.resolution,
+      slide_count: serializedSlides.length,
+      file_size_mb: Number((blob.size / (1024 * 1024)).toFixed(2)),
+      total_duration: totalDuration,
+      transition_type: animationSettings.transitionType,
+    });
   };
 
   const onExportError = async (err: Error) => {
-    console.error(err);
-
-    // Only decrement if we actually incremented the counter
-    if (user?.id && exportCountIncrementedRef.current) {
-      const { error: decrementError } = await supabase.rpc("decrement_video_export_count", {
-        p_user_id: user.id,
-      });
-
-      if (decrementError) {
-        console.error("Error decrementing video export count:", decrementError);
-      }
-
-      exportCountIncrementedRef.current = false;
-    }
-
-    trackAnimationEvent("export_failed", user, {
-      error_type: err?.message || "unknown",
+    await handleExportError(err, {
       format: currentExportFormat,
       resolution: animationSettings.resolution,
       slide_count: serializedSlides.length,
       transition_type: animationSettings.transitionType,
       progress_percent: Math.round(exportProgress * 100),
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
-      source: "download_menu",
     });
-
-    setIsExporting(false);
-    setCancelExport(false);
-    toast.error("Export failed. Please try again.");
   };
 
   return (
@@ -400,16 +263,9 @@ export const AnimationDownloadMenu = () => {
                 onError={onExportError}
                 cancelled={cancelExport}
                 onCancelled={async () => {
-                  // Decrement if we incremented (shouldn't happen on cancel, but defensive)
-                  if (user?.id && exportCountIncrementedRef.current) {
-                    await supabase.rpc("decrement_video_export_count", {
-                      p_user_id: user.id,
-                    });
-                    exportCountIncrementedRef.current = false;
-                  }
-                  setIsExporting(false);
-                  setExportProgress(0);
-                  setCancelExport(false);
+                  // Rollback the optimistic increment since export was cancelled
+                  await decrementExportCount();
+                  resetExport();
                   toast("Export canceled.");
                 }}
               />
@@ -430,10 +286,10 @@ export const AnimationDownloadMenu = () => {
               onProgress={setExportProgress}
               onComplete={onExportComplete}
               onError={onExportError}
-              onCancelled={() => {
-                setIsExporting(false);
-                setExportProgress(0);
-                setCancelExport(false);
+              onCancelled={async () => {
+                // Rollback the optimistic increment since export was cancelled
+                await decrementExportCount();
+                resetExport();
                 toast("Export canceled.");
               }}
             />

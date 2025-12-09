@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
-import { updateSnippet as updateSnippetInDb } from '@/lib/services/database/snippets'
+import { updateSnippet as updateSnippetInDb, type UpdateSnippetDbInput } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/features/snippets/dtos'
 import { formatZodError, updateSnippetInputSchema } from '@/actions/utils/validation'
 import { withAuthAction } from '@/actions/utils/with-auth'
@@ -34,15 +34,27 @@ export async function updateSnippet(
         const payload = parsedInput.data
 
         return withAuthAction(payload, async ({ id, title, code, language, url }, { user, supabase }) => {
-            const data = await updateSnippetInDb({
+            const updateInput: UpdateSnippetDbInput = {
                 id,
                 user_id: user.id,
-                title,
-                code,
-                language,
-                url,
-                supabase
-            } as any)
+                supabase,
+            };
+
+            // Only include fields that are provided (not undefined)
+            if (title !== undefined) {
+                updateInput.title = title;
+            }
+            if (code !== undefined) {
+                updateInput.code = code;
+            }
+            if (language !== undefined) {
+                updateInput.language = language;
+            }
+            if (url !== undefined) {
+                updateInput.url = url;
+            }
+
+            const data = await updateSnippetInDb(updateInput)
 
             if (!data || data.length === 0) {
                 return error('Failed to update snippet')

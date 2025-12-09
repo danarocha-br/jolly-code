@@ -11,7 +11,8 @@ export const getStripe = (): Promise<Stripe | null> => {
     
     if (!publishableKey) {
       console.error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set');
-      return Promise.resolve(null);
+      stripePromise = Promise.resolve(null);
+      return stripePromise;
     }
 
     stripePromise = loadStripe(publishableKey);
