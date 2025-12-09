@@ -6,6 +6,7 @@ import { insertSnippet } from '@/lib/services/database/snippets'
 import type { Snippet } from '@/features/snippets/dtos'
 import { createSnippetInputSchema, formatZodError } from '@/actions/utils/validation'
 import { withAuthAction } from '@/actions/utils/with-auth'
+import type { UsageLimitCheck } from '@/lib/services/usage-limits'
 export type CreateSnippetInput = {
   id: string
   title?: string
@@ -34,7 +35,7 @@ export async function createSnippet(
 
     return withAuthAction(payload, async ({ id, title, code, language, url }, { user, supabase }) => {
       // Check snippet limit before allowing save
-      const { data: limitCheck, error: limitError } = await supabase.rpc('check_snippet_limit', {
+      const { data: limitCheckRaw, error: limitError } = await supabase.rpc('check_snippet_limit', {
         p_user_id: user.id
       })
 
@@ -43,11 +44,34 @@ export async function createSnippet(
         return error('Failed to verify save limit. Please try again.')
       }
 
+      // Guard against null RPC response
+      if (!limitCheckRaw || typeof limitCheckRaw !== 'object') {
+        console.error('Invalid RPC response from check_snippet_limit:', limitCheckRaw)
+        return error('Failed to verify save limit. Please try again.')
+      }
+
+      // Map snake_case RPC response to camelCase UsageLimitCheck type
+      const rpcResponse = limitCheckRaw as {
+        can_save?: boolean
+        current?: number | null
+        max?: number | null
+        plan?: string | null
+      }
+
+      const limitCheck: UsageLimitCheck = {
+        canSave: Boolean(rpcResponse.can_save ?? false),
+        current: rpcResponse.current ?? 0,
+        max: rpcResponse.max ?? null,
+        plan: (rpcResponse.plan as UsageLimitCheck['plan']) ?? 'free',
+      }
+
+      // Compute overLimit locally
+      const current = limitCheck.current ?? 0
+      const max = limitCheck.max ?? 0
+      const overLimit = Math.max(current - max, 0)
+
       if (!limitCheck.canSave) {
         const plan = limitCheck.plan
-        const current = limitCheck.current ?? 0
-        const max = limitCheck.max ?? 0
-        const overLimit = limitCheck.over_limit ?? Math.max(current - max, 0)
 
         if (plan === 'free') {
           return error(`You have ${current} snippets but the Free plan allows ${max}. Delete items or upgrade to save again. Over limit: ${overLimit}.`)

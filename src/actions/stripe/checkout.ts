@@ -59,7 +59,7 @@ export async function createCheckoutSession({
     // Get user profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select('username, stripe_customer_id')
       .eq('id', user.id)
       .single();
 
@@ -67,11 +67,12 @@ export async function createCheckoutSession({
     const customer = await getOrCreateStripeCustomer({
       userId: user.id,
       email: user.email,
-      name: (profile as any)?.username || undefined,
+      name: profile?.username || undefined,
     });
 
     // Update profile with Stripe customer ID if not already set
-    const existingCustomerId = (profile as any)?.stripe_customer_id;
+    const existingCustomerId = profile?.stripe_customer_id;
+
     if (!existingCustomerId) {
       await supabase
         .from('profiles')
@@ -126,11 +127,12 @@ export async function createPortalSession({
     // Get user's Stripe customer ID
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select('stripe_customer_id')
       .eq('id', user.id)
       .single();
 
-    const stripeCustomerId = (profile as any)?.stripe_customer_id;
+    const stripeCustomerId = profile?.stripe_customer_id;
+
     if (!stripeCustomerId) {
       return { error: 'No active subscription found' };
     }
