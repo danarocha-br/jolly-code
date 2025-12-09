@@ -149,13 +149,12 @@ export async function enforceRateLimit(
     return null;
   } catch (error: any) {
     // Catch any Arcjet errors related to missing or empty userId
-    if (
-      error?.message?.includes("user") || 
-      error?.message?.includes("userId") ||
-      error?.message?.includes("characteristic") ||
-      error?.message?.includes("fingerprint") ||
-      error?.message?.includes("identifier")
-    ) {
+    const isArcjetCharacteristicError = 
+      error?.name === "ArcjetError" ||
+      error?.message?.includes("characteristic is required") ||
+      error?.message?.includes("userId must be");
+    
+    if (isArcjetCharacteristicError) {
       console.warn("[Arcjet] Error with userId characteristic - allowing request to proceed:", error.message);
       // Return null to allow the request to proceed without rate limiting
       return null;
