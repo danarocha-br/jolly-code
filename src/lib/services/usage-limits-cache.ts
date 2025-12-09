@@ -131,9 +131,8 @@ export function createUsageLimitsCacheProvider(): UsageLimitsCacheProvider {
   const isServerless =
     process.env.VERCEL ||
     process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    process.env.FUNCTION_TARGET ||
-    // Next.js Server Actions run in edge/serverless runtime
-    (typeof process !== "undefined" && process.env.NEXT_RUNTIME === "nodejs");
+    process.env.FUNCTION_TARGET; // Google Cloud Functions
+  // Note: NEXT_RUNTIME="nodejs" is set for all Node.js runtimes, not just serverless
 
   if (isServerless) {
     return new NoOpUsageLimitsCacheProvider();

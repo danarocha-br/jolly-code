@@ -64,9 +64,16 @@ export async function getOrCreateStripeCustomer({
 
   if (customersByEmail.data.length > 0) {
     const customer = customersByEmail.data[0];
-    // Verify customer is not deleted and belongs to our app
-    if (!customer.deleted && customer.metadata?.userId === userId) {
-      return customer;
+    if (!customer.deleted) {
+      // If customer exists but has no/different userId metadata, update it
+      if (!customer.metadata?.userId) {
+        return await getStripeClient().customers.update(customer.id, {
+          metadata: { userId },
+        });
+      }
+      if (customer.metadata.userId === userId) {
+        return customer;
+      }
     }
   }
 

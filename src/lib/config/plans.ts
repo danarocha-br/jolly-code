@@ -194,7 +194,8 @@ export function isLimitReached(current: number, max: number): boolean {
 
 // Helper to get usage percentage
 export function getUsagePercentage(current: number, max: number | null): number {
-  if (max === null || max === Infinity || max === 0) return 0;
+  if (max === null || max === Infinity) return 0;
+  if (max === 0) return current > 0 ? 100 : 0;
   return Math.min(100, Math.round((current / max) * 100));
 }
 

@@ -48,7 +48,12 @@ export async function requireAuth(): Promise<AuthResult> {
 export async function getAuthUser(): Promise<AuthResult | null> {
 	try {
 		return await requireAuth()
-	} catch {
+	} catch (e) {
+		// Log errors in non-production environments for debugging
+		if (process.env.NODE_ENV !== 'production') {
+			const logger = console.error
+			logger('[getAuthUser] Authentication check failed:', e)
+		}
 		return null
 	}
 }

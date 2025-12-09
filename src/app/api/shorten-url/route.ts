@@ -10,6 +10,24 @@ import type { Database } from "@/types/database";
 
 export const runtime = "edge";
 
+const VIEWER_COOKIE = "jc_viewer_token";
+
+/**
+ * Sets the viewer cookie on a NextResponse with consistent options.
+ *
+ * @param {NextResponse} response - The NextResponse to set the cookie on
+ * @param {string} token - The viewer token to set
+ */
+function setViewerCookie(response: NextResponse, token: string): void {
+  response.cookies.set(VIEWER_COOKIE, token, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+}
+
 /**
  * Retrieves the URL associated with a given slug.
  *
@@ -56,7 +74,6 @@ export async function GET(request: NextRequest) {
   const link = data[0];
 
   const cookieStore = await cookies();
-  const VIEWER_COOKIE = "jc_viewer_token";
   let viewerToken = cookieStore.get(VIEWER_COOKIE)?.value;
 
   if (!viewerToken) {
@@ -95,13 +112,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!cookieStore.get(VIEWER_COOKIE)?.value && viewerToken) {
-      response.cookies.set(VIEWER_COOKIE, viewerToken, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-      });
+      setViewerCookie(response, viewerToken);
     }
 
     return response;
@@ -114,13 +125,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!cookieStore.get(VIEWER_COOKIE)?.value && viewerToken) {
-    response.cookies.set(VIEWER_COOKIE, viewerToken, {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
+    setViewerCookie(response, viewerToken);
   }
 
   return response;

@@ -6,6 +6,7 @@ import type { PlanId } from '@/lib/config/plans';
 import type { Json } from '@/types/database';
 import Stripe from 'stripe';
 import { captureServerEvent } from '@/lib/services/tracking/server';
+import { setCachedBillingInterval } from '@/lib/services/billing';
 
 export const dynamic = 'force-dynamic';
 type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
@@ -265,6 +266,11 @@ async function handleSubscriptionChange(
     throw error;
   }
 
+  // Update cache to keep it in sync with database
+  if (billingInterval && subscription.id) {
+    setCachedBillingInterval(subscription.id, billingInterval);
+  }
+
   // Reconcile over-limit flags when plan changes (upgrades or downgrades)
   const { error: reconcileError } = await (supabase as any).rpc('reconcile_over_limit_content', {
     p_user_id: userId,
@@ -408,7 +414,7 @@ async function handleInvoicePaymentSucceeded(
 
     // Clear any past_due status by updating subscription status to active
     const invoiceSubscription = (invoice as any).subscription;
-    if (invoiceSubscription && typeof invoiceSubscription === 'string') {
+   if (typeof invoiceSubscription === 'string') {
       const subscriptionId = invoiceSubscription;
       const { data: profile } = await supabase
         .from('profiles')

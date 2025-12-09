@@ -337,7 +337,10 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
       console.error(err);
 
       // Only decrement if we actually incremented the counter
-      await decrementExportCount();
+      const decremented = await decrementExportCount();
+      if (!decremented && exportCountIncrementedRef.current) {
+        console.warn("Failed to decrement export count after error - count may be inflated");
+      }
 
       if (analyticsContext) {
         trackAnimationEvent("export_failed", user, {

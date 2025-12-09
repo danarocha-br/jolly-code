@@ -4,6 +4,100 @@ import { getStripeClient } from "./stripe";
 
 type Supabase = SupabaseClient<Database>;
 
+/**
+ * In-memory cache for billing intervals keyed by subscription ID
+ * Used as a fallback when database value is missing (backwards compatibility)
+ * Cache entries expire after 24 hours
+ */
+type BillingIntervalCacheEntry = {
+  interval: "monthly" | "yearly";
+  cachedAt: number;
+};
+
+const BILLING_INTERVAL_CACHE = new Map<string, BillingIntervalCacheEntry>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Get billing interval from cache if available and not expired
+ */
+function getCachedBillingInterval(
+  subscriptionId: string
+): "monthly" | "yearly" | null {
+  const entry = BILLING_INTERVAL_CACHE.get(subscriptionId);
+  if (!entry) {
+    return null;
+  }
+
+  const now = Date.now();
+  if (now - entry.cachedAt > CACHE_TTL_MS) {
+    // Cache expired, remove it
+    BILLING_INTERVAL_CACHE.delete(subscriptionId);
+    return null;
+  }
+
+  return entry.interval;
+}
+
+/**
+ * Cache billing interval for a subscription ID
+ * Exported for use by webhook handlers to keep cache in sync
+ */
+export function setCachedBillingInterval(
+  subscriptionId: string,
+  interval: "monthly" | "yearly"
+): void {
+  BILLING_INTERVAL_CACHE.set(subscriptionId, {
+    interval,
+    cachedAt: Date.now(),
+  });
+}
+
+/**
+ * Asynchronously fetch billing interval from Stripe and update both DB and cache
+ * This is fire-and-forget and does not block the calling function
+ */
+async function backfillBillingInterval(
+  supabase: Supabase,
+  userId: string,
+  subscriptionId: string
+): Promise<void> {
+  try {
+    const subscription = await getStripeClient().subscriptions.retrieve(
+      subscriptionId
+    );
+    const priceInterval = subscription.items.data[0]?.price?.recurring?.interval;
+    
+    if (priceInterval === "month" || priceInterval === "year") {
+      const billingInterval = priceInterval === "month" ? "monthly" : "yearly";
+      
+      // Update cache immediately
+      setCachedBillingInterval(subscriptionId, billingInterval);
+      
+      // Update database
+      const { error } = await supabase
+        .from("profiles")
+        .update({ billing_interval: billingInterval })
+        .eq("id", userId);
+      
+      if (error) {
+        console.error(
+          `Failed to update billing_interval in DB for user ${userId}:`,
+          error
+        );
+      } else {
+        console.log(
+          `Backfilled billing_interval for user ${userId}: ${billingInterval}`
+        );
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Failed to backfill billing_interval from Stripe for subscription ${subscriptionId}:`,
+      error
+    );
+  }
+}
+
 export type BillingInfo = {
   plan: Database["public"]["Enums"]["plan_type"];
   stripeCustomerId: string | null;
@@ -17,14 +111,14 @@ export type BillingInfo = {
 
 /**
  * Check if a subscription is active based on its status
- * Returns true for 'active' or 'trialing' statuses
+ * Returns true for 'active', 'trialing', or 'past_due' statuses
  */
 export function hasActiveSubscription(billingInfo: BillingInfo | null | undefined): boolean {
   if (!billingInfo?.stripeSubscriptionStatus) {
     return false;
   }
   const status = billingInfo.stripeSubscriptionStatus;
-  return status === "active" || status === "trialing";
+  return status === "active" || status === "trialing" || status === "past_due";
 }
 
 export type PaymentMethodInfo = {
@@ -69,22 +163,29 @@ export async function getBillingInfo(
     return null;
   }
 
-  // Use billing interval from database if available, otherwise fetch from Stripe
+  // Use billing interval from database if available
   let billingInterval: "monthly" | "yearly" | null = (data.billing_interval as "monthly" | "yearly" | null) || null;
   
-  // Fallback to Stripe API if not in database (for backward compatibility)
+  // Fallback to cache if not in database (for backward compatibility)
   if (!billingInterval && data.stripe_subscription_id) {
-    try {
-      const subscription = await getStripeClient().subscriptions.retrieve(
-        data.stripe_subscription_id
+    billingInterval = getCachedBillingInterval(data.stripe_subscription_id);
+    
+    // If still missing, log alert and trigger async backfill (non-blocking)
+    if (!billingInterval) {
+      console.warn(
+        `[BILLING_INTERVAL_MISSING] User ${userId} has subscription ${data.stripe_subscription_id} but billing_interval is missing from DB and cache. ` +
+        `This should be backfilled via webhook or migration. Triggering async backfill.`
       );
-      const priceInterval = subscription.items.data[0]?.price?.recurring?.interval;
-      if (priceInterval === "month" || priceInterval === "year") {
-        billingInterval = priceInterval === "month" ? "monthly" : "yearly";
-      }
-    } catch (error) {
-      // If Stripe API call fails, log but don't fail the entire request
-      console.error("Failed to fetch subscription interval from Stripe:", error);
+      
+      // Fire-and-forget async backfill (does not block this request)
+      backfillBillingInterval(supabase, userId, data.stripe_subscription_id).catch(
+        (error) => {
+          console.error(
+            `Failed to backfill billing_interval for user ${userId}:`,
+            error
+          );
+        }
+      );
     }
   }
 
@@ -140,6 +241,7 @@ export async function getPaymentMethod(
         // Payment method might not exist or be accessible
         if (pmError?.code !== "resource_missing") {
           console.error("Error retrieving payment method:", pmError);
+          throw pmError;
         }
         return null;
       }

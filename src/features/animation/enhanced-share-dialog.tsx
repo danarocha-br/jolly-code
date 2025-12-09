@@ -267,19 +267,18 @@ export const EnhancedAnimationShareDialog = () => {
         const data = await response.json().catch(() => ({}));
 
         if (response.status === 401) {
-          const authError = new Error("AUTH_REQUIRED");
-          (authError as any).code = "AUTH_REQUIRED";
+          const authError = new Error("AUTH_REQUIRED") as ShareError;
+          authError.code = "AUTH_REQUIRED";
           throw authError;
         }
 
         if (response.status === 429) {
           const limitError = new Error(
             data?.error || "Public share limit reached"
-          );
-          (limitError as any).code = "PUBLIC_SHARE_LIMIT";
-          (limitError as any).current = data?.current;
-          (limitError as any).max = data?.max;
-          (limitError as any).plan = data?.plan;
+          ) as ShareError;
+          limitError.code = "PUBLIC_SHARE_LIMIT";
+          limitError.current = data?.current;
+          limitError.max = data?.max;
           throw limitError;
         }
 
@@ -527,6 +526,11 @@ export const EnhancedAnimationShareDialog = () => {
 
   const handleEmbedCopy = useCallback(async () => {
     try {
+      if (!user) {
+        setIsLoginDialogOpen(true);
+        return;
+      }
+
       const latestUrl =
         shareUrl && !form.formState.isDirty
           ? shareUrl

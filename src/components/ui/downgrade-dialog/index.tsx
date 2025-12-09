@@ -266,7 +266,7 @@ export function DowngradeDialog({
               (result) => {
                 if (result.error) {
                   toast.error(result.error);
-                  return;
+                  throw new Error(result.error);
                 }
                 toast.success(
                   `Deleted ${result.data?.deletedCount || 0} animation(s)`

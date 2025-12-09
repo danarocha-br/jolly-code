@@ -8,14 +8,7 @@ import type { Animation } from '@/features/animations/dtos'
 import type { AnimationSettings, AnimationSlide } from '@/types/animation'
 import { createAnimationInputSchema, formatZodError } from '@/actions/utils/validation'
 import { withAuthAction } from '@/actions/utils/with-auth'
-
-export interface AnimationLimitResponse {
-  canSave: boolean
-  plan: string
-  current?: number
-  max?: number
-  over_limit?: number
-}
+import type { UsageLimitCheck } from '@/lib/services/usage-limits'
 
 export type CreateAnimationInput = {
   id: string
@@ -38,24 +31,43 @@ export async function createAnimation(
     const payload = parsedInput.data
 
     return withAuthAction(payload, async ({ id, title, slides, settings, url }, { user, supabase }) => {
-      const { data: animationLimitCheck, error: animationLimitError } = await supabase.rpc('check_animation_limit', {
+      const { data: limitCheckRaw, error: animationLimitError } = await supabase.rpc('check_animation_limit', {
         p_user_id: user.id
-      }) as { data: AnimationLimitResponse | null; error: any }
+      })
 
       if (animationLimitError) {
         console.error('Error checking animation limit:', animationLimitError)
         return error('Failed to verify save limit. Please try again.')
       }
 
-      if (!animationLimitCheck) {
+      // Guard against null RPC response
+      if (!limitCheckRaw || typeof limitCheckRaw !== 'object') {
+        console.error('Invalid RPC response from check_animation_limit:', limitCheckRaw)
         return error('Failed to verify save limit. Please try again.')
+      }
+
+      // Map snake_case RPC response to camelCase UsageLimitCheck type
+      const rpcResponse = limitCheckRaw as {
+        can_save?: boolean
+        current?: number | null
+        max?: number | null
+        plan?: string | null
+        over_limit?: number | null
+      }
+
+      const animationLimitCheck: UsageLimitCheck = {
+        canSave: Boolean(rpcResponse.can_save ?? false),
+        current: rpcResponse.current ?? 0,
+        max: rpcResponse.max ?? null,
+        plan: (rpcResponse.plan as UsageLimitCheck['plan']) ?? 'free',
+        overLimit: rpcResponse.over_limit ?? undefined,
       }
 
       if (!animationLimitCheck.canSave) {
         const plan = animationLimitCheck.plan
         const current = animationLimitCheck.current ?? 0
         const max = animationLimitCheck.max ?? 0
-        const overLimit = animationLimitCheck.over_limit ?? Math.max(current - max, 0)
+        const overLimit = animationLimitCheck.overLimit ?? Math.max(current - max, 0)
 
         if (plan === 'free') {
           return error(`You have ${current} animations but the Free plan allows ${max}. Delete items or upgrade to save again. Over limit: ${overLimit}.`)

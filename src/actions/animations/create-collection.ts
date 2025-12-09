@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { requireAuth } from '@/actions/utils/auth'
+import { requireAuth, AuthError } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { createAnimationCollection as createAnimationCollectionDb } from '@/lib/services/database/animations'
 import type { AnimationCollection, Animation } from '@/features/animations/dtos'
@@ -65,7 +65,7 @@ export async function createAnimationCollection(
   } catch (err) {
     console.error('Error creating animation collection:', err)
 
-    if (err instanceof Error && err.message.includes('authenticated')) {
+    if (err instanceof AuthError) {
       return error('User must be authenticated')
     }
 

@@ -351,14 +351,10 @@ DECLARE
   enum_dependencies integer;
 BEGIN
   SELECT COUNT(*) INTO enum_dependencies
-  FROM pg_type t
-  JOIN pg_enum e ON t.oid = e.enumtypid
+  FROM pg_depend d
+  JOIN pg_type t ON d.refobjid = t.oid
   WHERE t.typname = 'user_plan'
-    AND EXISTS (
-      SELECT 1 FROM pg_depend d
-      WHERE d.refobjid = t.oid
-        AND d.deptype = 'n'
-    );
+    AND d.deptype = 'n';
 
   IF enum_dependencies = 0 THEN
     DROP TYPE IF EXISTS public.user_plan CASCADE;

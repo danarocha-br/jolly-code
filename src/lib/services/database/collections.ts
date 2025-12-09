@@ -3,6 +3,18 @@ import { Database } from "@/types/database";
 import { Collection, Snippet } from "./types";
 
 /**
+ * Extracts snippet IDs from an array that may contain Snippet objects or string IDs.
+ * 
+ * @param snippets - Array of Snippet objects or string IDs
+ * @returns Array of string IDs with falsy values filtered out
+ */
+function extractSnippetIds(snippets: (Snippet | string)[]): string[] {
+    return snippets
+        .map((s) => (typeof s === 'string' ? s : s.id))
+        .filter((id): id is string => Boolean(id));
+}
+
+/**
  * Inserts a new collection into the database.
  *
  * @param {Collection} collection - The collection object containing the user ID, title, snippets, and Supabase instance.
@@ -76,9 +88,7 @@ export async function insertCollection({
         // Insert junction records for snippets if provided
         if (snippets && Array.isArray(snippets) && snippets.length > 0) {
             // Extract snippet IDs (handle both Snippet objects and string IDs)
-            const snippetIds = snippets.map((s: any) => 
-                typeof s === 'string' ? s : s.id
-            ).filter((id: string) => id);
+            const snippetIds = extractSnippetIds(snippets);
 
             if (snippetIds.length > 0) {
                 const junctionRecords = snippetIds.map((snippetId: string) => ({
@@ -167,9 +177,7 @@ export async function updateCollection({
             // Insert new junction records if snippets array is provided and not empty
             if (Array.isArray(snippets) && snippets.length > 0) {
                 // Extract snippet IDs (handle both Snippet objects and string IDs)
-                const snippetIds = snippets.map((s: any) => 
-                    typeof s === 'string' ? s : s.id
-                ).filter((id: string) => id);
+                const snippetIds = extractSnippetIds(snippets);
 
                 if (snippetIds.length > 0) {
                     const junctionRecords = snippetIds.map((snippetId: string) => ({

@@ -80,7 +80,7 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">
                       {new Date(invoice.created * 1000).toLocaleDateString(
-                        "en-US",
+                        undefined,
                         {
                           year: "numeric",
                           month: "long",
