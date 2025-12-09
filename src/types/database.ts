@@ -227,7 +227,7 @@ export type Database = {
           folder_count: number
           id: string
           name: string | null
-          plan: Database["public"]["Enums"]["user_plan"]
+          plan: Database["public"]["Enums"]["plan_type"]
           plan_updated_at: string
           public_share_count: number
           snippet_count: number
@@ -252,7 +252,7 @@ export type Database = {
           folder_count?: number
           id: string
           name?: string | null
-          plan?: Database["public"]["Enums"]["user_plan"]
+          plan?: Database["public"]["Enums"]["plan_type"]
           plan_updated_at?: string
           public_share_count?: number
           snippet_count?: number
@@ -277,7 +277,7 @@ export type Database = {
           folder_count?: number
           id?: string
           name?: string | null
-          plan?: Database["public"]["Enums"]["user_plan"]
+          plan?: Database["public"]["Enums"]["plan_type"]
           plan_updated_at?: string
           public_share_count?: number
           snippet_count?: number
@@ -702,7 +702,6 @@ export type Database = {
     }
     Enums: {
       plan_type: "free" | "started" | "pro"
-      user_plan: "free" | "pro" | "started"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -827,7 +826,6 @@ export const Constants = {
   public: {
     Enums: {
       plan_type: ["free", "started", "pro"],
-      user_plan: ["free", "pro", "started"],
     },
   },
 } as const

@@ -144,7 +144,7 @@ const getUserUsageFallback = async (
   const { data: usage, error: usageError } = await supabase
     .from("usage_limits")
     .select(
-      "snippet_count, animation_count, folder_count, video_export_count, public_share_count, last_reset_at, over_limit_snippets, over_limit_animations"
+      "snippet_count, animation_count, folder_count, video_export_count, public_share_count, last_reset_at"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -161,8 +161,6 @@ const getUserUsageFallback = async (
     video_export_count: number;
     public_share_count: number;
     last_reset_at: string;
-    over_limit_snippets: number;
-    over_limit_animations: number;
   }>;
 
   const [
@@ -198,8 +196,6 @@ const getUserUsageFallback = async (
 
   const snippetCountFromLimits = usageRow.snippet_count ?? 0;
   const animationCountFromLimits = usageRow.animation_count ?? 0;
-  const overLimitSnippets = usageRow.over_limit_snippets ?? null;
-  const overLimitAnimations = usageRow.over_limit_animations ?? null;
   const folderCountFromLimits = usageRow.folder_count ?? 0;
   const videoExportCountFromLimits = usageRow.video_export_count ?? 0;
   const publicShareCountFromLimits = usageRow.public_share_count ?? 0;
@@ -211,15 +207,13 @@ const getUserUsageFallback = async (
   );
   const publicShareCount = publicShareCountFromLimits;
   const computedSnippetOverLimit =
-    overLimitSnippets ??
-    (planConfig.maxSnippets === Infinity
+    planConfig.maxSnippets === Infinity
       ? 0
-      : Math.max(snippetCount - (planConfig.maxSnippets ?? 0), 0));
+      : Math.max(snippetCount - (planConfig.maxSnippets ?? 0), 0);
   const computedAnimationOverLimit =
-    overLimitAnimations ??
-    (planConfig.maxAnimations === Infinity
+    planConfig.maxAnimations === Infinity
       ? 0
-      : Math.max(animationCount - (planConfig.maxAnimations ?? 0), 0));
+      : Math.max(animationCount - (planConfig.maxAnimations ?? 0), 0);
 
   return buildUsageSummary({
     plan,

@@ -5,7 +5,7 @@ import { getStripeClient } from "./stripe";
 type Supabase = SupabaseClient<Database>;
 
 export type BillingInfo = {
-  plan: Database["public"]["Enums"]["user_plan"];
+  plan: Database["public"]["Enums"]["plan_type"];
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   stripeSubscriptionStatus: string | null;
