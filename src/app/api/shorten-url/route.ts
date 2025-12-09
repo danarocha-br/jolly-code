@@ -74,19 +74,22 @@ export const GET = wrapRouteHandlerWithSentry(
 
     let viewResult: Database['public']['Functions']['record_public_share_view']['Returns'] | null = null;
 
-    try {
-      const { data: recordViewData, error: recordViewError } = await supabase.rpc(
-        "record_public_share_view",
-        { p_owner_id: link.user_id, p_link_id: link.id, p_viewer_token: viewerToken }
-      );
+    // Only record view if user_id is present
+    if (link.user_id && link.id) {
+      try {
+        const { data: recordViewData, error: recordViewError } = await supabase.rpc(
+          "record_public_share_view",
+          { p_owner_id: link.user_id, p_link_id: link.id, p_viewer_token: viewerToken }
+        );
 
-      if (recordViewError) {
-        throw recordViewError;
+        if (recordViewError) {
+          throw recordViewError;
+        }
+
+        viewResult = recordViewData ?? null;
+      } catch (recordError) {
+        console.error("Failed to record share view", recordError);
       }
-
-      viewResult = recordViewData ?? null;
-    } catch (recordError) {
-      console.error("Failed to record share view", recordError);
     }
 
     if (viewResult && viewResult.allowed === false) {

@@ -100,7 +100,9 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        window.open(invoice.hostedInvoiceUrl, "_blank");
+                        if (invoice.hostedInvoiceUrl) {
+                          window.open(invoice.hostedInvoiceUrl, "_blank");
+                        }
                       }}
                     >
                       View
@@ -111,7 +113,9 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        window.open(invoice.invoicePdf, "_blank");
+                        if (invoice.invoicePdf) {
+                          window.open(invoice.invoicePdf, "_blank");
+                        }
                       }}
                     >
                       <i className="ri-download-line text-lg" />

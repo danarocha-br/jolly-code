@@ -230,8 +230,8 @@ async function handleSubscriptionChange(
   const billingInterval = priceInterval === "month" ? "monthly" : priceInterval === "year" ? "yearly" : null;
 
   // Safely convert current_period_end from Unix timestamp (seconds) to ISO string
-  const subscriptionPeriodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000).toISOString()
+  const subscriptionPeriodEnd = (subscription as any).current_period_end
+    ? new Date((subscription as any).current_period_end * 1000).toISOString()
     : null;
 
   const updateData: {

@@ -27,6 +27,7 @@ import {
   removeSnippet,
   updateSnippet,
   type CreateSnippetProps,
+  type RemoveSnippetProps,
 } from "@/features/snippets/queries";
 import { Collection, Snippet } from "@/features/snippets/dtos";
 import { TitleInput } from "./title-input";
@@ -313,7 +314,12 @@ export const Editor = forwardRef<any, EditorProps>(
       }
     });
 
-    const { mutate: handleCreateSnippet } = useMutation<ActionResult<Snippet>, Error, CreateSnippetProps>({
+    const { mutate: handleCreateSnippet } = useMutation<
+      ActionResult<Snippet>,
+      Error,
+      CreateSnippetProps,
+      { previousSnippets: unknown }
+    >({
       mutationFn: createSnippet,
 
       onMutate: async () => {
@@ -370,7 +376,12 @@ export const Editor = forwardRef<any, EditorProps>(
       },
     });
 
-    const { mutate: handleRemoveSnippet } = useMutation({
+    const { mutate: handleRemoveSnippet } = useMutation<
+      void,
+      Error,
+      RemoveSnippetProps,
+      { previousSnippets: unknown }
+    >({
       mutationFn: removeSnippet,
       onMutate: async () => {
         await queryClient.cancelQueries({ queryKey: queryKey });

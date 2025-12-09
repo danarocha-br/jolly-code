@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { AuthError } from './auth-error'
 
 export type AuthResult = {
 	user: {
@@ -11,20 +12,8 @@ export type AuthResult = {
 	supabase: SupabaseClient
 }
 
-/**
- * Custom error class for authentication failures
- * Allows robust error detection via instanceof checks
- */
-export class AuthError extends Error {
-	constructor(message: string) {
-		super(message)
-		this.name = 'AuthError'
-		// Maintains proper stack trace for where our error was thrown (only available on V8)
-		if (Error.captureStackTrace) {
-			Error.captureStackTrace(this, AuthError)
-		}
-	}
-}
+// Re-export AuthError for convenience
+export { AuthError }
 
 /**
  * Ensures the user is authenticated and returns user + supabase client

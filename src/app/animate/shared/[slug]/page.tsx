@@ -91,13 +91,21 @@ export default async function SharedAnimationPage({ params }: SharedAnimationPag
   const viewerToken = viewerCookie ?? hashedFallback;
 
   const supabase = await createClient();
-  const { data: viewResult, error: viewError } = await supabase.rpc(
-    "record_public_share_view",
-    { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
-  );
+  // Only record view if user_id is present
+  let viewResult: any = null;
+  let viewError: any = null;
+  
+  if (data.user_id && data.id) {
+    const result = await supabase.rpc(
+      "record_public_share_view",
+      { p_owner_id: data.user_id, p_link_id: data.id, p_viewer_token: viewerToken }
+    );
+    viewResult = result.data;
+    viewError = result.error;
 
-  if (viewError) {
-    console.error("Failed to record public share view", viewError);
+    if (viewError) {
+      console.error("Failed to record public share view", viewError);
+    }
   }
 
   const view = viewResult;

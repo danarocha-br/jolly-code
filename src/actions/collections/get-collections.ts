@@ -14,7 +14,7 @@ export async function getCollections(): Promise<ActionResult<Collection[]>> {
     try {
         const { user, supabase } = await requireAuth()
 
-        const collectionsData: Collection[] = await getUsersCollectionList({
+        const collectionsData = await getUsersCollectionList({
             user_id: user.id,
             supabase
         })
@@ -24,11 +24,27 @@ export async function getCollections(): Promise<ActionResult<Collection[]>> {
         }
 
         // Collections already have snippets populated from the service layer
-        // Just ensure snippets array exists and filter out any null values
-        const populatedCollections = collectionsData.map((collection) => ({
-            ...collection,
-            snippets: (collection.snippets || []).filter((s: Snippet | null): s is Snippet => s !== null)
-        }))
+        // Map to DTO format, ensuring id is always present and filtering out any null values
+        const populatedCollections: Collection[] = collectionsData
+            .filter((collection): collection is typeof collection & { id: string } => !!collection.id)
+            .map((collection) => ({
+                id: collection.id,
+                user_id: collection.user_id,
+                title: collection.title,
+                snippets: (collection.snippets || [])
+                    .filter((s: any): s is Snippet => s !== null && s.id !== undefined)
+                    .map((s: any) => ({
+                        id: s.id,
+                        user_id: s.user_id,
+                        code: s.code,
+                        language: s.language,
+                        title: s.title,
+                        url: s.url,
+                        created_at: s.created_at,
+                    })),
+                created_at: collection.created_at,
+                updated_at: collection.updated_at,
+            }))
 
         return success(populatedCollections)
     } catch (err) {

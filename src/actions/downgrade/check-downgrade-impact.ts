@@ -1,6 +1,7 @@
 'use server'
 
-import { requireAuth, AuthError } from '@/actions/utils/auth'
+import { requireAuth } from '@/actions/utils/auth'
+import { AuthError } from '@/actions/utils/auth-error'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { getUserUsage } from '@/lib/services/usage-limits'
 import { calculateDowngradeImpact, getDowngradeTarget, type DowngradeImpact } from '@/lib/utils/downgrade-impact'
