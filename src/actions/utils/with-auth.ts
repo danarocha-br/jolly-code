@@ -1,3 +1,5 @@
+'use server'
+
 import { requireAuth, type AuthResult } from '@/actions/utils/auth'
 
 export async function withAuthAction<Input, Output>(
