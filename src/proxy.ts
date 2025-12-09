@@ -10,13 +10,7 @@ const isCsrfExempt = (pathname: string) =>
 
 const getRequestOrigin = (request: NextRequest) => {
   const originHeader = request.headers.get("origin");
-  if (originHeader) return originHeader;
-
-  const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
-
-  if (!forwardedHost) return null;
-  return `${forwardedProto}://${forwardedHost}`;
+  return originHeader ?? null;
 };
 
 const normalizeOrigin = (origin: string | null): string | null => {
@@ -65,12 +59,7 @@ const enforceCsrf = (request: NextRequest) => {
   const candidate = normalizeOrigin(requestOrigin ?? refererOrigin);
 
   if (!candidate) {
-    // Reject non-safe methods when both origin and referer are missing
-    if (!SAFE_METHODS.has(request.method)) {
-      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
-    }
-    // Allow safe methods to proceed
-    return null;
+    return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
   }
 
   if (!allowedOrigins.includes(candidate)) {

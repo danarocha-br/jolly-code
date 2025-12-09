@@ -177,7 +177,7 @@ BEGIN
   v_current_count := COALESCE(v_current_count, (SELECT public_share_count FROM public.profiles WHERE id = p_user_id), 0);
 
   v_max_limit := CASE v_plan
-    WHEN 'free' THEN 3
+    WHEN 'free' THEN 50
     WHEN 'started' THEN 50
     WHEN 'pro' THEN NULL
   END;

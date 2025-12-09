@@ -51,7 +51,7 @@ CREATE OR REPLACE FUNCTION get_plan_limits(plan_type plan_type)
 RETURNS JSON AS $$
 BEGIN
   RETURN CASE plan_type
-    WHEN 'free' THEN '{"maxSnippets": 10, "maxAnimations": 10, "maxSlidesPerAnimation": 5, "maxSnippetsFolder": 0, "maxVideoExportCount": 0, "shareAsPublicURL": 3}'::json
+    WHEN 'free' THEN '{"maxSnippets": 10, "maxAnimations": 10, "maxSlidesPerAnimation": 5, "maxSnippetsFolder": 0, "maxVideoExportCount": 0, "shareAsPublicURL": 50}'::json
     WHEN 'started' THEN '{"maxSnippets": 50, "maxAnimations": 50, "maxSlidesPerAnimation": 10, "maxSnippetsFolder": 10, "maxVideoExportCount": 50, "shareAsPublicURL": 50}'::json
     WHEN 'pro' THEN '{"maxSnippets": null, "maxAnimations": null, "maxSlidesPerAnimation": null, "maxSnippetsFolder": null, "maxVideoExportCount": null, "shareAsPublicURL": null}'::json
   END;
