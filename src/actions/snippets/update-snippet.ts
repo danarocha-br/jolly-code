@@ -8,11 +8,11 @@ import { formatZodError, updateSnippetInputSchema } from '@/actions/utils/valida
 import { withAuthAction } from '@/actions/utils/with-auth'
 
 export type UpdateSnippetInput = {
-	id: string
-	title?: string
-	code?: string
-	language?: string
-	url?: string
+    id: string
+    title?: string
+    code?: string
+    language?: string
+    url?: string
 }
 
 /**
@@ -68,6 +68,10 @@ export async function updateSnippet(
         })
     } catch (err) {
         console.error('Error updating snippet:', err)
+
+        if (err instanceof Error && err.message.includes('authenticated')) {
+            return error('User must be authenticated')
+        }
 
         return error('Failed to update snippet. Please try again later.')
     }

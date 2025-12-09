@@ -132,9 +132,9 @@ export function CreateCollectionDialog({
         open={isUpgradeOpen}
         onOpenChange={setIsUpgradeOpen}
         limitType="folders"
-        currentCount={usage?.folders.current}
+        currentCount={usage?.folders.current ?? 0}
         maxCount={usage?.folders.max ?? null}
-        currentPlan={usage?.plan}
+        currentPlan={usage?.plan ?? "free"}
       />
       <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>{children}</DialogTrigger>

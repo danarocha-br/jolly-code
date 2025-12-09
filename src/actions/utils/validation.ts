@@ -26,7 +26,7 @@ export const languageSchema = z
   .min(1, 'Language is required')
   .refine(lang => Object.keys(languages).includes(lang), { message: 'Unsupported language' })
 
-const codeSizeValidator = (code: string) => Buffer.byteLength(code, 'utf8') <= MAX_CODE_BYTES
+const codeSizeValidator = (code: string) => new TextEncoder().encode(code).length <= MAX_CODE_BYTES
 
 export const codeSchema = z
   .string()
@@ -91,7 +91,7 @@ export const updateSnippetInputSchema = z.object({
 export const createAnimationInputSchema = z.object({
   id: idSchema,
   title: optionalTitleToStringSchema,
-  slides: z.array(animationSlideSchema).min(2, 'At least one slide is required'),
+  slides: z.array(animationSlideSchema).min(2, 'At least two slides are required'),
   settings: animationSettingsSchema,
   url: urlSchema.nullish()
 })

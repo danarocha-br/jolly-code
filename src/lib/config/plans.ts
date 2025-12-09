@@ -14,6 +14,26 @@ export type BillingInterval = 'monthly' | 'yearly';
  */
 export const planOrder: PlanId[] = ['free', 'started', 'pro'];
 
+/**
+ * Validates and returns a Stripe price ID from environment variables.
+ * Throws a clear error if the environment variable is missing or empty.
+ * This ensures configuration errors are caught at startup rather than causing
+ * silent failures during checkout.
+ */
+function getStripePriceIdFromEnv(envVarName: string, plan: string, interval: string): string {
+  const value = process.env[envVarName];
+  
+  if (!value || value.trim() === '') {
+    throw new Error(
+      `Missing required Stripe price ID configuration: ${envVarName} is not set or is empty. ` +
+      `This is required for the ${plan} plan (${interval} billing). ` +
+      `Please set ${envVarName} in your environment variables.`
+    );
+  }
+  
+  return value;
+}
+
 export type PlanConfig = {
   id: PlanId;
   name: string;
@@ -83,12 +103,20 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       monthly: {
         amount: 500, // $5.00
         displayAmount: '$5',
-        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID || '',
+        stripePriceId: getStripePriceIdFromEnv(
+          'NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID',
+          'started',
+          'monthly'
+        ),
       },
       yearly: {
         amount: 3600, // $36/year ($3/month)
         displayAmount: '$3',
-        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID || '',
+        stripePriceId: getStripePriceIdFromEnv(
+          'NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID',
+          'started',
+          'yearly'
+        ),
       },
     },
   },
@@ -117,12 +145,20 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       monthly: {
         amount: 900, // $9.00
         displayAmount: '$9',
-        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID || '',
+        stripePriceId: getStripePriceIdFromEnv(
+          'NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID',
+          'pro',
+          'monthly'
+        ),
       },
       yearly: {
         amount: 8400, // $84/year ($7/month)
         displayAmount: '$7',
-        stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID || '',
+        stripePriceId: getStripePriceIdFromEnv(
+          'NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID',
+          'pro',
+          'yearly'
+        ),
       },
     },
   },

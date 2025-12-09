@@ -84,16 +84,30 @@ export async function getOrCreateStripeCustomer({
 
 /**
  * Get Stripe price ID for a plan and billing interval
+ * Validates that the price ID exists and is not empty before returning it.
+ * Throws a clear error if the configuration is missing.
  */
 export function getStripePriceId(plan: PlanId, interval: 'monthly' | 'yearly'): string {
   const envVarMap = {
     started: {
-      monthly: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
-      yearly: process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID,
+      monthly: {
+        value: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
+        envVar: 'NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID',
+      },
+      yearly: {
+        value: process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID,
+        envVar: 'NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID',
+      },
     },
     pro: {
-      monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
-      yearly: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
+      monthly: {
+        value: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
+        envVar: 'NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID',
+      },
+      yearly: {
+        value: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
+        envVar: 'NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID',
+      },
     },
   };
 
@@ -101,10 +115,15 @@ export function getStripePriceId(plan: PlanId, interval: 'monthly' | 'yearly'): 
     throw new Error('Free plan does not have a Stripe price ID');
   }
 
-  const priceId = envVarMap[plan][interval];
+  const priceConfig = envVarMap[plan][interval];
+  const priceId = priceConfig.value;
 
-  if (!priceId) {
-    throw new Error(`Stripe price ID not found for plan: ${plan}, interval: ${interval}`);
+  if (!priceId || priceId.trim() === '') {
+    throw new Error(
+      `Stripe price ID configuration is missing or empty for plan "${plan}" (${interval} billing). ` +
+      `Please ensure ${priceConfig.envVar} is set in your environment variables. ` +
+      `This is required for checkout to work properly.`
+    );
   }
 
   return priceId;
@@ -112,6 +131,7 @@ export function getStripePriceId(plan: PlanId, interval: 'monthly' | 'yearly'): 
 
 /**
  * Create a Stripe checkout session
+ * Validates the price ID before creating the session to provide clear errors.
  */
 export async function createCheckoutSession({
   customerId,
@@ -126,6 +146,23 @@ export async function createCheckoutSession({
   cancelUrl: string;
   metadata?: Record<string, string>;
 }): Promise<Stripe.Checkout.Session> {
+  // Validate price ID before calling Stripe API
+  if (!priceId || priceId.trim() === '') {
+    throw new Error(
+      'Invalid Stripe price ID: price ID is missing or empty. ' +
+      'Please ensure all required NEXT_PUBLIC_STRIPE_*_PRICE_ID environment variables are configured.'
+    );
+  }
+
+  // Basic validation: Stripe price IDs typically start with 'price_'
+  if (!priceId.startsWith('price_')) {
+    throw new Error(
+      `Invalid Stripe price ID format: "${priceId}". ` +
+      'Stripe price IDs should start with "price_". ' +
+      'Please verify your NEXT_PUBLIC_STRIPE_*_PRICE_ID environment variables are correct.'
+    );
+  }
+
   const session = await getStripeClient().checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',

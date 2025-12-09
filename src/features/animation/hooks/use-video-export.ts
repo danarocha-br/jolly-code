@@ -168,6 +168,22 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
     return true;
   }, [user, supabase]);
 
+  const decrementExportCount = useCallback(async (): Promise<boolean> => {
+    if (!user?.id || !exportCountIncrementedRef.current) return false;
+
+    const { error } = await supabase.rpc("decrement_video_export_count", {
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      console.error("Error decrementing video export count:", error);
+      return false;
+    }
+
+    exportCountIncrementedRef.current = false;
+    return true;
+  }, [user, supabase]);
+
   /**
    * Optimistically increments the export count and verifies the limit.
    * This performs an atomic increment before starting the export to prevent race conditions.
@@ -230,22 +246,6 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
 
     return { success: true };
   }, [user, usage, supabase, incrementExportCount, decrementExportCount]);
-
-  const decrementExportCount = useCallback(async (): Promise<boolean> => {
-    if (!user?.id || !exportCountIncrementedRef.current) return false;
-
-    const { error } = await supabase.rpc("decrement_video_export_count", {
-      p_user_id: user.id,
-    });
-
-    if (error) {
-      console.error("Error decrementing video export count:", error);
-      return false;
-    }
-
-    exportCountIncrementedRef.current = false;
-    return true;
-  }, [user, supabase]);
 
   const startExport = useCallback(
     (analyticsContext?: ExportAnalyticsContext) => {

@@ -13,7 +13,8 @@ export function reportQueryError(
   queryType: string,
   userId?: string
 ): void {
-  if (error instanceof Error && typeof window !== "undefined") {
+  // Only report to Sentry in production/non-local environments
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
     Sentry.withScope((scope) => {
       scope.setTag("query_type", queryType);
       scope.setTag("user_id", userId || "unknown");

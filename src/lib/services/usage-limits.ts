@@ -3,6 +3,10 @@ import * as Sentry from "@sentry/nextjs";
 
 import type { Database } from "@/types/database";
 import { getPlanConfig, type PlanId } from "@/lib/config/plans";
+import {
+  getUsageLimitsCacheProvider,
+  type UsageLimitsCacheProvider,
+} from "./usage-limits-cache";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -66,16 +70,6 @@ const USER_USAGE_CACHE_TTL_MS = 5 * 60 * 1000;
 const USER_USAGE_RPC_BACKOFF_MS = 5 * 60 * 1000;
 const USER_USAGE_RPC_NAME = "get_user_usage_v2";
 const USER_USAGE_RPC_FALLBACK_NAME = "get_user_usage"; // Fallback to old function if v2 not available
-
-const userUsageCache = new Map<
-  string,
-  {
-    expiresAt: number;
-    value: Promise<UsageSummary>;
-  }
->();
-
-let userUsageRpcBackoffUntil = 0;
 
 const normalizeCount = (value: unknown): number => Number(value ?? 0);
 const normalizeOverLimit = (value: unknown): number | null =>
@@ -160,7 +154,16 @@ const getUserUsageFallback = async (
     throw new Error("Unable to load usage");
   }
 
-  const usageRow: any = usage ?? {};
+  const usageRow = (usage ?? {}) as Partial<{
+    snippet_count: number;
+    animation_count: number;
+    folder_count: number;
+    video_export_count: number;
+    public_share_count: number;
+    last_reset_at: string;
+    over_limit_snippets: number;
+    over_limit_animations: number;
+  }>;
 
   const [
     { count: actualSnippetCount, error: snippetCountError },
@@ -426,17 +429,22 @@ export const decrementUsageCount = async (
   return callLimitRpc(supabase, decrementFn, userId, kind);
 };
 
-export const getUserUsage = async (supabase: Supabase, userId: string): Promise<UsageSummary> => {
-  const cached = userUsageCache.get(userId);
-  const now = Date.now();
+export const getUserUsage = async (
+  supabase: Supabase,
+  userId: string,
+  cacheProvider?: UsageLimitsCacheProvider
+): Promise<UsageSummary> => {
+  const provider = cacheProvider ?? getUsageLimitsCacheProvider();
+  const cached = provider.get(userId);
 
-  if (cached && cached.expiresAt > now) {
-    return cached.value;
+  if (cached) {
+    return cached;
   }
 
   const usagePromise = (async (): Promise<UsageSummary> => {
     const nowInner = Date.now();
-    const shouldSkipRpc = userUsageRpcBackoffUntil > nowInner;
+    const backoffUntil = provider.getBackoffUntil();
+    const shouldSkipRpc = backoffUntil > nowInner;
 
     if (shouldSkipRpc) {
       return getUserUsageFallback(supabase, userId);
@@ -513,11 +521,11 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
 
         // Try the fallback function (get_user_usage) which should be available
         const fallbackResult = await supabase.rpc(USER_USAGE_RPC_FALLBACK_NAME, { p_user_id: userId });
-        
+
         if (fallbackResult.error || !fallbackResult.data) {
           // Both functions failed, use the full fallback method
           console.error("[getUserUsage] Both RPC functions failed, using full fallback method");
-          userUsageRpcBackoffUntil = Date.now() + USER_USAGE_RPC_BACKOFF_MS;
+          provider.setBackoffUntil(Date.now() + USER_USAGE_RPC_BACKOFF_MS);
           return getUserUsageFallback(supabase, userId);
         }
 
@@ -623,11 +631,8 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
     });
   })();
 
-  userUsageCache.set(userId, { expiresAt: now + USER_USAGE_CACHE_TTL_MS, value: usagePromise });
-
-  usagePromise.catch(() => {
-    userUsageCache.delete(userId);
-  });
+  const now = Date.now();
+  provider.set(userId, usagePromise, now + USER_USAGE_CACHE_TTL_MS);
 
   return usagePromise;
 };

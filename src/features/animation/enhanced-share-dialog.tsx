@@ -31,7 +31,11 @@ import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 import { debounce } from "@/lib/utils/debounce";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
-import { useUserUsage, USAGE_QUERY_KEY, fetchUserUsage } from "@/features/user/queries";
+import {
+  useUserUsage,
+  USAGE_QUERY_KEY,
+  fetchUserUsage,
+} from "@/features/user/queries";
 
 import { ShareMetadataForm } from "./share-dialog/share-metadata-form";
 import { ShareTabPublic } from "./share-dialog/tabs/share-tab-public";
@@ -49,6 +53,12 @@ const shareFormSchema = z.object({
 
 type ShareFormValues = z.infer<typeof shareFormSchema>;
 
+interface ShareError extends Error {
+  code?: "AUTH_REQUIRED" | "PUBLIC_SHARE_LIMIT";
+  current?: number;
+  max?: number;
+}
+
 const TAB_KEYS = ["public", "embed", "platforms", "social", "preview"] as const;
 
 const defaultEmbedSizes = {
@@ -59,7 +69,9 @@ const defaultEmbedSizes = {
 export const EnhancedAnimationShareDialog = () => {
   const user = useUserStore((state) => state.user);
   const slides = useAnimationStore((state) => state.slides);
-  const animationSettings = useAnimationStore((state) => state.animationSettings);
+  const animationSettings = useAnimationStore(
+    (state) => state.animationSettings
+  );
   const totalDuration = useMemo(() => calculateTotalDuration(slides), [slides]);
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
@@ -76,7 +88,8 @@ export const EnhancedAnimationShareDialog = () => {
   const [shareUrl, setShareUrl] = useState("");
   const [shareSlug, setShareSlug] = useState<string | null>(null);
   const [ogPreviewUrl, setOgPreviewUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<(typeof TAB_KEYS)[number]>("public");
+  const [activeTab, setActiveTab] =
+    useState<(typeof TAB_KEYS)[number]>("public");
   const [embedWidth, setEmbedWidth] = useState(defaultEmbedSizes.width);
   const [embedHeight, setEmbedHeight] = useState(defaultEmbedSizes.height);
   const previewTrackedRef = useRef(false);
@@ -92,7 +105,10 @@ export const EnhancedAnimationShareDialog = () => {
   const queryClient = useQueryClient();
   const { data: usage } = useUserUsage(user?.id);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
-  const [upgradeContext, setUpgradeContext] = useState<{ current?: number; max?: number | null }>({
+  const [upgradeContext, setUpgradeContext] = useState<{
+    current?: number;
+    max?: number | null;
+  }>({
     current: 0,
     max: null,
   });
@@ -103,9 +119,11 @@ export const EnhancedAnimationShareDialog = () => {
   const { copy: copyEmbed, isCopying: isCopyingEmbed } = useCopyToClipboard({
     successMessage: "Embed code copied.",
   });
-  const { copy: copySnippet, isCopying: isCopyingSnippet } = useCopyToClipboard({
-    successMessage: "Copied to clipboard.",
-  });
+  const { copy: copySnippet, isCopying: isCopyingSnippet } = useCopyToClipboard(
+    {
+      successMessage: "Copied to clipboard.",
+    }
+  );
 
   const serializedSlides = useMemo(
     () =>
@@ -165,7 +183,10 @@ export const EnhancedAnimationShareDialog = () => {
   }, [firstSlide?.title, form]);
 
   const titleValue = useWatch({ control: form.control, name: "title" });
-  const descriptionValue = useWatch({ control: form.control, name: "description" });
+  const descriptionValue = useWatch({
+    control: form.control,
+    name: "description",
+  });
 
   useEffect(() => {
     if (!loadTimestampRef.current) {
@@ -183,29 +204,26 @@ export const EnhancedAnimationShareDialog = () => {
     [user]
   );
 
-  const buildOgPreviewUrl = useCallback(
-    () => {
-      // Use the slug if available, otherwise return null
-      // This avoids URL length issues by fetching data from the database
-      if (!shareSlug) {
-        return null;
-      }
+  const buildOgPreviewUrl = useCallback(() => {
+    // Use the slug if available, otherwise return null
+    // This avoids URL length issues by fetching data from the database
+    if (!shareSlug) {
+      return null;
+    }
 
-      const params = new URLSearchParams();
-      params.set("slug", shareSlug);
-      params.set("mode", "embed");
-      const currentTitle = form.getValues("title");
-      const currentDescription = form.getValues("description");
+    const params = new URLSearchParams();
+    params.set("slug", shareSlug);
+    params.set("mode", "embed");
+    const currentTitle = form.getValues("title");
+    const currentDescription = form.getValues("description");
 
-      // Override title/description if they differ from what's in the database
-      if (currentTitle) params.set("title", currentTitle);
-      if (currentDescription) params.set("description", currentDescription);
-      params.set("ts", Date.now().toString());
+    // Override title/description if they differ from what's in the database
+    if (currentTitle) params.set("title", currentTitle);
+    if (currentDescription) params.set("description", currentDescription);
+    params.set("ts", Date.now().toString());
 
-      return `/api/og-image?${params.toString()}`;
-    },
-    [form, shareSlug]
-  );
+    return `/api/og-image?${params.toString()}`;
+  }, [form, shareSlug]);
 
   useEffect(() => {
     if (!form.formState.isDirty) return;
@@ -226,7 +244,11 @@ export const EnhancedAnimationShareDialog = () => {
   };
 
   const shortenUrlMutation = useMutation({
-    mutationFn: async (params: { url: string; title?: string; description?: string }) => {
+    mutationFn: async (params: {
+      url: string;
+      title?: string;
+      description?: string;
+    }) => {
       const response = await fetch("/api/shorten-url", {
         method: "POST",
         headers: {
@@ -251,7 +273,9 @@ export const EnhancedAnimationShareDialog = () => {
         }
 
         if (response.status === 429) {
-          const limitError = new Error(data?.error || "Public share limit reached");
+          const limitError = new Error(
+            data?.error || "Public share limit reached"
+          );
           (limitError as any).code = "PUBLIC_SHARE_LIMIT";
           (limitError as any).current = data?.current;
           (limitError as any).max = data?.max;
@@ -293,7 +317,9 @@ export const EnhancedAnimationShareDialog = () => {
         publicShares.current >= publicShares.max
       ) {
         openUpgradeForShares(publicShares.current, publicShares.max);
-        toast.error("You've reached your public view limit. Upgrade for more views.");
+        toast.error(
+          "You've reached your public view limit. Upgrade for more views."
+        );
         return undefined;
       }
 
@@ -328,7 +354,8 @@ export const EnhancedAnimationShareDialog = () => {
         ogParams.set("slug", shortUrl);
         ogParams.set("mode", "embed");
         if (parsed.data.title) ogParams.set("title", parsed.data.title);
-        if (parsed.data.description) ogParams.set("description", parsed.data.description);
+        if (parsed.data.description)
+          ogParams.set("description", parsed.data.description);
         ogParams.set("ts", Date.now().toString());
         setOgPreviewUrl(`/api/og-image?${ogParams.toString()}`);
 
@@ -342,12 +369,14 @@ export const EnhancedAnimationShareDialog = () => {
           url_generated: Boolean(fullUrl),
         });
 
-        await queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user?.id] });
+        await queryClient.invalidateQueries({
+          queryKey: [USAGE_QUERY_KEY, user?.id],
+        });
 
         return fullUrl;
       } catch (error) {
         console.error("Failed to generate share URL", error);
-        const err = error as any;
+        const err = error as ShareError;
 
         if (err?.code === "AUTH_REQUIRED") {
           setIsLoginDialogOpen(true);
@@ -356,7 +385,9 @@ export const EnhancedAnimationShareDialog = () => {
 
         if (err?.code === "PUBLIC_SHARE_LIMIT") {
           openUpgradeForShares(err?.current, err?.max);
-          toast.error("Public share limit reached. Upgrade to continue sharing.");
+          toast.error(
+            "Public share limit reached. Upgrade to continue sharing."
+          );
           return undefined;
         }
 
@@ -364,7 +395,15 @@ export const EnhancedAnimationShareDialog = () => {
         return undefined;
       }
     },
-    [currentUrl, form, payload, queryClient, serializedSlides.length, shortenUrlMutation, user]
+    [
+      currentUrl,
+      form,
+      payload,
+      queryClient,
+      serializedSlides.length,
+      shortenUrlMutation,
+      user,
+    ]
   );
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -385,14 +424,17 @@ export const EnhancedAnimationShareDialog = () => {
     }
   };
 
-  const handlePlatformCopy = (platform: "hashnode" | "medium" | "devto" | "notion") => {
+  const handlePlatformCopy = (
+    platform: "hashnode" | "medium" | "devto" | "notion"
+  ) => {
     if (!shareUrl) return;
 
     const title = form.getValues("title") || "Shared animation";
     const platformSnippet = generatePlatformUrl(platform, shareUrl, title);
 
     // If platform returns "iframe", use the actual iframe embed code
-    const contentToCopy = platformSnippet === "iframe" ? embedCode : platformSnippet;
+    const contentToCopy =
+      platformSnippet === "iframe" ? embedCode : platformSnippet;
 
     void copySnippet(contentToCopy);
 
@@ -405,8 +447,18 @@ export const EnhancedAnimationShareDialog = () => {
 
   const socialLinks = useMemo(
     () => ({
-      twitter: generateSocialShareUrl("twitter", shareUrl, titleValue || "My animation", descriptionValue),
-      linkedin: generateSocialShareUrl("linkedin", shareUrl, titleValue || "My animation", descriptionValue),
+      twitter: generateSocialShareUrl(
+        "twitter",
+        shareUrl,
+        titleValue || "My animation",
+        descriptionValue
+      ),
+      linkedin: generateSocialShareUrl(
+        "linkedin",
+        shareUrl,
+        titleValue || "My animation",
+        descriptionValue
+      ),
     }),
     [descriptionValue, shareUrl, titleValue]
   );
@@ -455,7 +507,10 @@ export const EnhancedAnimationShareDialog = () => {
         return;
       }
 
-      const latestUrl = shareUrl && !form.formState.isDirty ? shareUrl : await generateShareUrl();
+      const latestUrl =
+        shareUrl && !form.formState.isDirty
+          ? shareUrl
+          : await generateShareUrl();
       if (!latestUrl) {
         return;
       }
@@ -472,7 +527,10 @@ export const EnhancedAnimationShareDialog = () => {
 
   const handleEmbedCopy = useCallback(async () => {
     try {
-      const latestUrl = shareUrl && !form.formState.isDirty ? shareUrl : await generateShareUrl();
+      const latestUrl =
+        shareUrl && !form.formState.isDirty
+          ? shareUrl
+          : await generateShareUrl();
       if (!latestUrl) {
         return;
       }
@@ -489,9 +547,19 @@ export const EnhancedAnimationShareDialog = () => {
       await copyEmbed(code);
     } catch (error) {
       console.error("Failed to copy embed code", error);
-      toast.error("Could not generate and copy the embed code. Please try again.");
+      toast.error(
+        "Could not generate and copy the embed code. Please try again."
+      );
     }
-  }, [copyEmbed, embedHeight, embedWidth, form.formState.isDirty, generateShareUrl, shareUrl, user]);
+  }, [
+    copyEmbed,
+    embedHeight,
+    embedWidth,
+    form.formState.isDirty,
+    generateShareUrl,
+    shareUrl,
+    user,
+  ]);
 
   const handleExport = () => {
     if (!user) {
@@ -520,8 +588,10 @@ export const EnhancedAnimationShareDialog = () => {
       slide_count: serializedSlides.length,
       total_duration: totalDuration,
       transition_type: animationSettings.transitionType,
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+      export_format_experiment:
+        process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+      transition_experiment:
+        process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
       time_to_first_export_ms:
         isFirstExport && loadTimestampRef.current !== null
           ? Date.now() - loadTimestampRef.current
@@ -536,8 +606,10 @@ export const EnhancedAnimationShareDialog = () => {
       format: animationSettings.exportFormat,
       resolution: animationSettings.resolution,
       slide_count: serializedSlides.length,
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+      export_format_experiment:
+        process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+      transition_experiment:
+        process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
     });
   };
 
@@ -562,8 +634,10 @@ export const EnhancedAnimationShareDialog = () => {
       file_size_mb: Number((blob.size / (1024 * 1024)).toFixed(2)),
       duration_seconds: totalDuration,
       transition_type: animationSettings.transitionType,
-      export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-      transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+      export_format_experiment:
+        process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+      transition_experiment:
+        process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
     });
 
     toast.success("Video downloaded successfully.");
@@ -599,7 +673,8 @@ export const EnhancedAnimationShareDialog = () => {
           <DialogHeader>
             <DialogTitle>Share animation</DialogTitle>
             <DialogDescription>
-              Generate links, embeds, and videos to share your code animation anywhere.
+              Generate links, embeds, and videos to share your code animation
+              anywhere.
             </DialogDescription>
           </DialogHeader>
 
@@ -629,8 +704,10 @@ export const EnhancedAnimationShareDialog = () => {
                   slide_count: serializedSlides.length,
                   transition_type: animationSettings.transitionType,
                   progress_percent: Math.round(exportProgress * 100),
-                  export_format_experiment: process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
-                  transition_experiment: process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
+                  export_format_experiment:
+                    process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control",
+                  transition_experiment:
+                    process.env.NEXT_PUBLIC_TRANSITION_EXPERIMENT ?? "control",
                 });
                 toast.error("Export failed. Please try again.");
               }}
@@ -646,7 +723,12 @@ export const EnhancedAnimationShareDialog = () => {
           <div className="">
             <ShareMetadataForm control={form.control} />
 
-            <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as (typeof TAB_KEYS)[number])}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) =>
+                handleTabChange(value as (typeof TAB_KEYS)[number])
+              }
+            >
               <TabsList className="grid grid-cols-2 md:grid-cols-5 gap-1 px-4 border-b border-t rounded-none py-4">
                 <TabsTrigger value="public">Public link</TabsTrigger>
                 <TabsTrigger value="platforms">Platforms</TabsTrigger>
@@ -674,7 +756,11 @@ export const EnhancedAnimationShareDialog = () => {
                   isGenerating={shortenUrlMutation.isPending}
                   isCopying={isCopyingEmbed}
                   onCopy={() => void handleEmbedCopy()}
-                  previewUrl={shareUrl ? shareUrl.replace("/animate/shared/", "/animate/embed/") : ""}
+                  previewUrl={
+                    shareUrl
+                      ? shareUrl.replace("/animate/shared/", "/animate/embed/")
+                      : ""
+                  }
                   ogPreviewUrl={ogPreviewUrl}
                 />
               </TabsContent>

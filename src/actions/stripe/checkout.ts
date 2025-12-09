@@ -81,21 +81,51 @@ export async function createCheckoutSession({
     }
 
     // Get price ID for the plan
-    const priceId = getStripePriceId(plan, interval);
+    let priceId: string;
+    try {
+      priceId = getStripePriceId(plan, interval);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to get Stripe price ID:', errorMessage);
+      return {
+        error: `Checkout configuration error: ${errorMessage}. Please contact support if this issue persists.`,
+      };
+    }
+
+    // Validate price ID before proceeding
+    if (!priceId || priceId.trim() === '') {
+      return {
+        error:
+          'Checkout configuration error: Stripe price ID is missing. Please contact support.',
+      };
+    }
 
     // Create checkout session
     const appUrl = resolveBaseUrl(headers);
-    const session = await createStripeCheckoutSession({
-      customerId: customer.id,
-      priceId,
-      successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${appUrl}/checkout/canceled?session_id={CHECKOUT_SESSION_ID}`,
-      metadata: {
-        userId: user.id,
-        plan,
-        interval,
-      },
-    });
+    let session;
+    try {
+      session = await createStripeCheckoutSession({
+        customerId: customer.id,
+        priceId,
+        successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${appUrl}/checkout/canceled?session_id={CHECKOUT_SESSION_ID}`,
+        metadata: {
+          userId: user.id,
+          plan,
+          interval,
+        },
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to create Stripe checkout session:', errorMessage);
+      // If it's a validation error from createCheckoutSession, return it directly
+      if (errorMessage.includes('Invalid Stripe price ID') || errorMessage.includes('price ID')) {
+        return {
+          error: `Checkout configuration error: ${errorMessage}. Please contact support.`,
+        };
+      }
+      return { error: 'Failed to create checkout session. Please try again later.' };
+    }
 
     return { url: session.url || undefined };
   } catch (error) {

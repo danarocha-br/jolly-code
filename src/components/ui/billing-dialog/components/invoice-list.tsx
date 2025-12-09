@@ -11,8 +11,8 @@ type InvoiceListProps = {
   isLoading?: boolean;
 };
 
-const formatCurrency = (amount: number, currency: string) => {
-  return new Intl.NumberFormat("en-US", {
+const formatCurrency = (amount: number, currency: string, locale = "en-US") => {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: currency.toUpperCase(),
   }).format(amount / 100);
@@ -127,4 +127,3 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
     </Card>
   );
 }
-

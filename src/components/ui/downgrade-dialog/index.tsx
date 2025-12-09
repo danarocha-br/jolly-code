@@ -94,6 +94,7 @@ export function DowngradeDialog({
   const [isLoadingImpactTransition, startLoadingImpactTransition] =
     useTransition();
   const [deletionCompleted, setDeletionCompleted] = useState(false);
+  const [impactStale, setImpactStale] = useState(false);
   const queryClient = useQueryClient();
   const hasAutoSelectedSnippets = useRef(false);
   const hasAutoSelectedAnimations = useRef(false);
@@ -134,6 +135,7 @@ export function DowngradeDialog({
         setSelectedSnippets(new Set());
         setSelectedAnimations(new Set());
         setDeletionCompleted(false);
+        setImpactStale(false);
       });
       hasAutoSelectedSnippets.current = false;
       hasAutoSelectedAnimations.current = false;
@@ -164,6 +166,7 @@ export function DowngradeDialog({
           startLoadingImpactTransition(() => {
             setImpact(result.data);
             setDeletionCompleted(false); // Reset flag when loading new impact
+            setImpactStale(false); // Reset stale flag when loading new impact
           });
         }
       })
@@ -302,6 +305,7 @@ export function DowngradeDialog({
           const newImpact = await checkDowngradeImpact(targetPlan);
           if (newImpact.data) {
             setImpact(newImpact.data);
+            setImpactStale(false); // Impact is fresh
             // Clear selections if impact is resolved
             if (!newImpact.data.hasAnyImpact) {
               setSelectedSnippets(new Set());
@@ -314,17 +318,27 @@ export function DowngradeDialog({
               "Failed to re-check impact after deletion:",
               newImpact.error
             );
-            // Still clear selections to allow user to proceed
-            // deletionCompleted flag remains true to allow proceeding
+            // Mark impact as stale and clear it to prevent showing incorrect data
+            setImpact(null);
+            setImpactStale(true);
+            setDeletionCompleted(false); // Prevent proceeding with stale data
             setSelectedSnippets(new Set());
             setSelectedAnimations(new Set());
+            toast.warning(
+              "Failed to refresh impact data. Please refresh before proceeding."
+            );
           }
         } catch (err) {
           console.error("Error re-checking impact:", err);
-          // Clear selections anyway to allow user to proceed
-          // deletionCompleted flag remains true to allow proceeding
+          // Mark impact as stale and clear it to prevent showing incorrect data
+          setImpact(null);
+          setImpactStale(true);
+          setDeletionCompleted(false); // Prevent proceeding with stale data
           setSelectedSnippets(new Set());
           setSelectedAnimations(new Set());
+          toast.warning(
+            "Failed to refresh impact data. Please refresh before proceeding."
+          );
         }
       } catch (error) {
         console.error("Error deleting items:", error);
@@ -333,16 +347,56 @@ export function DowngradeDialog({
     });
   };
 
+  const handleRefreshImpact = async () => {
+    if (!userId || !targetPlan) return;
+
+    setIsLoadingImpact(true);
+    setImpactStale(false);
+
+    try {
+      const result = await checkDowngradeImpact(targetPlan);
+      if (result.error) {
+        toast.error(result.error);
+        setImpactStale(true);
+        return;
+      }
+      if (result.data) {
+        startLoadingImpactTransition(() => {
+          setImpact(result.data);
+          setImpactStale(false);
+          setDeletionCompleted(false);
+          // Reset auto-selection flags to allow re-selection if needed
+          hasAutoSelectedSnippets.current = false;
+          hasAutoSelectedAnimations.current = false;
+        });
+        toast.success("Impact data refreshed");
+      }
+    } catch (err) {
+      console.error("Error refreshing impact:", err);
+      toast.error("Failed to refresh impact data");
+      setImpactStale(true);
+    } finally {
+      setIsLoadingImpact(false);
+    }
+  };
+
   const handleProceedToDowngrade = () => {
     if (!impact) {
       toast.error("Please wait for impact calculation to complete");
       return;
     }
 
-    // If deletions were completed successfully, allow proceeding even if impact re-check failed
+    // Prevent proceeding if impact is stale
+    if (impactStale) {
+      toast.error(
+        "Impact data is stale. Please refresh the impact before proceeding."
+      );
+      return;
+    }
+
+    // If deletions were completed successfully, allow proceeding
     if (deletionCompleted) {
       // Deletions were successful, proceed to downgrade
-      // The impact state may be stale, but we trust that deletions resolved the issue
     } else if (impact.hasAnyImpact) {
       // Check if user has resolved all over-limit issues
       // Note: After deletion, impact is re-checked, so we validate against current impact state
@@ -400,6 +454,36 @@ export function DowngradeDialog({
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
+            {impactStale && (
+              <Alert variant="destructive">
+                <i className="ri-error-warning-line" />
+                <AlertTitle>Impact Data Stale</AlertTitle>
+                <AlertDescription className="flex items-center justify-between gap-4">
+                  <span>
+                    Failed to refresh impact data after deletion. Please refresh
+                    to see accurate impact information before proceeding.
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefreshImpact}
+                    disabled={isLoadingImpact}
+                  >
+                    {isLoadingImpact ? (
+                      <>
+                        <i className="ri-loader-4-line mr-2 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-refresh-line mr-2" />
+                        Refresh Impact
+                      </>
+                    )}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
             {isLoadingImpact ? (
               <div className="space-y-2">
                 <div className="h-4 w-full bg-muted animate-pulse rounded" />
@@ -755,6 +839,14 @@ export function DowngradeDialog({
                   </div>
                 </div>
               </>
+            ) : impactStale ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <i className="ri-error-warning-line text-2xl mb-2 text-destructive" />
+                <p className="font-medium mb-2">Impact data unavailable</p>
+                <p className="text-sm">
+                  Please refresh the impact data to see accurate information.
+                </p>
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <i className="ri-loader-4-line text-2xl animate-spin mb-2" />
@@ -780,6 +872,7 @@ export function DowngradeDialog({
                 isDeleting ||
                 isLoadingImpact ||
                 !impact ||
+                impactStale ||
                 // Allow proceeding if deletions were completed successfully
                 (!deletionCompleted &&
                   impact.hasAnyImpact &&

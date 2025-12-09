@@ -102,21 +102,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Get price ID for the plan
-    const priceId = getStripePriceId(plan, interval);
+    let priceId: string;
+    try {
+      priceId = getStripePriceId(plan, interval);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to get Stripe price ID:', errorMessage);
+      return NextResponse.json(
+        {
+          error: `Checkout configuration error: ${errorMessage}. Please contact support if this issue persists.`,
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate price ID before proceeding
+    if (!priceId || priceId.trim() === '') {
+      return NextResponse.json(
+        {
+          error: 'Checkout configuration error: Stripe price ID is missing. Please contact support.',
+        },
+        { status: 500 }
+      );
+    }
 
     // Create checkout session
     const appUrl = resolveBaseUrl(request.headers);
-    const session = await createCheckoutSession({
-      customerId: customer.id,
-      priceId,
-      successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${appUrl}/checkout/canceled?session_id={CHECKOUT_SESSION_ID}`,
-      metadata: {
-        userId: user.id,
-        plan,
-        interval,
-      },
-    });
+    let session;
+    try {
+      session = await createCheckoutSession({
+        customerId: customer.id,
+        priceId,
+        successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${appUrl}/checkout/canceled?session_id={CHECKOUT_SESSION_ID}`,
+        metadata: {
+          userId: user.id,
+          plan,
+          interval,
+        },
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to create Stripe checkout session:', errorMessage);
+      // If it's a validation error from createCheckoutSession, return it directly
+      if (errorMessage.includes('Invalid Stripe price ID') || errorMessage.includes('price ID')) {
+        return NextResponse.json(
+          {
+            error: `Checkout configuration error: ${errorMessage}. Please contact support.`,
+          },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(
+        { error: 'Failed to create checkout session. Please try again later.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error) {

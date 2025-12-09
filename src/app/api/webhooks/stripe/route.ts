@@ -15,8 +15,8 @@ function getPlanIdFromPriceId(priceId: string): PlanId | null {
   // Build map only from non-empty environment variables to prevent collisions
   const priceIdMap: Record<string, PlanId> = {};
 
-  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTED_MONTHLY_PRICE_ID;
-  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTED_YEARLY_PRICE_ID;
+  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID;
+  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID;
   const proMonthly = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID;
   const proYearly = process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
 
@@ -229,14 +229,29 @@ async function handleSubscriptionChange(
   const priceInterval = subscription.items.data[0]?.price?.recurring?.interval;
   const billingInterval = priceInterval === "month" ? "monthly" : priceInterval === "year" ? "yearly" : null;
 
-  const updateData: any = {
+  // Safely convert current_period_end from Unix timestamp (seconds) to ISO string
+  const subscriptionPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000).toISOString()
+    : null;
+
+  const updateData: {
+    plan: PlanId;
+    plan_updated_at: string;
+    stripe_customer_id: string;
+    stripe_subscription_id: string;
+    stripe_subscription_status: Stripe.Subscription.Status;
+    subscription_period_end: string | null;
+    subscription_cancel_at_period_end: boolean | null;
+    stripe_price_id: string | undefined;
+    billing_interval: string | null;
+  } = {
     plan: planId,
     plan_updated_at: new Date().toISOString(),
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     stripe_subscription_status: subscription.status,
-    subscription_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-    subscription_cancel_at_period_end: (subscription as any).cancel_at_period_end,
+    subscription_period_end: subscriptionPeriodEnd,
+    subscription_cancel_at_period_end: subscription.cancel_at_period_end ?? null,
     stripe_price_id: priceId,
     billing_interval: billingInterval,
   };
@@ -297,6 +312,13 @@ async function handleSubscriptionDeleted(
 
   if (reconcileError) {
     console.error('Failed to reconcile over-limit content after cancellation', reconcileError);
+    Sentry.captureException(reconcileError, {
+      level: 'error',
+      tags: {
+        action: 'reconcile_over_limit_content',
+      },
+      extra: { userId },
+    });
   }
 
   console.log(`Downgraded user ${userId} to free plan`);
@@ -695,57 +717,24 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'checkout.session.completed':
-        try {
-          resolvedUserId = await handleCheckoutSessionCompleted(
-            event.data.object as Stripe.Checkout.Session,
-            supabase
-          );
-        } catch (error) {
-          console.error('Error handling checkout.session.completed:', error);
-          Sentry.captureException(error, {
-            extra: {
-              eventId: event.id,
-              sessionId: (event.data.object as Stripe.Checkout.Session).id,
-            },
-          });
-          // Don't throw - log error but continue processing
-        }
+        resolvedUserId = await handleCheckoutSessionCompleted(
+          event.data.object as Stripe.Checkout.Session,
+          supabase
+        );
         break;
 
       case 'invoice.payment_succeeded':
-        try {
-          resolvedUserId = await handleInvoicePaymentSucceeded(
-            event.data.object as Stripe.Invoice,
-            supabase
-          );
-        } catch (error) {
-          console.error('Error handling invoice.payment_succeeded:', error);
-          Sentry.captureException(error, {
-            extra: {
-              eventId: event.id,
-              invoiceId: (event.data.object as Stripe.Invoice).id,
-            },
-          });
-          // Don't throw - log error but continue processing
-        }
+        resolvedUserId = await handleInvoicePaymentSucceeded(
+          event.data.object as Stripe.Invoice,
+          supabase
+        );
         break;
 
       case 'invoice.payment_failed':
-        try {
-          resolvedUserId = await handleInvoicePaymentFailed(
-            event.data.object as Stripe.Invoice,
-            supabase
-          );
-        } catch (error) {
-          console.error('Error handling invoice.payment_failed:', error);
-          Sentry.captureException(error, {
-            extra: {
-              eventId: event.id,
-              invoiceId: (event.data.object as Stripe.Invoice).id,
-            },
-          });
-          // Don't throw - log error but continue processing
-        }
+        resolvedUserId = await handleInvoicePaymentFailed(
+          event.data.object as Stripe.Invoice,
+          supabase
+        );
         break;
 
       default:

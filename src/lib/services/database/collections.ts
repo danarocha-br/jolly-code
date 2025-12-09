@@ -14,6 +14,41 @@ export async function insertCollection({
     snippets,
     supabase,
 }: Collection): Promise<Collection[]> {
+    let collectionId: string | null = null;
+    let collectionCreated = false;
+    let cleanupAttempted = false;
+
+    const cleanupCollection = async (): Promise<void> => {
+        if (cleanupAttempted || !collectionCreated || !collectionId) {
+            return;
+        }
+        cleanupAttempted = true;
+
+        try {
+            const { error: cleanupError } = await supabase
+                .from("collection")
+                .delete()
+                .eq("id", collectionId)
+                .eq("user_id", user_id);
+
+            if (cleanupError) {
+                console.error(
+                    `[insertCollection] Failed to cleanup orphaned collection ${collectionId}:`,
+                    cleanupError
+                );
+            } else {
+                console.log(
+                    `[insertCollection] Successfully cleaned up orphaned collection ${collectionId}`
+                );
+            }
+        } catch (cleanupErr) {
+            console.error(
+                `[insertCollection] Exception during cleanup of orphaned collection ${collectionId}:`,
+                cleanupErr
+            );
+        }
+    };
+
     try {
         // Insert the collection (without snippets column - using junction table now)
         const { data, error } = await supabase
@@ -35,7 +70,8 @@ export async function insertCollection({
             throw new Error("Failed to create collection");
         }
 
-        const collectionId = data[0].id;
+        collectionId = data[0].id;
+        collectionCreated = true;
 
         // Insert junction records for snippets if provided
         if (snippets && Array.isArray(snippets) && snippets.length > 0) {
@@ -55,6 +91,9 @@ export async function insertCollection({
                     .insert(junctionRecords);
 
                 if (junctionError) {
+                    // Junction insert failed - clean up the orphaned collection
+                    await cleanupCollection();
+                    // Re-throw the original junction error
                     throw junctionError;
                 }
             }
@@ -62,8 +101,20 @@ export async function insertCollection({
 
         return data;
     } catch (error) {
-        console.error(error);
-        throw new Error("An error occurred. Please try again later.");
+        // If collection was created but we're throwing an error, attempt cleanup
+        // (this handles edge cases where error occurs after collection creation but before junction insert)
+        await cleanupCollection();
+
+        // Propagate the original error with its message preserved
+        console.error("[insertCollection] Error creating collection:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        // For non-Error objects (e.g., Supabase PostgrestError), wrap but preserve message
+        const errorMessage = typeof error === 'object' && error !== null && 'message' in error
+            ? String(error.message)
+            : "An error occurred. Please try again later.";
+        throw new Error(errorMessage);
     }
 }
 
