@@ -137,7 +137,7 @@ export async function updateCollection({
             }
 
             // Refetch the collection with snippets populated if snippets were updated
-            if (data && data.length > 0) {
+            if (data && data.length > 0 && id) {
                 const fullCollection = await getUserCollectionById({
                     id,
                     user_id,

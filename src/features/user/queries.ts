@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 
 import { createClient } from "@/utils/supabase/client";
@@ -26,15 +27,20 @@ export const fetchUserUsage = async (userId?: string): Promise<UsageSummary> => 
 };
 
 export const useUserUsage = (userId?: string) => {
-  return useQuery({
+  const queryResult = useQuery<UsageSummary>({
     queryKey: [USAGE_QUERY_KEY, userId],
     queryFn: () => fetchUserUsage(userId),
     staleTime: USER_USAGE_STALE_TIME_MS,
     enabled: Boolean(userId),
-    onError: (error) => {
+  });
+
+  // Handle errors (React Query v5 removed onError from useQuery)
+  useEffect(() => {
+    if (queryResult.error) {
+      const error = queryResult.error;
       // Additional error handler specific to user usage queries
       // This ensures RPC errors are caught even if they're handled gracefully
-      if (error instanceof Error && typeof window !== "undefined" && Sentry.getCurrentHub) {
+      if (error instanceof Error && typeof window !== "undefined" && typeof Sentry.getCurrentHub === "function") {
         Sentry.withScope((scope) => {
           scope.setTag("query_type", "user_usage");
           scope.setTag("user_id", userId || "unknown");
@@ -50,12 +56,14 @@ export const useUserUsage = (userId?: string) => {
         });
       }
       console.error("[useUserUsage] Query error:", error);
-    },
-  });
+    }
+  }, [queryResult.error, userId]);
+
+  return queryResult;
 };
 
 export const useUserPlan = (userId?: string) => {
-  return useQuery<PlanId>({
+  const queryResult = useQuery<PlanId>({
     queryKey: ["user-plan", userId],
     queryFn: async () => {
       const usage = await fetchUserUsage(userId);
@@ -63,9 +71,14 @@ export const useUserPlan = (userId?: string) => {
     },
     staleTime: USER_USAGE_STALE_TIME_MS,
     enabled: Boolean(userId),
-    onError: (error) => {
+  });
+
+  // Handle errors (React Query v5 removed onError from useQuery)
+  useEffect(() => {
+    if (queryResult.error) {
+      const error = queryResult.error;
       // Additional error handler specific to user plan queries
-      if (error instanceof Error && typeof window !== "undefined" && Sentry.getCurrentHub) {
+      if (error instanceof Error && typeof window !== "undefined" && typeof Sentry.getCurrentHub === "function") {
         Sentry.withScope((scope) => {
           scope.setTag("query_type", "user_plan");
           scope.setTag("user_id", userId || "unknown");
@@ -81,6 +94,8 @@ export const useUserPlan = (userId?: string) => {
         });
       }
       console.error("[useUserPlan] Query error:", error);
-    },
-  });
+    }
+  }, [queryResult.error, userId]);
+
+  return queryResult;
 };

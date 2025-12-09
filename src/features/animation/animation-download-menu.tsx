@@ -18,6 +18,7 @@ import { LoginDialog } from "@/features/login";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { useUserUsage } from "@/features/user/queries";
 import { getPlanConfig, type PlanId } from "@/lib/config/plans";
+import type { UsageSummary } from "@/lib/services/usage-limits";
 import { createClient } from "@/utils/supabase/client";
 import { ExportOverlay } from "./share-dialog/export-overlay";
 import { GifExporter } from "./gif-exporter";
@@ -52,6 +53,7 @@ export const AnimationDownloadMenu = () => {
   }>({});
   const supabase = useMemo(() => createClient(), []);
   const { data: usage } = useUserUsage(user?.id ?? undefined);
+  const typedUsage = usage as UsageSummary | undefined;
 
   const serializedSlides = useMemo(
     () =>
@@ -109,9 +111,9 @@ export const AnimationDownloadMenu = () => {
   const verifyVideoExportAllowance = async () => {
     if (!user?.id) return false;
 
-    const plan = usage?.plan ?? "free";
-    const current = usage?.videoExports?.current ?? 0;
-    const max = usage?.videoExports?.max ?? getPlanConfig(plan).maxVideoExportCount ?? 0;
+    const plan = typedUsage?.plan ?? "free";
+    const current = typedUsage?.videoExports?.current ?? 0;
+    const max = typedUsage?.videoExports?.max ?? getPlanConfig(plan).maxVideoExportCount ?? 0;
 
     if (max !== null && max <= 0) {
       trackAnimationEvent("upgrade_prompt_shown", user, {

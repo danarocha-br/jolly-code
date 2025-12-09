@@ -467,8 +467,8 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
           user_id: userId,
         });
 
-        // Use withScope to ensure proper context and check if Sentry is available
-        if (typeof window !== "undefined" && Sentry.getCurrentHub) {
+        // Use withScope to ensure proper context
+        if (typeof window !== "undefined") {
           // Client-side: use withScope and flush
           Sentry.withScope((scope) => {
             scope.setLevel("warning"); // Warning since we have a fallback
@@ -542,7 +542,7 @@ export const getUserUsage = async (supabase: Supabase, userId: string): Promise<
         user_id: userId,
       });
 
-      if (typeof window !== "undefined" && Sentry.getCurrentHub) {
+      if (typeof window !== "undefined") {
         // Client-side: use withScope and flush
         Sentry.withScope((scope) => {
           scope.setLevel("error");

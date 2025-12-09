@@ -11,7 +11,7 @@ import { withAuthAction } from '@/actions/utils/with-auth'
 
 export type CreateAnimationInput = {
 	id: string
-	title: string
+	title?: string
 	slides: AnimationSlide[]
 	settings: AnimationSettings
 	url?: string | null

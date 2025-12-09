@@ -22,6 +22,7 @@ import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { DowngradeDialog } from "@/components/ui/downgrade-dialog";
 import { useUserPlan } from "@/features/user/queries";
 import { getDowngradeTarget } from "@/lib/utils/downgrade-impact";
+import type { PlanId } from "@/lib/config/plans";
 
 type BillingDialogProps = {
   open: boolean;
@@ -43,7 +44,8 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
   const { data: invoices, isLoading: isInvoicesLoading, error: invoicesError } = useInvoices(
     hasSubscription ? billingInfo?.stripeCustomerId || undefined : undefined
   );
-  const { data: currentPlan } = useUserPlan(userId);
+  const { data: planData } = useUserPlan(userId);
+  const currentPlan = planData as PlanId | undefined;
 
   const handleOpenPortal = () => {
     startTransition(async () => {

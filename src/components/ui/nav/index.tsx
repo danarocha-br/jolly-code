@@ -39,6 +39,7 @@ import { useAnimationFeatureFlag } from "@/features/animation/hooks/use-animatio
 import { Skeleton } from "../skeleton";
 import { useUserUsage } from "@/features/user/queries";
 import { getMaxUsagePercentage, getUsageThreshold } from "@/lib/utils/usage-helpers";
+import type { UsageSummary } from "@/lib/services/usage-limits";
 
 const TOGGLE_THEME_HOTKEY = hotKeyList.find((item) => item.label === "Toggle theme")?.hotKey ?? "";
 
@@ -124,7 +125,8 @@ export const Nav = () => {
   // Optimize Zustand selectors - only subscribe to needed values
   const isPresentational = useEditorStore((state) => state.presentational);
   const user = useUserStore((state) => state.user);
-  const { data: usage } = useUserUsage(user?.id);
+  const { data: usageData } = useUserUsage(user?.id);
+  const usage = usageData as UsageSummary | undefined;
 
   const username = user?.user_metadata?.full_name;
   const imageUrl = user?.user_metadata?.avatar_url;
