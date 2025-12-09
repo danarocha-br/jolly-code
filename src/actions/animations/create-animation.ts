@@ -37,10 +37,6 @@ export async function createAnimation(
 
     const payload = parsedInput.data
 
-    if (payload.slides.length < 2) {
-      return error('Add at least two slides to save an animation')
-    }
-
     return withAuthAction(payload, async ({ id, title, slides, settings, url }, { user, supabase }) => {
       const { data: animationLimitCheck, error: animationLimitError } = await supabase.rpc('check_animation_limit', {
         p_user_id: user.id
@@ -76,6 +72,10 @@ export async function createAnimation(
 
       if (slideLimitError) {
         console.error('Error checking slide limit:', slideLimitError)
+        return error('Failed to verify slide limit. Please try again.')
+      }
+
+      if (!slideLimitCheck) {
         return error('Failed to verify slide limit. Please try again.')
       }
 

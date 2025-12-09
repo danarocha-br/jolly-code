@@ -375,7 +375,12 @@ export async function createAnimationCollection({
   title,
   animations,
   supabase,
-}: AnimationCollection): Promise<AnimationCollection[]> {
+}: {
+  user_id: string;
+  title: string;
+  animations?: string[];
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<AnimationCollection[]> {
   const sanitizedTitle = title?.trim() || "Untitled";
 
   try {
@@ -385,7 +390,7 @@ export async function createAnimationCollection({
         {
           user_id,
           title: sanitizedTitle,
-          animations,
+          animations: animations ?? [],
           updated_at: new Date().toISOString(),
         },
       ])

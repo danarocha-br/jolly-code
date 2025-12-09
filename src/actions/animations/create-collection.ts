@@ -44,10 +44,13 @@ export async function createAnimationCollection(
       return error('Folder limit reached. Please upgrade your plan.')
     }
 
+    // Extract animation IDs from DTO Animation objects
+    const animationIds = animations?.map((anim) => anim.id) ?? []
+
     const data = await createAnimationCollectionDb({
       user_id: user.id,
       title: sanitizedTitle,
-      animations: animations as any,
+      animations: animationIds,
       supabase
     })
 

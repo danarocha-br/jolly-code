@@ -2,6 +2,11 @@ import Stripe from 'stripe';
 import type { PlanId } from '@/lib/config/plans';
 
 // Initialize Stripe with the secret key (allow builds without it)
+// Note: API version '2025-11-17.clover' is required for Stripe v20.0.0+
+// This codebase is compatible with Stripe v20.0.0 breaking changes:
+// - API version is correctly pinned
+// - No usage of EventListParams (gt/gte/lt/lte removed - use 'created' instead)
+// - No tests using v2 array parameter serialization that would be affected
 const getStripeInstance = () => {
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error('STRIPE_SECRET_KEY is not set in environment variables');

@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { updateAnimation as updateAnimationDb } from '@/lib/services/database/animations'
@@ -11,13 +12,7 @@ import type { PlanId } from '@/lib/config/plans'
 import { formatZodError, updateAnimationInputSchema } from '@/actions/utils/validation'
 import { withAuthAction } from '@/actions/utils/with-auth'
 
-export type UpdateAnimationInput = {
-	id: string
-	title?: string
-	slides?: AnimationSlide[]
-	settings?: AnimationSettings
-	url?: string | null
-}
+export type UpdateAnimationInput = z.infer<typeof updateAnimationInputSchema>
 
 export async function updateAnimation(
 	input: UpdateAnimationInput
