@@ -22,8 +22,8 @@ export function FriendlyError({
 }: Props) {
   return (
     <div className={cn("flex min-h-screen w-full items-center justify-center p-8", className)}>
-      <div className="flex max-w-4xl flex-col items-center gap-6 rounded-2xl border border-border/70 bg-card/70 p-8 shadow-sm backdrop-blur">
-        <div className="w-full max-w-md">
+      <div className="flex max-w-4xl flex-col items-center justify-center gap-6 rounded-2xl border border-border/70 bg-card/70 p-8 shadow-sm backdrop-blur">
+        <div className="w-full max-w-md mx-auto">
           <NotFoundIllustration />
         </div>
         <div className="text-center space-y-3">
@@ -49,7 +49,7 @@ const NotFoundIllustration = () => (
     height="180"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="opacity-50 ml-6"
+    className="mx-auto"
   >
     <mask
       id="a"

@@ -24,11 +24,13 @@ function getStripePriceIdFromEnv(envVarName: string, plan: string, interval: str
   const value = process.env[envVarName];
   
   if (!value || value.trim() === '') {
-    throw new Error(
-      `Missing required Stripe price ID configuration: ${envVarName} is not set or is empty. ` +
-      `This is required for the ${plan} plan (${interval} billing). ` +
-      `Please set ${envVarName} in your environment variables.`
+    // Return empty string instead of throwing error to prevent app crash
+    // Validation will happen at checkout time in API routes
+    console.warn(
+      `Warning: Missing Stripe price ID configuration: ${envVarName}. ` +
+      `Checkout for ${plan} plan (${interval}) will not work.`
     );
+    return '';
   }
   
   return value;
