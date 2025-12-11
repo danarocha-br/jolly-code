@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { Logo } from "@/components/ui/logo";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -138,6 +139,7 @@ export async function GET(request: Request) {
             height: "100%",
             background,
             fontFamily: '"Inter", sans-serif',
+            position: "relative",
           }}
         >
           <div
@@ -211,6 +213,33 @@ export async function GET(request: Request) {
               >
                 {codeSnippet}
               </pre>
+            </div>
+          </div>
+
+          {/* Watermark */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 32,
+              right: 40,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              color: "#f8fafc",
+              fontSize: "20px",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+            }}
+          >
+            <span>jollycode.dev</span>
+            <div
+              style={{
+                transform: "scale(0.65)",
+                transformOrigin: "bottom right",
+                filter: "grayscale(0.15) contrast(1.1)",
+              }}
+            >
+              <Logo variant="short" />
             </div>
           </div>
         </div>

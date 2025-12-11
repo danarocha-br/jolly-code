@@ -87,6 +87,8 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
         return;
       }
 
+      freshEditor.dataset.exporting = "true";
+
       const imageBlob = await toBlob(freshEditor!, {
         pixelRatio: 2,
       });
@@ -102,6 +104,12 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
       analytics.track("copy_image");
     } catch (error) {
       toast.error("Something went wrong! Please try again.");
+    } finally {
+      const currentId = currentEditorState?.id || "editor";
+      const freshEditor = document.getElementById(currentId);
+      if (freshEditor) {
+        freshEditor.dataset.exporting = "false";
+      }
     }
   }
 
@@ -136,58 +144,67 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
     let imageURL, fileName;
     const currentId = currentEditorState?.id || "editor";
     const freshEditor = document.getElementById(currentId);
+    if (freshEditor) {
+      freshEditor.dataset.exporting = "true";
+    }
 
-    switch (format) {
-      case "PNG":
-        imageURL = await toPng(freshEditor!, {
-          pixelRatio: 2,
-        });
-        fileName = `${name}.png`;
-        break;
+    try {
+      switch (format) {
+        case "PNG":
+          imageURL = await toPng(freshEditor!, {
+            pixelRatio: 2,
+          });
+          fileName = `${name}.png`;
+          break;
 
-      case "JPG":
-        imageURL = await toJpeg(freshEditor!, {
-          pixelRatio: 2,
-          backgroundColor: "#fff",
-        });
-        fileName = `${name}.jpg`;
-        break;
+        case "JPG":
+          imageURL = await toJpeg(freshEditor!, {
+            pixelRatio: 2,
+            backgroundColor: "#fff",
+          });
+          fileName = `${name}.jpg`;
+          break;
 
-      case "SVG":
-        // Convert to PNG first (which works reliably), then wrap in SVG
-        // This avoids the known issues with html-to-image's toSvg function
-        const pngDataUrl = await toPng(freshEditor!, {
-          pixelRatio: 2,
-        });
+        case "SVG":
+          // Convert to PNG first (which works reliably), then wrap in SVG
+          // This avoids the known issues with html-to-image's toSvg function
+          const pngDataUrl = await toPng(freshEditor!, {
+            pixelRatio: 2,
+          });
 
-        // Get the dimensions of the element
-        const rect = freshEditor!.getBoundingClientRect();
-        const width = rect.width * 2; // Account for pixelRatio
-        const height = rect.height * 2;
+          // Get the dimensions of the element
+          const rect = freshEditor!.getBoundingClientRect();
+          const width = rect.width * 2; // Account for pixelRatio
+          const height = rect.height * 2;
 
-        // Create an SVG that embeds the PNG
-        const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+          // Create an SVG that embeds the PNG
+          const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <image width="${width}" height="${height}" xlink:href="${pngDataUrl}"/>
 </svg>`;
 
-        // Convert to data URL
-        imageURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
-        fileName = `${name}.svg`;
-        break;
+          // Convert to data URL
+          imageURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
+          fileName = `${name}.svg`;
+          break;
 
-      default:
-        // If the provided format is not supported, return without doing anything
-        return;
+        default:
+          // If the provided format is not supported, return without doing anything
+          return;
+      }
+
+      const link = document.createElement("a");
+      // Set the link's href to the image URL
+      link.href = imageURL;
+      // Set the link's download attribute to the file name
+      link.download = fileName;
+      // Programmatically trigger a click on the link element to initiate the file download
+      link.click();
+    } finally {
+      if (freshEditor) {
+        freshEditor.dataset.exporting = "false";
+      }
     }
-
-    const link = document.createElement("a");
-    // Set the link's href to the image URL
-    link.href = imageURL;
-    // Set the link's download attribute to the file name
-    link.download = fileName;
-    // Programmatically trigger a click on the link element to initiate the file download
-    link.click();
   }
 
   /**

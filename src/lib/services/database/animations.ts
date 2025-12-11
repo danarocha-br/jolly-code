@@ -235,22 +235,44 @@ export async function updateAnimation({
   settings,
   url,
   supabase,
-}: Animation): Promise<Animation[]> {
-  const sanitizedTitle = title?.trim() || "Untitled";
-
+}: Pick<Animation, 'id' | 'user_id' | 'supabase'> & Partial<Pick<Animation, 'title' | 'slides' | 'settings' | 'url'>>): Promise<Animation[]> {
   try {
+    // Build update object conditionally - only include fields that are provided
+    const updateData: Partial<{
+      user_id: string;
+      updated_at: string;
+      title: string;
+      slides: Animation['slides'];
+      settings: Animation['settings'];
+      url: string | null;
+    }> = {
+      user_id,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only update title if it's explicitly provided
+    if (title !== undefined) {
+      updateData.title = title?.trim() || "Untitled";
+    }
+
+    // Only update slides if provided
+    if (slides !== undefined) {
+      updateData.slides = slides;
+    }
+
+    // Only update settings if provided
+    if (settings !== undefined) {
+      updateData.settings = settings;
+    }
+
+    // Only update url if provided (including null to clear it)
+    if (url !== undefined) {
+      updateData.url = url;
+    }
+
     const { data, error } = await supabase
       .from("animation")
-      .update([
-        {
-          user_id,
-          title: sanitizedTitle,
-          slides,
-          settings,
-          url,
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .update(updateData)
       .eq("id", id)
       .eq("user_id", user_id)
       .select();
@@ -353,7 +375,12 @@ export async function createAnimationCollection({
   title,
   animations,
   supabase,
-}: AnimationCollection): Promise<AnimationCollection[]> {
+}: {
+  user_id: string;
+  title: string;
+  animations?: string[];
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<AnimationCollection[]> {
   const sanitizedTitle = title?.trim() || "Untitled";
 
   try {
@@ -363,7 +390,7 @@ export async function createAnimationCollection({
         {
           user_id,
           title: sanitizedTitle,
-          animations,
+          animations: animations ?? [],
           updated_at: new Date().toISOString(),
         },
       ])

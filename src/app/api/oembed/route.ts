@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { siteConfig } from "@/lib/utils/site-config";
 import { getSharedLink } from "@/lib/services/shared-link";
 import { decodeAnimationSharePayload, extractAnimationPayloadFromUrl } from "@/features/animation/share-utils";
+import { enforceRateLimit, publicLimiter } from "@/lib/arcjet/limiters";
 
 export async function GET(request: NextRequest) {
+	const limitResponse = await enforceRateLimit(publicLimiter, request, {
+		tags: ["oembed"],
+	});
+	if (limitResponse) return limitResponse;
+
 	const searchParams = request.nextUrl.searchParams;
 	const urlParam = searchParams.get("url");
 

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceRateLimit, publicLimiter } from "@/lib/arcjet/limiters";
 
 const CANNY_ENTRIES_URL = "https://canny.io/api/v1/entries/list";
 
 export async function POST(req: NextRequest | Request) {
   try {
+    const limitResponse = await enforceRateLimit(publicLimiter, req as Request, {
+      tags: ["changelog"],
+    });
+    if (limitResponse) return limitResponse;
+
     const apiKey = process.env.CANNY_API_KEY;
 
     if (!apiKey) {

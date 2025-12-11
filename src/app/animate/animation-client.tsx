@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Room } from "../room";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
+import { UsageBannerWrapper } from "@/components/usage-banner-wrapper";
 import { Button } from "@/components/ui/button";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import {
@@ -27,6 +28,7 @@ import { useAnimationLimits } from "@/features/animations/hooks/use-animation-li
 import { AnimationTabs } from "@/features/animation/components/animation-tabs";
 import { AnimationBottomBar } from "@/features/animation/components/animation-bottom-bar";
 import { ThemeInjector } from "@/features/animation/components/theme-injector";
+import { ClientErrorBoundary } from "@/components/errors/client-error-boundary";
 
 export default function AnimationClientPage() {
   const router = useRouter();
@@ -147,7 +149,11 @@ export default function AnimationClientPage() {
   );
 
   return (
-    <>
+    <ClientErrorBoundary
+      title="The animation workspace hit a snag"
+      description="We ran into a problem inside the editor. Try again and you should be back in flow."
+      actionLabel="Retry editor"
+    >
       <ThemeInjector />
 
       <LoginDialog
@@ -171,6 +177,10 @@ export default function AnimationClientPage() {
 
           <div className="flex-1 min-h-screen flex flex-col">
             <Nav />
+
+            <div className="fixed top-[64px] left-0 right-0 z-40">
+              <UsageBannerWrapper />
+            </div>
 
             <main className="flex-1 pt-16 flex flex-col justify-center pb-64">
               <div className="flex-1 flex items-center justify-center overflow-auto py-6 relative">
@@ -222,6 +232,6 @@ export default function AnimationClientPage() {
           </div>
         </div>
       </Room>
-    </>
+    </ClientErrorBoundary>
   );
 }

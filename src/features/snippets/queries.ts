@@ -15,6 +15,7 @@ import {
   deleteCollection,
 } from "@/actions";
 import type { UsageLimitCheck } from "@/lib/services/usage-limits";
+import type { ActionResult } from "@/actions/utils/action-result";
 
 
 
@@ -387,7 +388,7 @@ export function transformState(state: EditorState) {
  * Create a new snippet.
  *
  * @param {CreateSnippetProps} snippetProps - The snippet properties.
- * @returns {Promise<{ data: Snippet }| undefined>} - The created snippet data or undefined.
+ * @returns {Promise<ActionResult<Snippet>>} - The action result with snippet data or error.
  */
 export async function createSnippet({
   id,
@@ -397,7 +398,7 @@ export async function createSnippet({
   code,
   language,
   state,
-}: CreateSnippetProps): Promise<CreateSnippetResponse | undefined> {
+}: CreateSnippetProps): Promise<ActionResult<Snippet>> {
   try {
     const url = createUrl(currentUrl, code, state, user_id);
 
@@ -410,30 +411,20 @@ export async function createSnippet({
     });
 
     if (result.error) {
-      toast.error(result.error);
-      return undefined;
+      return result;
     }
 
-    const snippet = result.data?.snippet;
-    const usage = result.data?.usage;
+    const snippet = result.data;
 
-    if (usage?.max && usage.current >= usage.max) {
-      toast.error(
-        `You've reached the free plan limit (${usage.current}/${usage.max} snippets). Upgrade to Pro for unlimited snippets!`
-      );
-    } else {
+    if (snippet) {
       toast.success("Your code snippet was saved.");
+      return { data: snippet };
     }
 
-    if (usage?.max && usage.current >= usage.max - 1) {
-      toast.message(`You're almost at your snippet limit (${usage.current}/${usage.max}).`);
-    }
-
-    return snippet ? { data: snippet, usage } : undefined;
+    return { error: "Failed to create snippet" };
   } catch (error) {
     console.log(error);
-    toast.error(`Failed to save the snippet.`);
-    return undefined;
+    return { error: "Failed to save the snippet." };
   }
 }
 

@@ -39,6 +39,10 @@ Save your code snippets for future reference directly in the tool. Group your sa
 - Supabase
 - TailwindCSS
 
+## Environment Variables
+
+We validate configuration with `@t3-oss/env-nextjs`; `pnpm env:check` runs automatically before `pnpm dev`, `pnpm build`, and `pnpm start`. Copy `.env.example` to `.env.local` and fill in the required values.
+
 ## Roadmap
 
 For any additional feature request 👉: [Check it out](https://jollycode.canny.io/feature-requests)

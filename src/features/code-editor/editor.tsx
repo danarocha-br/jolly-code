@@ -21,17 +21,21 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoginDialog } from "@/features/login";
+import { Logo } from "@/components/ui/logo";
 import {
   createSnippet,
   removeSnippet,
   updateSnippet,
+  type CreateSnippetProps,
+  type RemoveSnippetProps,
 } from "@/features/snippets/queries";
-import { Collection } from "@/features/snippets/dtos";
+import { Collection, Snippet } from "@/features/snippets/dtos";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import { analytics } from "@/lib/services/tracking";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
+import { ActionResult } from "@/actions/utils/action-result";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -60,6 +64,55 @@ const unfocusEditor = hotKeyList.filter(
   (item) => item.label === "Unfocus code editor"
 );
 
+/**
+ * Determines if an error indicates an upgrade/plan limit condition.
+ * Checks for explicit error codes and upgrade-related keywords in the error message.
+ */
+function isUpgradeError(error: unknown): boolean {
+  if (!error) return false;
+
+  // Handle error objects with code or type properties
+  if (typeof error === "object" && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    
+    // Check for explicit error codes
+    if (errorObj.code === "UPGRADE_REQUIRED" || errorObj.code === "PLAN_LIMIT_EXCEEDED") {
+      return true;
+    }
+    
+    // Check error.type for upgrade markers
+    if (typeof errorObj.type === "string" && errorObj.type.toLowerCase().includes("upgrade")) {
+      return true;
+    }
+
+    // Extract message from error object if available
+    if (typeof errorObj.message === "string") {
+      error = errorObj.message;
+    } else if (typeof errorObj.error === "string") {
+      error = errorObj.error;
+    }
+  }
+
+  // Handle string errors
+  if (typeof error !== "string") {
+    return false;
+  }
+
+  const errorLower = error.toLowerCase();
+
+  // Check for explicit upgrade-related keywords
+  const upgradeKeywords = [
+    "upgrade",
+    "limit reached",
+    "plan limit",
+    "reached your",
+    "exceeded",
+    "over limit",
+  ];
+
+  return upgradeKeywords.some((keyword) => errorLower.includes(keyword));
+}
+
 export const Editor = forwardRef<any, EditorProps>(
   (
     {
@@ -74,6 +127,7 @@ export const Editor = forwardRef<any, EditorProps>(
     ref
   ) => {
     const editorRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const { theme } = useTheme();
     const memoizedTheme = useMemo(() => theme, [theme]);
@@ -83,8 +137,44 @@ export const Editor = forwardRef<any, EditorProps>(
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
       null
     );
+    const [isExporting, setIsExporting] = useState(false);
     const queryClient = useQueryClient();
     const queryKey = ["collections"];
+
+    // Sync data-exporting attribute with DOM changes from export menu
+    // The export menu (src/features/export/export-menu.tsx) directly manipulates
+    // the DOM attribute, so we use MutationObserver to sync React state.
+    // This ensures the watermark visibility (group-data-[exporting=true]/export:flex)
+    // works correctly during exports.
+    useEffect(() => {
+      if (!containerRef.current) return;
+
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (
+            mutation.type === "attributes" &&
+            mutation.attributeName === "data-exporting"
+          ) {
+            const element = mutation.target as HTMLElement;
+            const exporting = element.dataset.exporting === "true";
+            setIsExporting(exporting);
+          }
+        });
+      });
+
+      observer.observe(containerRef.current, {
+        attributes: true,
+        attributeFilter: ["data-exporting"],
+      });
+
+      // Initial check
+      const initialValue = containerRef.current.dataset.exporting === "true";
+      setIsExporting(initialValue);
+
+      return () => {
+        observer.disconnect();
+      };
+    }, []);
 
     const user = useUserStore((state) => state.user);
 
@@ -202,9 +292,10 @@ export const Editor = forwardRef<any, EditorProps>(
     const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
     const snippetLimit = usage?.snippets;
     const snippetLimitReached =
-      snippetLimit?.max !== null &&
-      typeof snippetLimit?.max !== "undefined" &&
-      snippetLimit.current >= snippetLimit.max;
+      (snippetLimit?.max !== null &&
+        typeof snippetLimit?.max !== "undefined" &&
+        snippetLimit.current >= snippetLimit.max) ||
+      (snippetLimit?.overLimit ?? 0) > 0;
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
     useHotkeys(focusEditor[0].hotKey, () => {
@@ -223,7 +314,12 @@ export const Editor = forwardRef<any, EditorProps>(
       }
     });
 
-    const { mutate: handleCreateSnippet } = useMutation({
+    const { mutate: handleCreateSnippet } = useMutation<
+      ActionResult<Snippet>,
+      Error,
+      CreateSnippetProps,
+      { previousSnippets: unknown }
+    >({
       mutationFn: createSnippet,
 
       onMutate: async () => {
@@ -250,12 +346,26 @@ export const Editor = forwardRef<any, EditorProps>(
         if (context) {
           queryClient.setQueryData(queryKey, context.previousSnippets);
         }
+        // Only open upgrade dialog if error indicates upgrade/limit condition
+        if (isUpgradeError(err)) {
+          setIsUpgradeOpen(true);
+        }
       },
 
       onSettled: (data, error, variables, context) => {
-        if (data) {
+        const actionResult: ActionResult<Snippet> | undefined = data;
+
+        if (actionResult?.error) {
+          toast.error(actionResult.error);
+          // Only open upgrade dialog if error indicates upgrade/limit condition
+          if (isUpgradeError(actionResult.error)) {
+            setIsUpgradeOpen(true);
+          }
+        }
+
+        if (actionResult && !actionResult.error && actionResult.data) {
           analytics.track("create_snippet", {
-            snippet_id: data.data.id,
+            snippet_id: actionResult.data.id,
             language: variables.language,
           });
         }
@@ -266,7 +376,12 @@ export const Editor = forwardRef<any, EditorProps>(
       },
     });
 
-    const { mutate: handleRemoveSnippet } = useMutation({
+    const { mutate: handleRemoveSnippet } = useMutation<
+      void,
+      Error,
+      RemoveSnippetProps,
+      { previousSnippets: unknown }
+    >({
       mutationFn: removeSnippet,
       onMutate: async () => {
         await queryClient.cancelQueries({ queryKey: queryKey });
@@ -379,14 +494,6 @@ export const Editor = forwardRef<any, EditorProps>(
 
     const handleSaveSnippet = () => {
       if (snippetLimitReached) {
-        const limitLabel =
-          snippetLimit?.max !== null && typeof snippetLimit?.max !== "undefined"
-            ? `${snippetLimit.current}/${snippetLimit.max}`
-            : `${snippetLimit?.current ?? 0}`;
-
-        toast.error(
-          `You've reached the free plan limit (${limitLabel} snippets). Upgrade to Pro for unlimited snippets!`
-        );
         analytics.track("limit_reached", {
           limit_type: "snippets",
           current: snippetLimit?.current ?? 0,
@@ -425,11 +532,21 @@ export const Editor = forwardRef<any, EditorProps>(
             S.background(),
             showBackground &&
             !presentational &&
-            themes[backgroundTheme!].background
+            themes[backgroundTheme!].background,
+            "relative overflow-hidden group/export"
           )}
           style={{ padding }}
-          ref={ref}
+          ref={(node) => {
+            // Merge refs: forwardRef and containerRef
+            if (typeof ref === "function") {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+            containerRef.current = node;
+          }}
           id={currentEditor?.id || "editor"}
+          data-exporting={isExporting ? "true" : "false"}
         >
           {!user ? (
             <LoginDialog>
@@ -603,6 +720,24 @@ export const Editor = forwardRef<any, EditorProps>(
           </div>
 
           <WidthMeasurement isVisible={isWidthVisible} width={width} />
+
+          {/* Watermark (included in exports) */}
+          <div className="pointer-events-none select-none absolute bottom-0 right-0 hidden items-center gap-3 opacity-80 group-data-[exporting=true]/export:flex">
+            <span
+              className={cn(
+                "text-xs font-medium tracking-wide",
+                isDarkTheme ? "text-white/40" : "text-stone-800/40"
+              )}
+            >
+              jollycode.dev
+            </span>
+            <Logo
+              variant="short"
+              className={cn(
+                "scale-[0.4] -ml-6 grayscale contrast-150 opacity-30",
+              )}
+            />
+          </div>
         </div>
 
         <div
