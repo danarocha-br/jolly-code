@@ -14,6 +14,7 @@ import { User } from "@supabase/supabase-js";
 import { calculateTotalDuration } from "@/features/animation";
 import { toast } from "sonner";
 import { useAnimationLimits } from "./use-animation-limits";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 
 type UseAnimationPersistenceProps = {
   user: User | null;
@@ -64,8 +65,15 @@ export function useAnimationPersistence({
           export_format: animationSettings.exportFormat,
         });
       }
+      // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+      // This must happen synchronously before invalidateQueries triggers refetch
+      if (user_id) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user_id);
+      }
       queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
       if (user_id) {
+        // Invalidate after cache is cleared to ensure fresh data
         queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
       }
     },
@@ -96,8 +104,14 @@ export function useAnimationPersistence({
       }
       setIsAnimationSaved(false);
       setAnimationId(undefined);
+      // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+      if (user_id) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user_id);
+      }
       queryClient.invalidateQueries({ queryKey: ["animation-collections"] });
       if (user_id) {
+        // Invalidate after cache is cleared to ensure fresh data
         queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
       }
     },

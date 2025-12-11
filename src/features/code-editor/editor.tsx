@@ -36,6 +36,7 @@ import { analytics } from "@/lib/services/tracking";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
 import { ActionResult } from "@/actions/utils/action-result";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -291,6 +292,8 @@ export const Editor = forwardRef<any, EditorProps>(
     }, [user]);
     const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
     const snippetLimit = usage?.snippets;
+    // Check if limit is reached: current >= max (can't save if at or over limit)
+    // Also check overLimit flag which indicates existing over-limit content
     const snippetLimitReached =
       (snippetLimit?.max !== null &&
         typeof snippetLimit?.max !== "undefined" &&
@@ -318,33 +321,57 @@ export const Editor = forwardRef<any, EditorProps>(
       ActionResult<Snippet>,
       Error,
       CreateSnippetProps,
-      { previousSnippets: unknown }
+      { previousSnippets: unknown; previousEditorState: EditorState | null; editorId: string | undefined }
     >({
       mutationFn: createSnippet,
 
-      onMutate: async () => {
+      onMutate: async (variables) => {
         await queryClient.cancelQueries({ queryKey });
+        // Also cancel usage queries to ensure fresh data for limit check
+        if (user_id) {
+          await queryClient.cancelQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
+        }
 
         const previousSnippets = queryClient.getQueryData(queryKey);
 
-        useEditorStore.setState({
-          editors: editors.map((editor) => {
-            if (editor.id === currentEditor?.id) {
-              return {
-                ...editor,
-                isSnippetSaved: true,
-              };
-            }
-            return editor;
-          }),
-        });
+        // Store editor ID and previous state for rollback
+        const editorId = currentEditor?.id;
+        const previousEditorState = currentEditor ? { ...currentEditor } : null;
 
-        return { previousSnippets };
+        // Optimistically update UI (will be reverted if save fails)
+        if (editorId) {
+          useEditorStore.setState({
+            editors: editors.map((editor) => {
+              if (editor.id === editorId) {
+                return {
+                  ...editor,
+                  isSnippetSaved: true,
+                };
+              }
+              return editor;
+            }),
+          });
+        }
+
+        return { previousSnippets, previousEditorState, editorId };
       },
 
       onError: (err, newSnippet, context) => {
         if (context) {
           queryClient.setQueryData(queryKey, context.previousSnippets);
+          // Revert optimistic editor state update using stored editor ID
+          if (context.previousEditorState && context.editorId) {
+            const currentEditors = useEditorStore.getState().editors;
+            const previousState = context.previousEditorState;
+            useEditorStore.setState({
+              editors: currentEditors.map((editor) => {
+                if (editor.id === context.editorId) {
+                  return previousState;
+                }
+                return editor;
+              }),
+            });
+          }
         }
         // Only open upgrade dialog if error indicates upgrade/limit condition
         if (isUpgradeError(err)) {
@@ -357,6 +384,20 @@ export const Editor = forwardRef<any, EditorProps>(
 
         if (actionResult?.error) {
           toast.error(actionResult.error);
+          // Revert optimistic editor state update on error using stored editor ID
+          if (context?.previousEditorState && context?.editorId) {
+            const currentEditors = useEditorStore.getState().editors;
+            const previousState = context.previousEditorState;
+            const editorId = context.editorId;
+            useEditorStore.setState({
+              editors: currentEditors.map((editor) => {
+                if (editor.id === editorId) {
+                  return previousState;
+                }
+                return editor;
+              }).filter((editor): editor is EditorState => editor !== null),
+            });
+          }
           // Only open upgrade dialog if error indicates upgrade/limit condition
           if (isUpgradeError(actionResult.error)) {
             setIsUpgradeOpen(true);
@@ -369,8 +410,15 @@ export const Editor = forwardRef<any, EditorProps>(
             language: variables.language,
           });
         }
+        // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+        // This must happen synchronously before invalidateQueries triggers refetch
+        if (user_id) {
+          const cacheProvider = getUsageLimitsCacheProvider();
+          cacheProvider.delete(user_id);
+        }
         queryClient.invalidateQueries({ queryKey });
         if (user_id) {
+          // Invalidate after cache is cleared to ensure fresh data
           queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
         }
       },

@@ -110,6 +110,15 @@ export async function insertSnippet({
             ])
             .select();
 
+        if (error) {
+            console.error('Error inserting snippet:', error);
+            throw error;
+        }
+
+        if (!snippet || snippet.length === 0) {
+            throw new Error('Snippet insert returned no data');
+        }
+
         if (snippet) {
             // Get or create the "Home" collection for the user
             const collectionId = await getOrCreateHomeCollection({

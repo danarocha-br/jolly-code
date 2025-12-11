@@ -9,6 +9,7 @@ import type { AnimationSettings, AnimationSlide } from '@/types/animation'
 import { createAnimationInputSchema, formatZodError } from '@/actions/utils/validation'
 import { withAuthAction } from '@/actions/utils/with-auth'
 import type { UsageLimitCheck } from '@/lib/services/usage-limits'
+import { getPlanConfig } from '@/lib/config/plans'
 
 export type CreateAnimationInput = {
   id: string
@@ -46,21 +47,23 @@ export async function createAnimation(
         return error('Failed to verify save limit. Please try again.')
       }
 
-      // Map snake_case RPC response to camelCase UsageLimitCheck type
+      // Map RPC response (can be camelCase or snake_case) to camelCase UsageLimitCheck type
       const rpcResponse = limitCheckRaw as {
         can_save?: boolean
+        canSave?: boolean
         current?: number | null
         max?: number | null
         plan?: string | null
         over_limit?: number | null
+        overLimit?: number | null
       }
 
       const animationLimitCheck: UsageLimitCheck = {
-        canSave: Boolean(rpcResponse.can_save ?? false),
+        canSave: Boolean(rpcResponse.canSave ?? rpcResponse.can_save ?? false),
         current: rpcResponse.current ?? 0,
         max: rpcResponse.max ?? null,
         plan: (rpcResponse.plan as UsageLimitCheck['plan']) ?? 'free',
-        overLimit: rpcResponse.over_limit ?? undefined,
+        overLimit: rpcResponse.overLimit ?? rpcResponse.over_limit ?? undefined,
       }
 
       if (!animationLimitCheck.canSave) {
@@ -77,22 +80,13 @@ export async function createAnimation(
         return error('Animation limit reached. Please upgrade your plan.')
       }
 
-      const { data: slideLimitCheck, error: slideLimitError } = await supabase.rpc('check_slide_limit', {
-        p_user_id: user.id,
-        p_slide_count: slides.length
-      })
+      // Check slide limit using plan config (slide limits are per-animation, not a database count)
+      const plan = animationLimitCheck.plan
+      const planConfig = getPlanConfig(plan)
+      const maxSlides = planConfig.maxSlidesPerAnimation === Infinity ? null : planConfig.maxSlidesPerAnimation
+      const canAdd = maxSlides === null || slides.length <= maxSlides
 
-      if (slideLimitError) {
-        console.error('Error checking slide limit:', slideLimitError)
-        return error('Failed to verify slide limit. Please try again.')
-      }
-
-      if (!slideLimitCheck) {
-        return error('Failed to verify slide limit. Please try again.')
-      }
-
-      if (!slideLimitCheck.canAdd) {
-        const plan = slideLimitCheck.plan
+      if (!canAdd) {
         if (plan === 'free') {
           return error('Free users can add up to 3 slides. Upgrade to Started for 10 slides per animation!')
         } else if (plan === 'started') {

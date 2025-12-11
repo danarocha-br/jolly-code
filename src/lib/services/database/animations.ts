@@ -43,7 +43,12 @@ export async function insertAnimation({
       .select();
 
     if (error) {
+      console.error('Error inserting animation:', error);
       throw error;
+    }
+
+    if (!animation || animation.length === 0) {
+      throw new Error('Animation insert returned no data');
     }
 
     if (animation && animation.length > 0) {

@@ -50,25 +50,29 @@ export async function createSnippet(
         return error('Failed to verify save limit. Please try again.')
       }
 
-      // Map snake_case RPC response to camelCase UsageLimitCheck type
+      // Map RPC response (can be camelCase or snake_case) to camelCase UsageLimitCheck type
       const rpcResponse = limitCheckRaw as {
         can_save?: boolean
+        canSave?: boolean
         current?: number | null
         max?: number | null
         plan?: string | null
+        over_limit?: number | null
+        overLimit?: number | null
       }
 
       const limitCheck: UsageLimitCheck = {
-        canSave: Boolean(rpcResponse.can_save ?? false),
+        canSave: Boolean(rpcResponse.canSave ?? rpcResponse.can_save ?? false),
         current: rpcResponse.current ?? 0,
         max: rpcResponse.max ?? null,
         plan: (rpcResponse.plan as UsageLimitCheck['plan']) ?? 'free',
+        overLimit: rpcResponse.overLimit ?? rpcResponse.over_limit ?? 0,
       }
 
-      // Compute overLimit locally
+      // Compute overLimit locally if not provided
       const current = limitCheck.current ?? 0
       const max = limitCheck.max ?? 0
-      const overLimit = Math.max(current - max, 0)
+      const overLimit = limitCheck.overLimit ?? Math.max(current - max, 0)
 
       if (!limitCheck.canSave) {
         const plan = limitCheck.plan

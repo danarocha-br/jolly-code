@@ -41,7 +41,7 @@ export const UserMenu = ({
           </DropdownMenuTrigger>
         </Tooltip>
 
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="center" side="left">
           <DropdownMenuLabel>
             <i className="mr-2">👋</i> {username}
           </DropdownMenuLabel>
