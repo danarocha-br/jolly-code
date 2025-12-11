@@ -47,10 +47,24 @@ const enforceCsrf = (request: NextRequest) => {
     }
   })();
 
+  // Get the current request's origin (for same-origin requests)
+  const currentRequestOrigin = (() => {
+    const host = request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") || 
+                     (request.nextUrl.protocol === "https:" ? "https" : "http");
+    if (!host) return null;
+    try {
+      return normalizeOrigin(`${protocol}://${host}`);
+    } catch {
+      return null;
+    }
+  })();
+
   // Only include trusted origins from configuration
   const allowedOrigins = [
     process.env.CORS_ALLOWED_ORIGIN ?? "",
     process.env.NEXT_PUBLIC_APP_URL ?? "",
+    currentRequestOrigin, // Allow same-origin requests
   ]
     .filter(Boolean)
     .map(normalizeOrigin)
@@ -62,11 +76,18 @@ const enforceCsrf = (request: NextRequest) => {
     return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
   }
 
-  if (!allowedOrigins.includes(candidate)) {
-    return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+  // Check if origin is explicitly allowed
+  if (allowedOrigins.includes(candidate)) {
+    return null;
   }
 
-  return null;
+  // Allow Vercel preview URLs (*.vercel.app)
+  const isVercelPreview = candidate.endsWith(".vercel.app");
+  if (isVercelPreview) {
+    return null;
+  }
+
+  return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
 };
 
 export const proxy = wrapMiddlewareWithSentry(async function proxy(request: NextRequest) {
