@@ -95,7 +95,15 @@ export async function syncSubscriptionToDatabase(
 
   // Then update plan using RPC function that does explicit type casting to plan_type
   // This bypasses Supabase client's type validation that references user_plan
-  const { error: planError } = await (supabase as any).rpc('update_user_plan', {
+  // #region agent log
+  console.log('[DEBUG] syncSubscriptionToDatabase calling update_user_plan RPC', {
+    userId,
+    planId,
+    hypothesisId: 'D',
+  });
+  // #endregion
+  
+  const { error: planError, data: rpcData } = await (supabase as any).rpc('update_user_plan', {
     p_user_id: userId,
     p_plan: planId,
     p_plan_updated_at: updateData.plan_updated_at,
@@ -105,10 +113,21 @@ export async function syncSubscriptionToDatabase(
     // #region agent log
     console.log('[DEBUG] syncSubscriptionToDatabase plan update via RPC failed', {
       error: planError.message,
+      errorCode: planError.code,
+      errorDetails: planError.details,
+      errorHint: planError.hint,
       hypothesisId: 'D',
     });
     // #endregion
     // Fallback: try direct update with type assertion as last resort
+    // #region agent log
+    console.log('[DEBUG] syncSubscriptionToDatabase trying fallback direct update', {
+      userId,
+      planId,
+      hypothesisId: 'D',
+    });
+    // #endregion
+    
     const { error: fallbackError } = await supabase
       .from('profiles')
       .update({
@@ -118,10 +137,25 @@ export async function syncSubscriptionToDatabase(
       .eq('id', userId);
     
     if (fallbackError) {
+      // #region agent log
+      console.log('[DEBUG] syncSubscriptionToDatabase fallback also failed', {
+        fallbackError: fallbackError.message,
+        fallbackErrorCode: fallbackError.code,
+        hypothesisId: 'D',
+      });
+      // #endregion
       console.error('[syncSubscriptionToDatabase] Both RPC and fallback plan update failed', {
         rpcError: planError.message,
+        rpcErrorCode: planError.code,
         fallbackError: fallbackError.message,
+        fallbackErrorCode: fallbackError.code,
       });
+    } else {
+      // #region agent log
+      console.log('[DEBUG] syncSubscriptionToDatabase fallback succeeded', {
+        hypothesisId: 'D',
+      });
+      // #endregion
     }
   }
 

@@ -1,15 +1,14 @@
+-- Recreate update_user_plan to rely on explicit rowcount instead of FOUND after EXECUTE
+-- Keeps dynamic SQL casting to plan_type and preserves default
 
--- Fix any potential default value issues first
--- Ensure the default uses plan_type explicitly
+DROP FUNCTION IF EXISTS public.update_user_plan(uuid, text, timestamptz);
+
 ALTER TABLE public.profiles 
-  ALTER COLUMN plan DROP DEFAULT IF EXISTS;
+  ALTER COLUMN plan DROP DEFAULT;
 
 ALTER TABLE public.profiles 
   ALTER COLUMN plan SET DEFAULT 'free'::plan_type;
 
--- Create a helper function to update user plan with explicit type casting
--- This avoids Supabase client type validation issues with user_plan vs plan_type
--- The function uses dynamic SQL to bypass any type checking issues
 CREATE OR REPLACE FUNCTION public.update_user_plan(
   p_user_id uuid,
   p_plan text,
@@ -22,9 +21,8 @@ SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   v_sql text;
+  v_rows integer := 0;
 BEGIN
-  -- Use dynamic SQL to ensure explicit casting happens at execution time
-  -- This bypasses any schema-level type validation
   v_sql := format(
     'UPDATE public.profiles SET plan = %L::plan_type, plan_updated_at = %L WHERE id = %L',
     p_plan,
@@ -33,15 +31,14 @@ BEGIN
   );
   
   EXECUTE v_sql;
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
   
-  -- Verify the update succeeded
-  IF NOT FOUND THEN
+  IF COALESCE(v_rows, 0) = 0 THEN
     RAISE EXCEPTION 'User not found: %', p_user_id;
   END IF;
 END;
 $$;
 
--- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.update_user_plan(uuid, text, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_user_plan(uuid, text, timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_user_plan(uuid, text, timestamptz) TO anon;
