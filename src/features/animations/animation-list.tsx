@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import * as AnimationStyles from "./ui/styles";
 import { USAGE_QUERY_KEY } from "@/features/user/queries";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type CollectionDroppableProps = {
@@ -149,6 +150,16 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+      // This must happen synchronously before invalidateQueries triggers refetch
+      if (user?.id) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user.id);
+      }
+      if (user?.id) {
+        // Invalidate after cache is cleared to ensure fresh data
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user.id] });
+      }
     },
   });
 

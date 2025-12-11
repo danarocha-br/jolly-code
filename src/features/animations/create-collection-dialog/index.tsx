@@ -27,7 +27,8 @@ import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { createAnimationCollection } from "../queries";
 import { AnimationCollection } from "../dtos";
 import { trackAnimationEvent } from "@/features/animation/analytics";
-import { useUserUsage } from "@/features/user/queries";
+import { useUserUsage, USAGE_QUERY_KEY } from "@/features/user/queries";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 
 const formSchema = z.object({
   title: z.string().min(1, { message: "Collection name is required." }),
@@ -76,6 +77,16 @@ export function CreateAnimationCollectionDialog({
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKey });
+      // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+      // This must happen synchronously before invalidateQueries triggers refetch
+      if (user?.id) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user.id);
+      }
+      if (user?.id) {
+        // Invalidate after cache is cleared to ensure fresh data
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user.id] });
+      }
     },
   });
 

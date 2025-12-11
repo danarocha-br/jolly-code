@@ -13,7 +13,6 @@ import { fonts } from "@/lib/fonts-options";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Logo } from "@/components/ui/logo";
-import { UsageBannerWrapper } from "@/components/usage-banner-wrapper";
 import { SettingsPanel } from "@/features/settings-panel";
 import { UserTools } from "@/features/user-tools";
 import { CodeEditor } from "@/features/code-editor";
@@ -152,10 +151,6 @@ export const Home = () => {
         <Sidebar />
 
         <Nav />
-
-        <div className="fixed top-[64px] left-0 right-0 z-40">
-          <UsageBannerWrapper />
-        </div>
 
         <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
           <main className="relative flex items-center justify-center lg:-ml-16">

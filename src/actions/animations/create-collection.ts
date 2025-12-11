@@ -31,7 +31,13 @@ export async function createAnimationCollection(
       return error('Failed to verify folder limit. Please try again.')
     }
 
-    const canCreateFolder = Boolean(folderLimit?.canCreate ?? false)
+    const canCreateFolder = Boolean(
+      folderLimit?.can_create ??
+      folderLimit?.canCreate ??
+      folderLimit?.can_save ??
+      folderLimit?.canSave ??
+      false
+    )
 
     if (!canCreateFolder) {
       const plan = (folderLimit?.plan as PlanId | undefined) ?? 'free'

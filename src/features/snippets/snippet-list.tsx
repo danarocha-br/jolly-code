@@ -164,6 +164,16 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+      // This must happen synchronously before invalidateQueries triggers refetch
+      if (user?.id) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user.id);
+      }
+      if (user?.id) {
+        // Invalidate after cache is cleared to ensure fresh data
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user.id] });
+      }
     },
   });
 

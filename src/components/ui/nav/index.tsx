@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, memo, useState } from "react";
+import { useMemo, useCallback, memo } from "react";
 import { useTheme } from "next-themes";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
@@ -37,13 +37,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useAnimationFeatureFlag } from "@/features/animation/hooks/use-animation-feature-flag";
 import { Skeleton } from "../skeleton";
-import { useUserUsage } from "@/features/user/queries";
-import {
-  getMaxUsagePercentage,
-  getUsageThreshold,
-} from "@/lib/utils/usage-helpers";
-import type { UsageSummary } from "@/lib/services/usage-limits";
-import { UpgradeDialog } from "../upgrade-dialog";
 
 const TOGGLE_THEME_HOTKEY =
   hotKeyList.find((item) => item.label === "Toggle theme")?.hotKey ?? "";
@@ -142,46 +135,9 @@ export const Nav = () => {
   // Optimize Zustand selectors - only subscribe to needed values
   const isPresentational = useEditorStore((state) => state.presentational);
   const user = useUserStore((state) => state.user);
-  const { data: usage } = useUserUsage(user?.id) as {
-    data: UsageSummary | undefined;
-  };
 
   const username = user?.user_metadata?.full_name;
   const imageUrl = user?.user_metadata?.avatar_url;
-
-  // Dialog state for upgrade dialog
-  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
-
-  // Calculate usage for nav highlighting - only for non-pro plans and non-presentational mode
-  // Early return optimization: don't calculate if pro plan, no usage, or presentational mode
-  const shouldShowUsageIndicator = Boolean(
-    usage && usage.plan !== "pro" && !isPresentational
-  );
-  const maxUsagePercentage = useMemo(
-    () =>
-      shouldShowUsageIndicator && usage ? getMaxUsagePercentage(usage) : 0,
-    [shouldShowUsageIndicator, usage]
-  );
-  const usageThreshold = useMemo(
-    () =>
-      shouldShowUsageIndicator ? getUsageThreshold(maxUsagePercentage) : null,
-    [shouldShowUsageIndicator, maxUsagePercentage]
-  );
-
-  // Handle usage indicator click/keyboard activation
-  const handleUsageIndicatorClick = useCallback(() => {
-    setIsUpgradeDialogOpen(true);
-  }, []);
-
-  const handleUsageIndicatorKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        setIsUpgradeDialogOpen(true);
-      }
-    },
-    []
-  );
   const navItems = useMemo(
     () => [
       { href: "/", label: "Code editor", enabled: true, loading: false },
@@ -298,44 +254,6 @@ export const Nav = () => {
       </div>
 
       <div className="flex items-center justify-end py-2 lg:pt-3 lg:pr-3 w-full gap-2">
-        {shouldShowUsageIndicator && usageThreshold && (
-          <Tooltip content={`Usage: ${Math.round(maxUsagePercentage)}%`}>
-            <button
-              type="button"
-              role="button"
-              aria-label={`Usage at ${Math.round(maxUsagePercentage)}% - Click to upgrade plan`}
-              onClick={handleUsageIndicatorClick}
-              onKeyDown={handleUsageIndicatorKeyDown}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer hover:opacity-80 focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:outline-1",
-                usageThreshold.level === "limit" &&
-                  "bg-destructive/20 text-destructive border border-destructive/30",
-                usageThreshold.level === "critical" &&
-                  "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30",
-                usageThreshold.level === "warning" &&
-                  "bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30"
-              )}
-            >
-              <span className="font-semibold">
-                {Math.round(maxUsagePercentage)}%
-              </span>
-              {usageThreshold.level === "limit" && (
-                <i className="ri-error-warning-line text-sm" />
-              )}
-              {(usageThreshold.level === "critical" ||
-                usageThreshold.level === "warning") && (
-                <i className="ri-alert-line text-sm" />
-              )}
-            </button>
-          </Tooltip>
-        )}
-
-        <UpgradeDialog
-          open={isUpgradeDialogOpen}
-          onOpenChange={setIsUpgradeDialogOpen}
-          currentPlan={usage?.plan || "free"}
-        />
-
         {isPresentational && <UsersPresence />}
 
         {!isPresentational &&
