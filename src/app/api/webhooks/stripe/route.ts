@@ -30,15 +30,28 @@ function getPlanIdFromPriceId(priceId: string): PlanId | null {
 }
 
 function resolvePlan(subscription: Stripe.Subscription): PlanId | null {
+  // #region agent log
+  console.log('[DEBUG] resolvePlan entry', { subscriptionId: subscription.id, metadataPlan: subscription.metadata?.plan, metadata: subscription.metadata, hypothesisId: 'C' });
+  // #endregion
   const metadataPlan = subscription.metadata?.plan;
   if (metadataPlan === 'started' || metadataPlan === 'pro') {
+    // #region agent log
+    console.log('[DEBUG] resolvePlan found in metadata', { planId: metadataPlan, hypothesisId: 'C' });
+    // #endregion
     return metadataPlan;
   }
 
   const priceId = subscription.items.data[0]?.price.id;
+  // #region agent log
+  console.log('[DEBUG] resolvePlan checking priceId', { priceId, hasPriceId: !!priceId, hypothesisId: 'C' });
+  // #endregion
   if (!priceId) return null;
 
-  return getPlanIdFromPriceId(priceId);
+  const planFromPrice = getPlanIdFromPriceId(priceId);
+  // #region agent log
+  console.log('[DEBUG] resolvePlan result from priceId', { planFromPrice, hypothesisId: 'C' });
+  // #endregion
+  return planFromPrice;
 }
 
 function getStripeCustomerId(
@@ -54,11 +67,20 @@ async function resolveUserIdFromSubscription(
   subscription: Stripe.Subscription,
   supabase: ServiceRoleClient
 ): Promise<string | null> {
+  // #region agent log
+  console.log('[DEBUG] resolveUserIdFromSubscription entry', { subscriptionId: subscription.id, hasMetadataUserId: !!subscription.metadata?.userId, metadata: subscription.metadata, hypothesisId: 'B' });
+  // #endregion
   if (subscription.metadata?.userId) {
+    // #region agent log
+    console.log('[DEBUG] resolveUserIdFromSubscription found in metadata', { userId: subscription.metadata.userId, hypothesisId: 'B' });
+    // #endregion
     return subscription.metadata.userId;
   }
 
   const customerId = getStripeCustomerId(subscription);
+  // #region agent log
+  console.log('[DEBUG] resolveUserIdFromSubscription checking customerId', { customerId, hasCustomerId: !!customerId, hypothesisId: 'B' });
+  // #endregion
   if (!customerId) return null;
 
   const { data, error } = await supabase
@@ -66,6 +88,10 @@ async function resolveUserIdFromSubscription(
     .select('id')
     .eq('stripe_customer_id', customerId)
     .maybeSingle();
+
+  // #region agent log
+  console.log('[DEBUG] resolveUserIdFromSubscription customer lookup result', { userId: data?.id, hasError: !!error, errorMessage: error?.message, hypothesisId: 'B' });
+  // #endregion
 
   if (error) {
     throw new Error(`Failed to resolve user by stripe_customer_id: ${error.message}`);
@@ -210,13 +236,22 @@ async function handleSubscriptionChange(
   subscription: Stripe.Subscription,
   supabase: ServiceRoleClient
 ) {
+  // #region agent log
+  console.log('[DEBUG] handleSubscriptionChange entry', { subscriptionId: subscription.id, status: subscription.status, hypothesisId: 'A' });
+  // #endregion
   const userId = await resolveUserIdFromSubscription(subscription, supabase);
+  // #region agent log
+  console.log('[DEBUG] handleSubscriptionChange userId resolved', { userId, hasUserId: !!userId, hypothesisId: 'B' });
+  // #endregion
   if (!userId) {
     throw new Error('No user found for subscription (missing metadata and lookup failed)');
   }
 
   const priceId = subscription.items.data[0]?.price.id;
   const planId = resolvePlan(subscription);
+  // #region agent log
+  console.log('[DEBUG] handleSubscriptionChange plan resolved', { planId, hasPlanId: !!planId, priceId, hypothesisId: 'C' });
+  // #endregion
   if (!planId) {
     throw new Error('Could not determine plan from subscription metadata/price');
   }
@@ -257,11 +292,17 @@ async function handleSubscriptionChange(
     billing_interval: billingInterval,
   };
 
+  // #region agent log
+  console.log('[DEBUG] handleSubscriptionChange updating database', { userId, planId, updateData, hypothesisId: 'D' });
+  // #endregion
   const { error } = await supabase
     .from('profiles')
     .update(updateData)
     .eq('id', userId);
 
+  // #region agent log
+  console.log('[DEBUG] handleSubscriptionChange database update result', { hasError: !!error, errorMessage: error?.message, updatedPlan: planId, hypothesisId: 'D' });
+  // #endregion
   if (error) {
     throw error;
   }
@@ -706,13 +747,22 @@ export async function POST(request: NextRequest) {
     await upsertWebhookAudit(supabase, event, { status: 'received' });
 
     // Handle different event types
+    // #region agent log
+    console.log('[DEBUG] webhook event received', { eventType: event.type, eventId: event.id, hypothesisId: 'A' });
+    // #endregion
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
+        // #region agent log
+        console.log('[DEBUG] webhook handling subscription change', { eventType: event.type, hypothesisId: 'A' });
+        // #endregion
         resolvedUserId = await handleSubscriptionChange(
           event.data.object as Stripe.Subscription,
           supabase
         );
+        // #region agent log
+        console.log('[DEBUG] webhook subscription change completed', { resolvedUserId, hypothesisId: 'A' });
+        // #endregion
         break;
 
       case 'customer.subscription.deleted':

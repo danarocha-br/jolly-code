@@ -428,9 +428,15 @@ export const getUserUsage = async (
   userId: string,
   cacheProvider?: UsageLimitsCacheProvider
 ): Promise<UsageSummary> => {
+  // #region agent log
+  console.log('[DEBUG] getUserUsage entry', { userId, hypothesisId: 'D' });
+  // #endregion
   const provider = cacheProvider ?? getUsageLimitsCacheProvider();
   const cached = provider.get(userId);
 
+  // #region agent log
+  console.log('[DEBUG] getUserUsage cache check', { hasCached: !!cached, hypothesisId: 'D' });
+  // #endregion
   if (cached) {
     return cached;
   }
@@ -589,7 +595,10 @@ export const getUserUsage = async (
 
     const usagePayload = data as UsageRpcPayload;
     const plan = usagePayload.plan ?? "free";
-    const planConfig = getPlanConfig(plan);
+    // #region agent log
+    console.log('[DEBUG] getUserUsage plan from RPC', { plan, planFromPayload: usagePayload.plan, hypothesisId: 'D' });
+    // #endregion
+  const planConfig = getPlanConfig(plan);
 
     const snippetCount = normalizeCount(usagePayload.snippet_count);
     const animationCount = normalizeCount(usagePayload.animation_count);
