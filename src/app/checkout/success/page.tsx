@@ -3,6 +3,7 @@ import { getStripeClient } from "@/lib/services/stripe";
 import { redirect } from "next/navigation";
 import type Stripe from "stripe";
 import { CheckoutSuccessClient } from "./checkout-success-client";
+import { syncSubscriptionToDatabase } from "@/lib/services/subscription-sync";
 
 type Props = {
   searchParams: Promise<{ session_id?: string }>;
@@ -12,7 +13,10 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const params = await searchParams;
   const sessionId = params?.session_id;
   // #region agent log
-  console.log('[DEBUG] CheckoutSuccessPage entry', { sessionId, hypothesisId: 'E' });
+  console.log("[DEBUG] CheckoutSuccessPage entry", {
+    sessionId,
+    hypothesisId: "E",
+  });
   // #endregion
 
   if (!sessionId) {
@@ -31,7 +35,11 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     data: { user },
   } = await supabase.auth.getUser();
   // #region agent log
-  console.log('[DEBUG] CheckoutSuccessPage user fetched', { userId: user?.id, hasUser: !!user, hypothesisId: 'E' });
+  console.log("[DEBUG] CheckoutSuccessPage user fetched", {
+    userId: user?.id,
+    hasUser: !!user,
+    hypothesisId: "E",
+  });
   // #endregion
 
   if (!user) {
@@ -68,20 +76,71 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     const subscriptionStatus = subscription?.status;
     const plan = session.metadata?.plan ?? "your plan";
     // #region agent log
-    console.log('[DEBUG] CheckoutSuccessPage session retrieved', { sessionId, paymentStatus, subscriptionStatus, subscriptionId: subscription?.id, planFromMetadata: session.metadata?.plan, hypothesisId: 'E' });
+    console.log("[DEBUG] CheckoutSuccessPage session retrieved", {
+      sessionId,
+      paymentStatus,
+      subscriptionStatus,
+      subscriptionId: subscription?.id,
+      planFromMetadata: session.metadata?.plan,
+      hypothesisId: "E",
+    });
     // #endregion
 
     const isPaid =
       paymentStatus === "paid" || paymentStatus === "no_payment_required";
 
+    // FALLBACK: If subscription exists and webhook hasn't fired yet, sync manually
+    // This ensures plan is updated even if webhook is delayed or not configured
+    if (isPaid && subscription) {
+      try {
+        const subscriptionId =
+          typeof subscription === "string" ? subscription : subscription.id;
+        // #region agent log
+        console.log("[DEBUG] CheckoutSuccessPage attempting fallback sync", {
+          subscriptionId,
+          hypothesisId: "E",
+        });
+        // #endregion
+
+        // Fetch full subscription details if needed (subscription might be just an ID from session)
+        let fullSubscription: Stripe.Subscription;
+        if (typeof subscription === "string") {
+          fullSubscription = await getStripeClient().subscriptions.retrieve(
+            subscription,
+            {
+              expand: ["items.data.price"],
+            }
+          );
+        } else if (!subscription.items?.data) {
+          fullSubscription = await getStripeClient().subscriptions.retrieve(
+            subscription.id,
+            {
+              expand: ["items.data.price"],
+            }
+          );
+        } else {
+          fullSubscription = subscription;
+        }
+
+        const syncResult = await syncSubscriptionToDatabase(fullSubscription);
+        // #region agent log
+        console.log("[DEBUG] CheckoutSuccessPage fallback sync result", {
+          syncResult,
+          hypothesisId: "E",
+        });
+        // #endregion
+      } catch (error) {
+        // Log but don't fail the page - webhook will handle it eventually
+        console.error(
+          "[CheckoutSuccess] Fallback sync failed (webhook will handle it):",
+          error
+        );
+      }
+    }
+
     // Use client component to handle redirect and toast
     if (isPaid) {
-      return (
-        <CheckoutSuccessClient
-          plan={plan}
-          sessionId={sessionId}
-        />
-      );
+      return <CheckoutSuccessClient plan={plan} sessionId={sessionId} />;
     }
 
     // If payment is still processing, show a loading state
@@ -89,7 +148,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 text-center">
         <h1 className="text-2xl font-semibold">Processing payment</h1>
         <p className="text-muted-foreground">
-          We&apos;re finalizing your {plan} subscription. Current payment status: {paymentStatus}.
+          We&apos;re finalizing your {plan} subscription. Current payment
+          status: {paymentStatus}.
         </p>
         {subscriptionStatus && (
           <p className="mt-1 text-sm text-muted-foreground">

@@ -7,6 +7,7 @@ import type { Json } from '@/types/database';
 import Stripe from 'stripe';
 import { captureServerEvent } from '@/lib/services/tracking/server';
 import { setCachedBillingInterval } from '@/lib/services/billing';
+import { syncSubscriptionToDatabase } from '@/lib/services/subscription-sync';
 
 export const dynamic = 'force-dynamic';
 type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
@@ -239,93 +240,13 @@ async function handleSubscriptionChange(
   // #region agent log
   console.log('[DEBUG] handleSubscriptionChange entry', { subscriptionId: subscription.id, status: subscription.status, hypothesisId: 'A' });
   // #endregion
-  const userId = await resolveUserIdFromSubscription(subscription, supabase);
-  // #region agent log
-  console.log('[DEBUG] handleSubscriptionChange userId resolved', { userId, hasUserId: !!userId, hypothesisId: 'B' });
-  // #endregion
-  if (!userId) {
-    throw new Error('No user found for subscription (missing metadata and lookup failed)');
+  
+  const result = await syncSubscriptionToDatabase(subscription);
+  if (!result) {
+    throw new Error('Failed to sync subscription to database');
   }
-
-  const priceId = subscription.items.data[0]?.price.id;
-  const planId = resolvePlan(subscription);
-  // #region agent log
-  console.log('[DEBUG] handleSubscriptionChange plan resolved', { planId, hasPlanId: !!planId, priceId, hypothesisId: 'C' });
-  // #endregion
-  if (!planId) {
-    throw new Error('Could not determine plan from subscription metadata/price');
-  }
-
-  const customerId = getStripeCustomerId(subscription);
-  if (!customerId) {
-    throw new Error('Subscription has no customer ID');
-  }
-
-  // Extract billing interval from Stripe subscription
-  const priceInterval = subscription.items.data[0]?.price?.recurring?.interval;
-  const billingInterval = priceInterval === "month" ? "monthly" : priceInterval === "year" ? "yearly" : null;
-
-  // Safely convert current_period_end from Unix timestamp (seconds) to ISO string
-  const subscriptionPeriodEnd = (subscription as any).current_period_end
-    ? new Date((subscription as any).current_period_end * 1000).toISOString()
-    : null;
-
-  const updateData: {
-    plan: PlanId;
-    plan_updated_at: string;
-    stripe_customer_id: string;
-    stripe_subscription_id: string;
-    stripe_subscription_status: Stripe.Subscription.Status;
-    subscription_period_end: string | null;
-    subscription_cancel_at_period_end: boolean | null;
-    stripe_price_id: string | undefined;
-    billing_interval: string | null;
-  } = {
-    plan: planId,
-    plan_updated_at: new Date().toISOString(),
-    stripe_customer_id: customerId,
-    stripe_subscription_id: subscription.id,
-    stripe_subscription_status: subscription.status,
-    subscription_period_end: subscriptionPeriodEnd,
-    subscription_cancel_at_period_end: subscription.cancel_at_period_end ?? null,
-    stripe_price_id: priceId,
-    billing_interval: billingInterval,
-  };
-
-  // #region agent log
-  console.log('[DEBUG] handleSubscriptionChange updating database', { userId, planId, updateData, hypothesisId: 'D' });
-  // #endregion
-  const { error } = await supabase
-    .from('profiles')
-    .update(updateData)
-    .eq('id', userId);
-
-  // #region agent log
-  console.log('[DEBUG] handleSubscriptionChange database update result', { hasError: !!error, errorMessage: error?.message, updatedPlan: planId, hypothesisId: 'D' });
-  // #endregion
-  if (error) {
-    throw error;
-  }
-
-  // Update cache to keep it in sync with database
-  if (billingInterval && subscription.id) {
-    setCachedBillingInterval(subscription.id, billingInterval);
-  }
-
-  // Reconcile over-limit flags when plan changes (upgrades or downgrades)
-  const { error: reconcileError } = await (supabase as any).rpc('reconcile_over_limit_content', {
-    p_user_id: userId,
-  });
-
-  if (reconcileError) {
-    console.error('Failed to reconcile over-limit content', reconcileError);
-    Sentry.captureException(reconcileError, {
-      extra: { userId, operation: 'reconcile_over_limit_content' },
-    });
-  }
-
-  console.log(`Updated user ${userId} to plan ${planId}`);
-  return userId;
+  
+  return result.userId;
 }
 
 // Handle subscription deleted (downgrade to free)
@@ -701,7 +622,15 @@ function getErrorStatusCode(error: unknown): number {
 }
 
 export async function POST(request: NextRequest) {
+  // #region agent log
+  console.log('[DEBUG] Webhook POST handler called', { timestamp: new Date().toISOString(), hypothesisId: 'A' });
+  // #endregion
+  
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  // #region agent log
+  console.log('[DEBUG] Webhook secret check', { hasSecret: !!webhookSecret, hypothesisId: 'A' });
+  // #endregion
 
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET not set');
@@ -719,6 +648,10 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
 
+    // #region agent log
+    console.log('[DEBUG] Webhook request parsed', { hasSignature: !!signature, bodyLength: body.length, hypothesisId: 'A' });
+    // #endregion
+
     if (!signature) {
       return NextResponse.json(
         { error: 'Missing stripe-signature header' },
@@ -727,8 +660,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify webhook signature
+    // #region agent log
+    console.log('[DEBUG] Attempting to construct webhook event', { hypothesisId: 'A' });
+    // #endregion
     event = constructWebhookEvent(body, signature, webhookSecret);
 
+    // #region agent log
+    console.log('[DEBUG] Webhook event constructed successfully', { eventType: event.type, eventId: event.id, hypothesisId: 'A' });
+    // #endregion
     console.log('Received Stripe webhook:', event.type);
 
     // Check if we've already processed this event (idempotency check)
