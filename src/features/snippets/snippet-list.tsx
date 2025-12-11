@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { languagesLogos } from "@/lib/language-logos";
 import * as SnippetStyles from "./ui/styles";
 import { USAGE_QUERY_KEY } from "@/features/user/queries";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 
 type CollectionDroppableProps = {
   collectionId: string;
@@ -202,12 +203,13 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const { mutate: handleDeleteSnippet } = useMutation({
     mutationFn: removeSnippet,
-    onSuccess: (data, variables) => {
-      analytics.track("delete_snippet", {
-        snippet_id: variables.snippet_id,
-      });
-    },
     onMutate: async (variables) => {
+      // Cancel and clear cache BEFORE mutation to prevent race condition
+      if (userId) {
+        await queryClient.cancelQueries({ queryKey: [USAGE_QUERY_KEY, userId] });
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(userId);
+      }
       await queryClient.cancelQueries({ queryKey });
       const previousState = queryClient.getQueryData<Collection[]>(queryKey);
 
@@ -223,6 +225,11 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
       return { previousState };
     },
+    onSuccess: (data, variables) => {
+      analytics.track("delete_snippet", {
+        snippet_id: variables.snippet_id,
+      });
+    },
     onError: (err, variables, context) => {
       if (context?.previousState) {
         queryClient.setQueryData(queryKey, context.previousState);
@@ -230,10 +237,16 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
     },
 
     onSettled: () => {
+      // Clear cache again right before invalidation to catch any Promises that were in flight
+      if (userId) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(userId);
+      }
       queryClient.invalidateQueries({ queryKey });
       // Invalidate any cached snippet queries to avoid fetching deleted snippets
       queryClient.invalidateQueries({ queryKey: ['snippet'] });
       if (userId) {
+        // Invalidate usage query (cache cleared above)
         queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, userId] });
       }
     },

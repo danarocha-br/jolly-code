@@ -508,6 +508,13 @@ export async function removeSnippet({
       return;
     }
 
+    // Clear the usage limits cache after successful deletion to ensure fresh data on next fetch
+    if (user_id) {
+      const { getUsageLimitsCacheProvider } = await import("@/lib/services/usage-limits-cache");
+      const cacheProvider = getUsageLimitsCacheProvider();
+      cacheProvider.delete(user_id);
+    }
+
     toast.success("Snippet was removed.");
   } catch (error) {
     toast.error(`Failed to remove the snippet.`);
