@@ -73,7 +73,37 @@ export async function syncSubscriptionToDatabase(
   });
   // #endregion
 
-  const { error } = await supabase.from('profiles').update(updateData).eq('id', userId);
+  // Split update into two parts to avoid type casting issues:
+  // 1. Update plan field with explicit type assertion (bypasses user_plan type check)
+  // 2. Update rest of the fields normally
+  
+  // First, update all fields EXCEPT plan
+  const { plan: _, plan_updated_at: __, ...restOfFields } = updateData;
+  const { error: restError } = await supabase
+    .from('profiles')
+    .update(restOfFields)
+    .eq('id', userId);
+
+  if (restError) {
+    // #region agent log
+    console.log('[DEBUG] syncSubscriptionToDatabase rest fields update failed', {
+      error: restError.message,
+      hypothesisId: 'D',
+    });
+    // #endregion
+  }
+
+  // Then update plan and plan_updated_at together with type assertion
+  // The 'as any' bypasses Supabase's type validation that might reference user_plan
+  const { error: planError } = await supabase
+    .from('profiles')
+    .update({
+      plan: planId as any,
+      plan_updated_at: updateData.plan_updated_at,
+    } as any)
+    .eq('id', userId);
+
+  const error = planError || restError;
 
   // #region agent log
   console.log('[DEBUG] syncSubscriptionToDatabase database update result', {
