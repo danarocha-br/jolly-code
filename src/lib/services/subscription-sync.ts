@@ -74,7 +74,7 @@ export async function syncSubscriptionToDatabase(
   // #endregion
 
   // Split update into two parts to avoid type casting issues:
-  // 1. Update plan field with explicit type assertion (bypasses user_plan type check)
+  // 1. Update plan field using RPC function with explicit type casting (bypasses Supabase client validation)
   // 2. Update rest of the fields normally
   
   // First, update all fields EXCEPT plan
@@ -93,15 +93,37 @@ export async function syncSubscriptionToDatabase(
     // #endregion
   }
 
-  // Then update plan and plan_updated_at together with type assertion
-  // The 'as any' bypasses Supabase's type validation that might reference user_plan
-  const { error: planError } = await supabase
-    .from('profiles')
-    .update({
-      plan: planId as any,
-      plan_updated_at: updateData.plan_updated_at,
-    } as any)
-    .eq('id', userId);
+  // Then update plan using RPC function that does explicit type casting to plan_type
+  // This bypasses Supabase client's type validation that references user_plan
+  const { error: planError } = await (supabase as any).rpc('update_user_plan', {
+    p_user_id: userId,
+    p_plan: planId,
+    p_plan_updated_at: updateData.plan_updated_at,
+  });
+
+  if (planError) {
+    // #region agent log
+    console.log('[DEBUG] syncSubscriptionToDatabase plan update via RPC failed', {
+      error: planError.message,
+      hypothesisId: 'D',
+    });
+    // #endregion
+    // Fallback: try direct update with type assertion as last resort
+    const { error: fallbackError } = await supabase
+      .from('profiles')
+      .update({
+        plan: planId as any,
+        plan_updated_at: updateData.plan_updated_at,
+      } as any)
+      .eq('id', userId);
+    
+    if (fallbackError) {
+      console.error('[syncSubscriptionToDatabase] Both RPC and fallback plan update failed', {
+        rpcError: planError.message,
+        fallbackError: fallbackError.message,
+      });
+    }
+  }
 
   const error = planError || restError;
 
