@@ -215,6 +215,10 @@ const getUserUsageFallback = async (
       ? 0
       : Math.max(animationCount - (planConfig.maxAnimations ?? 0), 0);
 
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'usage-limits.ts:getUserUsageFallback',message:'Fallback usage computation',data:{userId,plan,fromLimits:{snippetCount:snippetCountFromLimits,animationCount:animationCountFromLimits,folderCount:folderCountFromLimits,videoExportCount:videoExportCountFromLimits,publicShareCount:publicShareCountFromLimits},actualCounts:{snippetCount:actualSnippetCount ?? 0,animationCount:actualAnimationCount ?? 0,folderCount:(actualFolderCount ?? 0)+(actualAnimationFolderCount ?? 0)},finalCounts:{snippetCount,animationCount,folderCount,publicShareCount,videoExportCount:videoExportCountFromLimits},overLimit:{snippets:computedSnippetOverLimit ?? 0,animations:computedAnimationOverLimit ?? 0}},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
   return buildUsageSummary({
     plan,
     planConfig,
