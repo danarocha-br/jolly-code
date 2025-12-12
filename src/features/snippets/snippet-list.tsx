@@ -274,9 +274,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       });
 
       if (previousCollections) {
-        queryClient.setQueryData<Collection[]>(
-          queryKey,
-          previousCollections.map((collection) => {
+        const optimisticCollections = previousCollections.map((collection) => {
             if (collection.id === variables.previous_collection_id) {
               return {
                 ...collection,
@@ -307,8 +305,8 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
             }
 
             return collection;
-          })
-        );
+          });
+        queryClient.setQueryData<Collection[]>(queryKey, optimisticCollections);
       }
 
       return { previousCollections };
@@ -321,7 +319,35 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       setDragSourceCollectionId(null);
       setPendingMove(null);
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data, variables, context) => {
+      console.log('=== MUTATION SUCCESS ===', { data, variables });
+      console.error('[handleMoveSnippet] onSuccess - returned data:', { 
+        id: data?.id, 
+        title: data?.title, 
+        hasTitle: !!data?.title,
+        titleLength: data?.title?.length 
+      });
+      
+      // Update the query cache with the returned collection data
+      // This prevents needing to refetch all collections, which could return stale/corrupted data
+      if (data) {
+        const currentCollections = queryClient.getQueryData<Collection[]>(queryKey);
+        if (currentCollections) {
+          const updatedCollections = currentCollections.map((collection) => {
+            if (collection.id === data.id) {
+              return data;
+            }
+            return collection;
+          });
+          console.error('[handleMoveSnippet] Updating cache with returned collection:', {
+            collectionId: data.id,
+            collectionTitle: data.title,
+            allTitles: updatedCollections.map(c => ({ id: c.id, title: c.title }))
+          });
+          queryClient.setQueryData(queryKey, updatedCollections);
+        }
+      }
+      
       analytics.track("move_snippet", {
         snippet_id: variables.snippet_id,
         from_collection_id: variables.previous_collection_id,
@@ -329,6 +355,12 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       });
     },
     onSettled: () => {
+      const collectionsAfterSettle = queryClient.getQueryData<Collection[]>(queryKey);
+      console.error('[handleMoveSnippet] onSettled - collections before invalidate:', 
+        collectionsAfterSettle?.map(c => ({ id: c.id, title: c.title }))
+      );
+      // Only invalidate queries if we didn't successfully update the cache in onSuccess
+      // This prevents unnecessary refetches that might return stale/corrupted data
       queryClient.invalidateQueries({ queryKey });
       setDraggedSnippetId(null);
       setDragSourceCollectionId(null);
@@ -353,10 +385,12 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      console.log('=== DRAG END TRIGGERED ===');
       const data = event.active.data.current as
         | { snippet?: Snippet; collectionId?: string }
         | undefined;
       const targetCollectionId = event.over?.id?.toString();
+      console.log('Drag data:', { targetCollectionId, snippetId: data?.snippet?.id, sourceCollectionId: data?.collectionId });
 
       if (
         data?.snippet &&
@@ -386,9 +420,14 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
   }, []);
 
   const sortedCollections = useMemo(() => {
-    return collections.sort((a, b) =>
-      a.title === "Home" ? -1 : b.title === "Home" ? 1 : 0
-    );
+    if (!collections) return [];
+    const list = [...collections];
+    const homeIndex = list.findIndex((c) => c.title === "Home");
+    if (homeIndex > 0) {
+      const [home] = list.splice(homeIndex, 1);
+      list.unshift(home);
+    }
+    return list;
   }, [collections]);
 
   return (

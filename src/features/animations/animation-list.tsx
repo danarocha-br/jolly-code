@@ -363,9 +363,14 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   }, []);
 
   const sortedCollections = useMemo(() => {
-    return collections.sort((a, b) =>
-      a.title === "Home" ? -1 : b.title === "Home" ? 1 : 0
-    );
+    if (!collections) return [];
+    const list = [...collections];
+    const homeIndex = list.findIndex((c) => c.title === "Home");
+    if (homeIndex > 0) {
+      const [home] = list.splice(homeIndex, 1);
+      list.unshift(home);
+    }
+    return list;
   }, [collections]);
 
   return (

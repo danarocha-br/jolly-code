@@ -27,24 +27,30 @@ export async function getCollections(): Promise<ActionResult<Collection[]>> {
 		// Map to DTO format, ensuring id is always present and filtering out any null values
 		const populatedCollections: Collection[] = collectionsData
 			.filter((collection): collection is typeof collection & { id: string } => !!collection.id)
-			.map((collection) => ({
-				id: collection.id,
-				user_id: collection.user_id,
-				title: collection.title,
-				snippets: (collection.snippets || [])
-					.filter((s): boolean => s !== null && typeof s === 'object' && 'id' in s && s.id !== undefined)
-					.map((s): Snippet => ({
-						id: s.id,
-						user_id: s.user_id,
-						code: s.code,
-						language: s.language,
-						title: s.title,
-						url: s.url,
-						created_at: s.created_at,
-					})),
-				created_at: collection.created_at,
-				updated_at: collection.updated_at,
-			}))
+			.map((collection) => {
+				// Defensive check: log if title is null/empty (shouldn't happen if database is correct)
+				if (!collection.title || collection.title.trim() === '') {
+					console.error('[getCollections] WARNING: Collection has null/empty title:', { id: collection.id, title: collection.title });
+				}
+				return {
+					id: collection.id,
+					user_id: collection.user_id,
+					title: collection.title, // Preserve title as-is from database
+					snippets: (collection.snippets || [])
+						.filter((s): boolean => s !== null && typeof s === 'object' && 'id' in s && s.id !== undefined)
+						.map((s): Snippet => ({
+							id: s.id,
+							user_id: s.user_id,
+							code: s.code,
+							language: s.language,
+							title: s.title,
+							url: s.url,
+							created_at: s.created_at,
+						})),
+					created_at: collection.created_at,
+					updated_at: collection.updated_at,
+				};
+			})
 
 		return success(populatedCollections)
 	} catch (err) {

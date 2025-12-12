@@ -1,5 +1,0 @@
-{"location":"services/usage-limits.ts:426","message":"getUserUsage entry","data":{"userId":"171da362-c94b-4671-afe4-e622adc4f609"},"timestamp":1765470145250,"sessionId":"debug-session","runId":"initial","hypothesisId":"D"}
-{"location":"services/usage-limits.ts:433","message":"getUserUsage cache check","data":{"hasCached":false},"timestamp":1765470145253,"sessionId":"debug-session","runId":"initial","hypothesisId":"D"}
-{"location":"services/usage-limits.ts:426","message":"getUserUsage entry","data":{"userId":"171da362-c94b-4671-afe4-e622adc4f609"},"timestamp":1765470145261,"sessionId":"debug-session","runId":"initial","hypothesisId":"D"}
-{"location":"services/usage-limits.ts:433","message":"getUserUsage cache check","data":{"hasCached":true},"timestamp":1765470145263,"sessionId":"debug-session","runId":"initial","hypothesisId":"D"}
-{"location":"services/usage-limits.ts:590","message":"getUserUsage plan from RPC","data":{"plan":"free","planFromPayload":"free"},"timestamp":1765470147521,"sessionId":"debug-session","runId":"initial","hypothesisId":"D"}

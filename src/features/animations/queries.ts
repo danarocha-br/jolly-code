@@ -276,7 +276,11 @@ export const updateAnimationCollection = async ({
         return undefined;
       }
 
-      return { ...result.data!, animations: updatedAnimations };
+      const serverTitle = result.data!.title?.trim();
+      const preservedTitle =
+        serverTitle && serverTitle !== "" ? serverTitle : currentCollection.title;
+
+      return { ...result.data!, title: preservedTitle, animations: updatedAnimations };
     } else {
       toast.error("This animation already belongs to this collection.");
       return undefined;

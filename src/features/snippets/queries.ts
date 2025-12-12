@@ -100,8 +100,15 @@ export async function createCollection({
  * @throws {Error} - Throws an error if collections cannot be fetched.
  */
 export async function fetchCollections(): Promise<Collection[]> {
+  console.log('[fetchCollections] Called');
   try {
     const result = await getCollections();
+    console.log('[fetchCollections] Result:', { 
+      hasError: !!result.error, 
+      hasData: !!result.data,
+      collectionCount: result.data?.length,
+      collectionTitles: result.data?.map(c => ({ id: c.id, title: c.title }))
+    });
 
     if (result.error) {
       toast.error(result.error);
@@ -243,9 +250,23 @@ export const removeSnippetFromPreviousCollection = async (
         (s) => s.id !== snippet_id
       );
 
+      console.error('[removeSnippetFromPreviousCollection] Updating previous collection:', {
+        collectionId: previous_collection_id,
+        currentTitle: currentCollection.title,
+        snippetIdsToKeep: updatedSnippets.map(s => s.id)
+      });
+      
       const result = await updateCollectionAction({
         id: previous_collection_id,
         snippets: updatedSnippets.map((s) => s.id) as any,
+      });
+
+      
+      console.error('[removeSnippetFromPreviousCollection] Update result:', {
+        hasError: !!result.error,
+        error: result.error,
+        returnedTitle: result.data?.title,
+        returnedId: result.data?.id
       });
 
       if (result.error) {
@@ -322,12 +343,38 @@ export const updateCollection = async ({
         snippets: updatedSnippets.map(s => s.id) as any,
       });
 
+
       if (result.error) {
         toast.error(result.error);
         return undefined;
       }
 
-      return { ...result.data!, snippets: updatedSnippets };
+      // Preserve the existing title from currentCollection if title wasn't explicitly provided
+      // This ensures titles aren't lost during snippet-only updates
+      // Also handle cases where title might be empty/null/whitespace
+      const serverTitle = result.data!.title?.trim();
+      // If title was provided, use serverTitle (the updated value)
+      // If title was undefined (snippet-only update), prefer serverTitle but fallback to currentCollection.title
+      // Always fallback to currentCollection.title if serverTitle is empty/null
+      const preservedTitle = (serverTitle && serverTitle !== '') 
+        ? serverTitle 
+        : currentCollection.title;
+      
+      console.error('[updateCollection] Title preservation:', {
+        providedTitle: title,
+        serverTitle: result.data!.title,
+        trimmedServerTitle: serverTitle,
+        currentCollectionTitle: currentCollection.title,
+        preservedTitle,
+        collectionId: id
+      });
+      
+      const returnValue = { 
+        ...result.data!, 
+        title: preservedTitle,
+        snippets: updatedSnippets 
+      };
+      return returnValue;
     } else {
       toast.error("This snippet already belongs to this collection.");
       return undefined;

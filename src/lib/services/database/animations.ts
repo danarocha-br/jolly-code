@@ -303,7 +303,7 @@ export async function getAnimationCollections({
   try {
     const [{ data: collections, error: collectionError }, { data: animations, error: animationError }] =
       await Promise.all([
-        supabase.from("animation_collection").select("*").eq("user_id", user_id),
+        supabase.from("animation_collection").select("*").eq("user_id", user_id).order("created_at", { ascending: true }),
         supabase.from("animation").select("*").eq("user_id", user_id),
       ]);
 
@@ -312,7 +312,7 @@ export async function getAnimationCollections({
 
     const mappedAnimations = animations || [];
 
-    return (collections || []).map((collection) => {
+    const mappedCollections = (collections || []).map((collection) => {
       const animationIds = normalizeIds(collection.animations as any);
       return {
         ...collection,
@@ -321,6 +321,8 @@ export async function getAnimationCollections({
           .filter(Boolean) as Animation[],
       };
     });
+
+    return mappedCollections;
   } catch (err) {
     console.error(err);
     throw new Error("An error occurred. Please try again later.");
@@ -419,20 +421,21 @@ export async function updateAnimationCollection({
   title,
   animations,
   supabase,
-}: AnimationCollection): Promise<AnimationCollection[]> {
-  const sanitizedTitle = title?.trim() || "Untitled";
+}: AnimationCollection & { title?: string }): Promise<AnimationCollection[]> {
+  const updateData: Record<string, any> = {
+    animations,
+    updated_at: new Date().toISOString(),
+  };
+
+  const trimmedTitle = typeof title === "string" ? title.trim() : title;
+  if (trimmedTitle !== undefined && trimmedTitle !== null && trimmedTitle !== "") {
+    updateData.title = trimmedTitle;
+  }
 
   try {
     const { data, error } = await supabase
       .from("animation_collection")
-      .update([
-        {
-          user_id,
-          title: sanitizedTitle,
-          animations,
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .update([updateData])
       .eq("id", id)
       .eq("user_id", user_id)
       .select();
