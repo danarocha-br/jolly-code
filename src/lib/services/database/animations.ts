@@ -478,26 +478,6 @@ export async function deleteAnimationCollection({
 
     const animationIds = normalizeIds(collection.animations as any);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'run-animations',
-        hypothesisId: 'AH1',
-        location: 'lib/services/database/animations.ts:472',
-        message: 'deleteAnimationCollection snapshot',
-        data: {
-          collectionId: collection_id,
-          userId: user_id,
-          animationCount: animationIds.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => { })
-    // #endregion
-
     // Delete animations that belong to this collection
     if (animationIds.length > 0) {
       for (const animationId of animationIds) {
@@ -510,25 +490,6 @@ export async function deleteAnimationCollection({
       .delete()
       .eq("id", collection_id)
       .eq("user_id", user_id);
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'run-animations',
-        hypothesisId: 'AH1',
-        location: 'lib/services/database/animations.ts:498',
-        message: 'deleteAnimationCollection delete result',
-        data: {
-          collectionId: collection_id,
-          deleteError: deleteError?.message,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => { })
-    // #endregion
 
     if (deleteError) {
       throw deleteError;

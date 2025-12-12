@@ -498,6 +498,15 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                             isBusy={isMoveDestination}
                             isDropTarget={isDropTargetActive}
                             onRemove={() => {
+                              const snippetIds = collection.snippets?.map((s) => s.id) ?? [];
+
+                              if (snippetIds.length) {
+                                const confirmed = window.confirm(
+                                  "Deleting this folder will also delete all snippets inside. This cannot be undone. Continue?"
+                                );
+                                if (!confirmed) return;
+                              }
+
                               useEditorStore.setState({
                                 editors: editors.map((editor) => {
                                   if (

@@ -293,6 +293,7 @@ export const useAnimationStore = create<AnimationStoreState>()(
 
       setIsAnimationSaved: (saved: boolean) => {
         const { activeAnimationTabId, tabs } = get();
+
         const updatedTabs = sanitizeTabs(
           tabs.map(tab =>
             tab.id === activeAnimationTabId

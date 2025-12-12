@@ -436,42 +436,36 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
                             isBusy={isMoveDestination}
                             isDropTarget={isDropTargetActive}
                             onRemove={() => {
-                              // #region agent log
-                              fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  sessionId: 'debug-session',
-                                  runId: 'run-animations',
-                                  hypothesisId: 'AH2',
-                                  location: 'features/animations/animation-list.tsx:418',
-                                  message: 'UI delete animation collection trigger',
-                                  data: {
-                                    collectionId: collection.id,
-                                    animationCount: collection.animations?.length ?? 0,
-                                  },
-                                  timestamp: Date.now(),
-                                }),
-                              }).catch(() => { })
-                              // #endregion
-
                               if (collection.animations?.length) {
+                                const animationIds = collection.animations.map((a: any) =>
+                                  typeof a === "string" ? a : a?.id
+                                );
+
                                 const confirmed = window.confirm(
                                   "Deleting this folder will also delete all animations inside. This cannot be undone. Continue?"
                                 );
                                 if (!confirmed) {
                                   return;
                                 }
-                              }
 
-                              if (collection.animations?.length) {
-                                const animationIds = collection.animations.map((a) => a.id);
+                                if (animationIds.length) {
+                                // Remove from tabs (already updates saved flag in tabs)
                                 useAnimationStore.setState((state) => {
                                   animationIds.forEach((id) => {
-                                    state.removeAnimationFromTabs(id);
+                                    if (id) {
+                                      state.removeAnimationFromTabs(id);
+                                    }
                                   });
                                   return state;
                                 });
+
+                                // If active animation is being removed, clear active state and reset editor
+                                const { animationId: currentAnimationId, resetActiveAnimation } =
+                                  useAnimationStore.getState();
+                                if (currentAnimationId && animationIds.includes(currentAnimationId)) {
+                                  resetActiveAnimation();
+                                }
+                                }
                               }
 
                               handleDeleteCollection({

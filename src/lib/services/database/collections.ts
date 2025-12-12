@@ -249,6 +249,20 @@ export async function deleteCollection({
 	supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
 	try {
+		// Gather snippet IDs linked to this collection
+		const { data: snippetLinks, error: snippetLinkError } = await supabase
+			.from("collection_snippets")
+			.select("snippet_id")
+			.eq("collection_id", collection_id);
+
+		if (snippetLinkError) {
+			throw snippetLinkError;
+		}
+
+		const snippetIds = (snippetLinks ?? [])
+			.map((row) => row.snippet_id)
+			.filter((id): id is string => Boolean(id));
+
 		// Verify the collection exists and belongs to the user
 		const { data: collection, error: fetchError } = await supabase
 			.from("collection")
@@ -263,6 +277,19 @@ export async function deleteCollection({
 
 		if (!collection) {
 			throw new Error("Collection not found");
+		}
+
+		// Delete snippets belonging to this collection (and user)
+		if (snippetIds.length > 0) {
+			const { error: snippetDeleteError } = await supabase
+				.from("snippet")
+				.delete()
+				.in("id", snippetIds)
+				.eq("user_id", user_id);
+
+			if (snippetDeleteError) {
+				throw new Error(snippetDeleteError.message || "Failed to delete snippets in collection");
+			}
 		}
 
 		// Delete the collection (CASCADE will automatically delete junction records)
