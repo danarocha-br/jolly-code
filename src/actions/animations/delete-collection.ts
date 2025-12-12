@@ -16,6 +16,22 @@ export async function deleteAnimationCollection(
 
         const { user, supabase } = await requireAuth()
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'run-animations',
+                hypothesisId: 'AH1',
+                location: 'actions/animations/delete-collection.ts:23',
+                message: 'deleteAnimationCollection action invoked',
+                data: { collectionId: collection_id, userId: user.id },
+                timestamp: Date.now(),
+            }),
+        }).catch(() => { })
+        // #endregion
+
         await deleteAnimationCollectionDb({
             collection_id,
             user_id: user.id,

@@ -220,6 +220,7 @@ export const removeAnimationFromPreviousCollection = async (
       if (result.error) {
         toast.error("Something went wrong, please try again.");
       }
+    } else {
     }
   } catch (error) {
     toast.error("Something went wrong, please try again.");

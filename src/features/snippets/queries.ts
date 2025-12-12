@@ -250,28 +250,15 @@ export const removeSnippetFromPreviousCollection = async (
         (s) => s.id !== snippet_id
       );
 
-      console.error('[removeSnippetFromPreviousCollection] Updating previous collection:', {
-        collectionId: previous_collection_id,
-        currentTitle: currentCollection.title,
-        snippetIdsToKeep: updatedSnippets.map(s => s.id)
-      });
-      
       const result = await updateCollectionAction({
         id: previous_collection_id,
         snippets: updatedSnippets.map((s) => s.id) as any,
       });
 
-      
-      console.error('[removeSnippetFromPreviousCollection] Update result:', {
-        hasError: !!result.error,
-        error: result.error,
-        returnedTitle: result.data?.title,
-        returnedId: result.data?.id
-      });
-
       if (result.error) {
         toast.error("Something went wrong, please try again.");
       }
+    } else {
     }
   } catch (error) {
     toast.error("Something went wrong, please try again.");
@@ -359,15 +346,6 @@ export const updateCollection = async ({
       const preservedTitle = (serverTitle && serverTitle !== '') 
         ? serverTitle 
         : currentCollection.title;
-      
-      console.error('[updateCollection] Title preservation:', {
-        providedTitle: title,
-        serverTitle: result.data!.title,
-        trimmedServerTitle: serverTitle,
-        currentCollectionTitle: currentCollection.title,
-        preservedTitle,
-        collectionId: id
-      });
       
       const returnValue = { 
         ...result.data!, 

@@ -79,6 +79,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
     animationId: string;
     toCollectionId: string;
   } | null>(null);
+  const moveLockRef = useRef<string | null>(null);
 
   const collectionTitleInputRef = useRef<HTMLInputElement>(null);
   const lastUpdateTime = useRef(0);
@@ -292,6 +293,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
       setDraggedAnimationId(null);
       setDragSourceCollectionId(null);
       setPendingMove(null);
+      moveLockRef.current = null;
     },
     onSuccess: (data, variables) => {
       trackAnimationEvent("move_animation", user, {
@@ -310,6 +312,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
       setDraggedAnimationId(null);
       setDragSourceCollectionId(null);
       setPendingMove(null);
+      moveLockRef.current = null;
     },
   });
 
@@ -335,12 +338,29 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
         | undefined;
       const targetCollectionId = event.over?.id?.toString();
 
+      // Prevent concurrent moves for the same animation while a move is pending
+      if (data?.animation && pendingMove?.animationId === data.animation.id) {
+        return;
+      }
+
+      // Block moves if any animation move is currently locked (guard against rapid re-entrancy before state updates)
+      if (moveLockRef.current) {
+        return;
+      }
+
       if (
         data?.animation &&
         data?.collectionId &&
         targetCollectionId &&
         targetCollectionId !== data.collectionId
       ) {
+        // Optimistically lock this animation move immediately
+        moveLockRef.current = data.animation.id;
+        setPendingMove({
+          animationId: data.animation.id,
+          toCollectionId: targetCollectionId,
+        });
+
         handleMoveAnimation({
           id: targetCollectionId,
           previous_collection_id: data.collectionId,
@@ -416,6 +436,44 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
                             isBusy={isMoveDestination}
                             isDropTarget={isDropTargetActive}
                             onRemove={() => {
+                              // #region agent log
+                              fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  sessionId: 'debug-session',
+                                  runId: 'run-animations',
+                                  hypothesisId: 'AH2',
+                                  location: 'features/animations/animation-list.tsx:418',
+                                  message: 'UI delete animation collection trigger',
+                                  data: {
+                                    collectionId: collection.id,
+                                    animationCount: collection.animations?.length ?? 0,
+                                  },
+                                  timestamp: Date.now(),
+                                }),
+                              }).catch(() => { })
+                              // #endregion
+
+                              if (collection.animations?.length) {
+                                const confirmed = window.confirm(
+                                  "Deleting this folder will also delete all animations inside. This cannot be undone. Continue?"
+                                );
+                                if (!confirmed) {
+                                  return;
+                                }
+                              }
+
+                              if (collection.animations?.length) {
+                                const animationIds = collection.animations.map((a) => a.id);
+                                useAnimationStore.setState((state) => {
+                                  animationIds.forEach((id) => {
+                                    state.removeAnimationFromTabs(id);
+                                  });
+                                  return state;
+                                });
+                              }
+
                               handleDeleteCollection({
                                 collection_id: collection.id,
                                 user_id: collection.user_id,

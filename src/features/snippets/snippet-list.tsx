@@ -83,6 +83,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
     snippetId: string;
     toCollectionId: string;
   } | null>(null);
+  const moveLockRef = useRef<string | null>(null);
 
 
   const collectionTitleInputRef = useRef<HTMLInputElement>(null);
@@ -318,6 +319,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       setDraggedSnippetId(null);
       setDragSourceCollectionId(null);
       setPendingMove(null);
+      moveLockRef.current = null;
     },
     onSuccess: (data, variables, context) => {
       console.log('=== MUTATION SUCCESS ===', { data, variables });
@@ -365,6 +367,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       setDraggedSnippetId(null);
       setDragSourceCollectionId(null);
       setPendingMove(null);
+      moveLockRef.current = null;
     },
   });
 
@@ -392,12 +395,34 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       const targetCollectionId = event.over?.id?.toString();
       console.log('Drag data:', { targetCollectionId, snippetId: data?.snippet?.id, sourceCollectionId: data?.collectionId });
 
+      // Prevent concurrent moves for the same snippet while a move is pending
+      if (data?.snippet && pendingMove?.snippetId === data.snippet.id) {
+        return;
+      }
+
+      // Block moves if any snippet move is currently locked (guard against rapid re-entrancy before state updates)
+      if (moveLockRef.current) {
+        return;
+      }
+
+      // Block moves if a previous move is still pending across any snippet to reduce concurrent race window
+      if (pendingMove) {
+        return;
+      }
+
       if (
         data?.snippet &&
         data?.collectionId &&
         targetCollectionId &&
         targetCollectionId !== data.collectionId
       ) {
+        // Optimistically lock this snippet move immediately
+        moveLockRef.current = data.snippet.id;
+        setPendingMove({
+          snippetId: data.snippet.id,
+          toCollectionId: targetCollectionId,
+        });
+
         handleMoveSnippet({
           id: targetCollectionId,
           previous_collection_id: data.collectionId,
