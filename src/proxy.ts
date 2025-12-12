@@ -81,10 +81,18 @@ const enforceCsrf = (request: NextRequest) => {
     return null;
   }
 
-  // Allow Vercel preview URLs (*.vercel.app)
-  const isVercelPreview = candidate.endsWith(".vercel.app");
-  if (isVercelPreview) {
-    return null;
+  // Allow this project's Vercel preview URLs
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL;
+  if (vercelUrl) {
+    const normalizedVercelUrl = normalizeOrigin(`https://${vercelUrl}`);
+    if (normalizedVercelUrl && candidate === normalizedVercelUrl) {
+      return null;
+    }
+    // Also allow branch/PR previews sharing the same project pattern
+    const projectSlug = vercelUrl.split("-").slice(-2).join("-"); // e.g., "jolly-code"
+    if (candidate.includes(projectSlug) && candidate.endsWith(".vercel.app")) {
+      return null;
+    }
   }
 
   return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });

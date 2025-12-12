@@ -12,12 +12,6 @@ type Props = {
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const params = await searchParams;
   const sessionId = params?.session_id;
-  // #region agent log
-  console.log("[DEBUG] CheckoutSuccessPage entry", {
-    sessionId,
-    hypothesisId: "E",
-  });
-  // #endregion
 
   if (!sessionId) {
     return (
@@ -34,13 +28,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  // #region agent log
-  console.log("[DEBUG] CheckoutSuccessPage user fetched", {
-    userId: user?.id,
-    hasUser: !!user,
-    hypothesisId: "E",
-  });
-  // #endregion
 
   if (!user) {
     redirect(
@@ -75,16 +62,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     const subscription = session.subscription as Stripe.Subscription | null;
     const subscriptionStatus = subscription?.status;
     const plan = session.metadata?.plan ?? "your plan";
-    // #region agent log
-    console.log("[DEBUG] CheckoutSuccessPage session retrieved", {
-      sessionId,
-      paymentStatus,
-      subscriptionStatus,
-      subscriptionId: subscription?.id,
-      planFromMetadata: session.metadata?.plan,
-      hypothesisId: "E",
-    });
-    // #endregion
 
     const isPaid =
       paymentStatus === "paid" || paymentStatus === "no_payment_required";
@@ -95,12 +72,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       try {
         const subscriptionId =
           typeof subscription === "string" ? subscription : subscription.id;
-        // #region agent log
-        console.log("[DEBUG] CheckoutSuccessPage attempting fallback sync", {
-          subscriptionId,
-          hypothesisId: "E",
-        });
-        // #endregion
 
         // Fetch full subscription details if needed (subscription might be just an ID from session)
         let fullSubscription: Stripe.Subscription;
@@ -123,12 +94,6 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         }
 
         const syncResult = await syncSubscriptionToDatabase(fullSubscription);
-        // #region agent log
-        console.log("[DEBUG] CheckoutSuccessPage fallback sync result", {
-          syncResult,
-          hypothesisId: "E",
-        });
-        // #endregion
       } catch (error) {
         // Log but don't fail the page - webhook will handle it eventually
         console.error(

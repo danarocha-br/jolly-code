@@ -159,10 +159,21 @@ export function getUsageLimitsCacheProvider(): UsageLimitsCacheProvider {
   return globalCacheProvider;
 }
 
+
 /**
  * Resets the global cache provider (useful for testing or explicit re-initialization).
  */
 export function resetUsageLimitsCacheProvider(): void {
   globalCacheProvider = null;
+}
+
+/**
+ * Invalidates the usage cache for a specific user.
+ * Should be called when a user's subscription or usage data changes significantly
+ * (e.g. plan upgrade/downgrade, sync).
+ */
+export function invalidateUserUsageCache(userId: string): void {
+  const provider = getUsageLimitsCacheProvider();
+  provider.delete(userId);
 }
 

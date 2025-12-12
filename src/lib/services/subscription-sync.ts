@@ -112,7 +112,8 @@ export async function syncSubscriptionToDatabase(
   let planId: PlanId | null = null;
 
   // Access current_period_end - Stripe returns it as a Unix timestamp (seconds)
-  const currentPeriodEnd = subscription.current_period_end;
+  // Cast to any to avoid type issues with potentially outdated Stripe types
+  const currentPeriodEnd = (subscription as any).current_period_end;
   const periodEndDate = currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null;
   const now = new Date();
   // If we can't determine period end, assume period is still active (conservative approach)
@@ -171,11 +172,14 @@ export async function syncSubscriptionToDatabase(
   // Note: currentPeriodEnd is already defined above (line 193), so we reuse it here
   // If current_period_end is not on the subscription object, try getting it from upcoming invoices
   // or calculate it from billing cycle anchor + interval
-  let periodEndTimestamp = currentPeriodEnd;
 
-  if (!periodEndTimestamp) {
+  // LOGIC FIX: Prioritize cancel_at if set, as that represents the true end of service for scheduled cancellations
+  // In Stripe Test Clock scenarios or specific scheduling, cancel_at might differ or be the source of truth
+  const cancelAtCallback = subscription.cancel_at;
+  let periodEndTimestamp = cancelAtCallback || currentPeriodEnd;
+
+  if (!periodEndTimestamp && customerId) {
     const stripe = getStripeClient();
-    const customerId = getStripeCustomerId(subscription);
 
     // Try getting from upcoming invoices
     try {
@@ -335,30 +339,56 @@ async function resolveUserIdFromSubscription(
 }
 
 function resolvePlanFromSubscription(subscription: Stripe.Subscription): PlanId | null {
+  // Try to resolve from Price ID first as it is the source of truth
+  const priceId = subscription.items.data[0]?.price.id;
+  if (priceId) {
+    const planFromPrice = getPlanIdFromPriceId(priceId);
+    if (planFromPrice) {
+      return planFromPrice;
+    }
+  }
+
+  // Fallback to metadata if price ID resolution fails (e.g. unknown price)
   const metadataPlan = subscription.metadata?.plan;
   if (metadataPlan === 'started' || metadataPlan === 'pro') {
     return metadataPlan;
   }
 
-  const priceId = subscription.items.data[0]?.price.id;
-  if (!priceId) return null;
+  // Log error if neither worked
+  if (priceId) {
+    console.error('[resolvePlanFromSubscription] Failed to resolve plan from price ID', {
+      priceId,
+      availableMap: JSON.stringify(getPriceIdMap()),
+      // Check env vars presence (without leaking values)
+      envVars: {
+        startedMonthly: !!process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
+        startedYearly: !!process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID,
+        proMonthly: !!process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
+        proYearly: !!process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
+      }
+    });
+  }
 
-  const planFromPrice = getPlanIdFromPriceId(priceId);
-  return planFromPrice;
+  return null;
 }
 
-function getPlanIdFromPriceId(priceId: string): PlanId | null {
+function getPriceIdMap(): Record<string, PlanId> {
   const priceIdMap: Record<string, PlanId> = {};
 
-  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID;
-  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID;
-  const proMonthly = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID;
-  const proYearly = process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
+  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID?.trim();
+  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID?.trim();
+  const proMonthly = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID?.trim();
+  const proYearly = process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID?.trim();
 
   if (startedMonthly) priceIdMap[startedMonthly] = 'started';
   if (startedYearly) priceIdMap[startedYearly] = 'started';
   if (proMonthly) priceIdMap[proMonthly] = 'pro';
   if (proYearly) priceIdMap[proYearly] = 'pro';
 
+  return priceIdMap;
+}
+
+function getPlanIdFromPriceId(priceId: string): PlanId | null {
+  const priceIdMap = getPriceIdMap();
   return priceIdMap[priceId] || null;
 }

@@ -199,14 +199,22 @@ export async function createCheckoutSession({
 export async function createCustomerPortalSession({
   customerId,
   returnUrl,
+  flow_data,
 }: {
   customerId: string;
   returnUrl: string;
+  flow_data?: Stripe.BillingPortal.SessionCreateParams.FlowData;
 }): Promise<Stripe.BillingPortal.Session> {
-  const session = await getStripeClient().billingPortal.sessions.create({
+  const params: Stripe.BillingPortal.SessionCreateParams = {
     customer: customerId,
     return_url: returnUrl,
-  });
+  };
+
+  if (flow_data) {
+    params.flow_data = flow_data;
+  }
+
+  const session = await getStripeClient().billingPortal.sessions.create(params);
 
   return session;
 }

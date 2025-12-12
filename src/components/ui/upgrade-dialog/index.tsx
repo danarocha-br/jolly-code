@@ -1,13 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,7 +20,6 @@ import {
   type PlanId,
 } from "@/lib/config/plans";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 type UpgradeDialogProps = {
   open: boolean;
@@ -134,6 +134,28 @@ export function UpgradeDialog({
 
   const currentPlanLimit = getLimitForPlan(PLANS[currentPlan], limitType);
 
+  const redirectToCustomerPortal = async () => {
+    try {
+      const response = await fetch("/api/customer-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow: "update_subscription" }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.url) {
+        toast.error(data.error || "Unable to access customer portal.");
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong redirecting to the portal.");
+    }
+  };
+
   const handleCheckout = (planOverride?: PlanId) => {
     const planToCheckout = planOverride ?? selectedPlan;
 
@@ -145,19 +167,7 @@ export function UpgradeDialog({
         // redirect to customer portal instead of creating a new checkout session.
         // This prevents duplicate subscriptions.
         if (currentPlan !== "free") {
-          const response = await fetch("/api/customer-portal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          });
-
-          const data = await response.json();
-
-          if (!response.ok || !data.url) {
-            toast.error(data.error || "Unable to access customer portal.");
-            return;
-          }
-
-          window.location.href = data.url;
+          await redirectToCustomerPortal();
           return;
         }
 
@@ -171,6 +181,13 @@ export function UpgradeDialog({
         });
 
         const data = await response.json();
+
+        // Handle conflict: User already has an active subscription
+        if (response.status === 409 || data.error?.includes("active subscription")) {
+          toast.info("Redirecting to plan management...");
+          await redirectToCustomerPortal();
+          return;
+        }
 
         if (!response.ok || !data.url) {
           toast.error(data.error || "Unable to start checkout right now.");

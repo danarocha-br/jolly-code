@@ -250,6 +250,15 @@ export async function syncSubscription({
       return { success: false, error: 'Failed to sync subscription' };
     }
 
+    // Invalidate usage cache so the UI reflects the new plan immediately
+    try {
+      const { invalidateUserUsageCache } = await import('@/lib/services/usage-limits-cache');
+      invalidateUserUsageCache(user.id);
+    } catch (error) {
+      console.warn('Failed to invalidate usage cache:', error);
+      // Don't fail the sync action just because cache invalidation failed
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Sync subscription action error:', error);

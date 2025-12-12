@@ -1,12 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+
 import { createServiceRoleClient } from '@/utils/supabase/admin';
 import { constructWebhookEvent, getStripeClient } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
 import type { Json } from '@/types/database';
-import Stripe from 'stripe';
 import { captureServerEvent } from '@/lib/services/tracking/server';
-import { setCachedBillingInterval } from '@/lib/services/billing';
+import { invalidateUserUsageCache } from '@/lib/services/usage-limits-cache';
 import { syncSubscriptionToDatabase } from '@/lib/services/subscription-sync';
 
 export const dynamic = 'force-dynamic';
@@ -31,27 +32,15 @@ function getPlanIdFromPriceId(priceId: string): PlanId | null {
 }
 
 function resolvePlan(subscription: Stripe.Subscription): PlanId | null {
-  // #region agent log
-  console.log('[DEBUG] resolvePlan entry', { subscriptionId: subscription.id, metadataPlan: subscription.metadata?.plan, metadata: subscription.metadata, hypothesisId: 'C' });
-  // #endregion
   const metadataPlan = subscription.metadata?.plan;
   if (metadataPlan === 'started' || metadataPlan === 'pro') {
-    // #region agent log
-    console.log('[DEBUG] resolvePlan found in metadata', { planId: metadataPlan, hypothesisId: 'C' });
-    // #endregion
     return metadataPlan;
   }
 
   const priceId = subscription.items.data[0]?.price.id;
-  // #region agent log
-  console.log('[DEBUG] resolvePlan checking priceId', { priceId, hasPriceId: !!priceId, hypothesisId: 'C' });
-  // #endregion
   if (!priceId) return null;
 
   const planFromPrice = getPlanIdFromPriceId(priceId);
-  // #region agent log
-  console.log('[DEBUG] resolvePlan result from priceId', { planFromPrice, hypothesisId: 'C' });
-  // #endregion
   return planFromPrice;
 }
 
@@ -68,20 +57,11 @@ async function resolveUserIdFromSubscription(
   subscription: Stripe.Subscription,
   supabase: ServiceRoleClient
 ): Promise<string | null> {
-  // #region agent log
-  console.log('[DEBUG] resolveUserIdFromSubscription entry', { subscriptionId: subscription.id, hasMetadataUserId: !!subscription.metadata?.userId, metadata: subscription.metadata, hypothesisId: 'B' });
-  // #endregion
   if (subscription.metadata?.userId) {
-    // #region agent log
-    console.log('[DEBUG] resolveUserIdFromSubscription found in metadata', { userId: subscription.metadata.userId, hypothesisId: 'B' });
-    // #endregion
     return subscription.metadata.userId;
   }
 
   const customerId = getStripeCustomerId(subscription);
-  // #region agent log
-  console.log('[DEBUG] resolveUserIdFromSubscription checking customerId', { customerId, hasCustomerId: !!customerId, hypothesisId: 'B' });
-  // #endregion
   if (!customerId) return null;
 
   const { data, error } = await supabase
@@ -89,10 +69,6 @@ async function resolveUserIdFromSubscription(
     .select('id')
     .eq('stripe_customer_id', customerId)
     .maybeSingle();
-
-  // #region agent log
-  console.log('[DEBUG] resolveUserIdFromSubscription customer lookup result', { userId: data?.id, hasError: !!error, errorMessage: error?.message, hypothesisId: 'B' });
-  // #endregion
 
   if (error) {
     throw new Error(`Failed to resolve user by stripe_customer_id: ${error.message}`);
@@ -234,18 +210,29 @@ async function upsertWebhookAudit(
 
 // Handle subscription created or updated
 async function handleSubscriptionChange(
-  subscription: Stripe.Subscription,
+  event: Stripe.Event,
   supabase: ServiceRoleClient
 ) {
-  // #region agent log
-  console.log('[DEBUG] handleSubscriptionChange entry', { subscriptionId: subscription.id, status: subscription.status, hypothesisId: 'A' });
-  // #endregion
-  
+  // Retrieve the latest subscription state from Stripe to ensure we have the most up-to-date data
+  // This prevents race conditions or stale data issues from the webhook payload
+  const stripeSubscription = event.data.object as Stripe.Subscription;
+  const subscription = await getStripeClient().subscriptions.retrieve(stripeSubscription.id, {
+    expand: ['items.data.price'],
+  });
+
   const result = await syncSubscriptionToDatabase(subscription);
+
   if (!result) {
     throw new Error('Failed to sync subscription to database');
   }
-  
+
+  // Invalidate usage cache
+  try {
+    invalidateUserUsageCache(result.userId);
+  } catch (error) {
+    console.error('Failed to invalidate usage cache in webhook:', error);
+  }
+
   return result.userId;
 }
 
@@ -290,6 +277,14 @@ async function handleSubscriptionDeleted(
   }
 
   console.log(`Downgraded user ${userId} to free plan`);
+
+  // Invalidate usage cache
+  try {
+    invalidateUserUsageCache(userId);
+  } catch (error) {
+    console.error('Failed to invalidate usage cache in webhook (downgrade):', error);
+  }
+
   return userId;
 }
 
@@ -376,7 +371,7 @@ async function handleInvoicePaymentSucceeded(
 
     // Clear any past_due status by updating subscription status to active
     const invoiceSubscription = (invoice as any).subscription;
-   if (typeof invoiceSubscription === 'string') {
+    if (typeof invoiceSubscription === 'string') {
       const subscriptionId = invoiceSubscription;
       const { data: profile } = await supabase
         .from('profiles')
@@ -622,15 +617,7 @@ function getErrorStatusCode(error: unknown): number {
 }
 
 export async function POST(request: NextRequest) {
-  // #region agent log
-  console.log('[DEBUG] Webhook POST handler called', { timestamp: new Date().toISOString(), hypothesisId: 'A' });
-  // #endregion
-  
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  // #region agent log
-  console.log('[DEBUG] Webhook secret check', { hasSecret: !!webhookSecret, hypothesisId: 'A' });
-  // #endregion
 
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET not set');
@@ -648,10 +635,6 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
 
-    // #region agent log
-    console.log('[DEBUG] Webhook request parsed', { hasSignature: !!signature, bodyLength: body.length, hypothesisId: 'A' });
-    // #endregion
-
     if (!signature) {
       return NextResponse.json(
         { error: 'Missing stripe-signature header' },
@@ -660,14 +643,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify webhook signature
-    // #region agent log
-    console.log('[DEBUG] Attempting to construct webhook event', { hypothesisId: 'A' });
-    // #endregion
     event = constructWebhookEvent(body, signature, webhookSecret);
 
-    // #region agent log
-    console.log('[DEBUG] Webhook event constructed successfully', { eventType: event.type, eventId: event.id, hypothesisId: 'A' });
-    // #endregion
     console.log('Received Stripe webhook:', event.type);
 
     // Check if we've already processed this event (idempotency check)
@@ -686,22 +663,13 @@ export async function POST(request: NextRequest) {
     await upsertWebhookAudit(supabase, event, { status: 'received' });
 
     // Handle different event types
-    // #region agent log
-    console.log('[DEBUG] webhook event received', { eventType: event.type, eventId: event.id, hypothesisId: 'A' });
-    // #endregion
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        // #region agent log
-        console.log('[DEBUG] webhook handling subscription change', { eventType: event.type, hypothesisId: 'A' });
-        // #endregion
         resolvedUserId = await handleSubscriptionChange(
-          event.data.object as Stripe.Subscription,
+          event,
           supabase
         );
-        // #region agent log
-        console.log('[DEBUG] webhook subscription change completed', { resolvedUserId, hypothesisId: 'A' });
-        // #endregion
         break;
 
       case 'customer.subscription.deleted':
