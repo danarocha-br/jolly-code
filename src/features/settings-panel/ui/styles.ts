@@ -27,7 +27,17 @@ export const itemContainer = cva([
   "hover:bg-muted/60",
   "dark:hover:bg-muted/40",
   "focus:outline-none"
-]);
+], {
+  variants: {
+    clickable: {
+      true: "cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/60 active:bg-muted/90 dark:active:bg-muted/70",
+      false: ""
+    }
+  },
+  defaultVariants: {
+    clickable: false
+  }
+});
 
 export const footer = cva([
   "bg-background/80",
