@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { InvoiceInfo } from "@/lib/services/billing";
 
 type InvoiceListProps = {
@@ -45,7 +46,7 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-muted animate-pulse rounded" />
+              <Skeleton key={i} className="h-10 w-full bg-card dark:bg-muted animate-pulse rounded" />
             ))}
           </div>
         </CardContent>

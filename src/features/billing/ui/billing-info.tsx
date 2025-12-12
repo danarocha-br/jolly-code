@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 import type { BillingInfo } from "@/lib/services/billing";
 import { hasActiveSubscription } from "@/lib/services/billing";
@@ -74,13 +75,13 @@ export function BillingInfoView({
   if (isLoading) {
     return (
       <Card className="p-0 bg-white dark:bg-card">
-      <CardHeader className="p-0">
+        <CardHeader className="p-0">
           <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm">Current plan</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-            <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+            <Skeleton className="h-4 w-32 bg-card dark:bg-muted animate-pulse rounded" />
+            <Skeleton className="h-4 w-24 bg-card dark:bg-muted animate-pulse rounded" />
           </div>
         </CardContent>
       </Card>
@@ -188,7 +189,9 @@ export function BillingInfoView({
           <div className="">
             <Separator />
             <div className="flex justify-between items-center gap-6 px-3 py-3">
-              <p className="text-sm text-muted-foreground">Next billing date</p>
+              <p className="text-sm text-muted-foreground">
+                {isCanceling ? "Access until" : "Next billing date"}
+              </p>
               <p className="text-sm font-medium text-right">
                 {nextBillingDate.toLocaleDateString("en-US", {
                   year: "numeric",
@@ -197,6 +200,15 @@ export function BillingInfoView({
                 })}
               </p>
             </div>
+            {isCanceling && (
+              <div className="px-3 pb-3">
+                <Alert variant="destructive" className="py-2">
+                  <AlertDescription className="text-xs flex items-center gap-2">
+                    Your subscription is scheduled for cancellation. You can continue using {planConfig.name} features until the date above.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
           </div>
         )}
 

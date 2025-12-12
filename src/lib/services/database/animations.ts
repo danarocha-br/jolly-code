@@ -204,17 +204,19 @@ export async function getAnimationById({
   }
 }
 
-export async function getUsersAnimationsList({
+export async function getUsersAnimationsList<T = Animation>({
   user_id,
   supabase,
+  columns,
 }: {
   user_id: string;
   supabase: SupabaseClient<Database, "public", any>;
-}): Promise<Animation[]> {
+  columns?: string;
+}): Promise<T[]> {
   try {
     const { data, error } = await supabase
       .from("animation")
-      .select("*")
+      .select(columns || "*")
       .eq("user_id", user_id);
 
     if (error) {
@@ -222,7 +224,7 @@ export async function getUsersAnimationsList({
     }
 
     if (data) {
-      return data as Animation[];
+      return data as T[];
     }
 
     throw new Error("No animations found.");

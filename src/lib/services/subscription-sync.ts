@@ -110,21 +110,21 @@ export async function syncSubscriptionToDatabase(
   // Canceled subscriptions remain active until current_period_end
   // Only downgrade to free if period has ended or subscription is truly inactive
   let planId: PlanId | null = null;
-  
+
   // Access current_period_end - Stripe returns it as a Unix timestamp (seconds)
   const currentPeriodEnd = subscription.current_period_end;
   const periodEndDate = currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null;
   const now = new Date();
   // If we can't determine period end, assume period is still active (conservative approach)
   const periodHasEnded = periodEndDate ? periodEndDate < now : false;
-  
+
   // For canceled subscriptions: keep plan active if period hasn't ended
   // For other inactive statuses: downgrade immediately
-  const isUnpaidOrIncomplete = subscription.status === 'unpaid' || 
-                                subscription.status === 'incomplete_expired' ||
-                                subscription.status === 'incomplete';
+  const isUnpaidOrIncomplete = subscription.status === 'unpaid' ||
+    subscription.status === 'incomplete_expired' ||
+    subscription.status === 'incomplete';
   const isCanceled = subscription.status === 'canceled';
-  
+
   if (isCanceled && !periodHasEnded) {
     // Canceled but period still active - resolve plan from subscription to keep access
     planId = resolvePlanFromSubscription(subscription);
@@ -172,11 +172,11 @@ export async function syncSubscriptionToDatabase(
   // If current_period_end is not on the subscription object, try getting it from upcoming invoices
   // or calculate it from billing cycle anchor + interval
   let periodEndTimestamp = currentPeriodEnd;
-  
+
   if (!periodEndTimestamp) {
     const stripe = getStripeClient();
     const customerId = getStripeCustomerId(subscription);
-    
+
     // Try getting from upcoming invoices
     try {
       const upcomingInvoices = await stripe.invoices.list({
@@ -185,7 +185,7 @@ export async function syncSubscriptionToDatabase(
         status: 'draft',
         limit: 1,
       });
-      
+
       if (upcomingInvoices.data.length > 0) {
         const upcomingInvoice = upcomingInvoices.data[0];
         periodEndTimestamp = (upcomingInvoice as any).period_end;
@@ -193,7 +193,7 @@ export async function syncSubscriptionToDatabase(
     } catch (invoiceError) {
       // Silently fail - will try calculation fallback
     }
-    
+
     // If still no period end, try calculating from billing cycle anchor
     if (!periodEndTimestamp) {
       const billingCycleAnchor = (subscription as any).billing_cycle_anchor;
@@ -204,8 +204,8 @@ export async function syncSubscriptionToDatabase(
         // Calculate how many periods have passed since anchor
         let periodsPassed = 0;
         if (interval === 'month') {
-          const monthsDiff = (nowDate.getFullYear() - anchorDate.getFullYear()) * 12 + 
-                            (nowDate.getMonth() - anchorDate.getMonth());
+          const monthsDiff = (nowDate.getFullYear() - anchorDate.getFullYear()) * 12 +
+            (nowDate.getMonth() - anchorDate.getMonth());
           periodsPassed = Math.floor(monthsDiff);
         } else if (interval === 'year') {
           periodsPassed = nowDate.getFullYear() - anchorDate.getFullYear();
@@ -221,7 +221,7 @@ export async function syncSubscriptionToDatabase(
       }
     }
   }
-  
+
   const subscriptionPeriodEnd = periodEndTimestamp
     ? new Date(periodEndTimestamp * 1000).toISOString()
     : null;
@@ -233,7 +233,7 @@ export async function syncSubscriptionToDatabase(
     stripe_subscription_id: subscription.id,
     stripe_subscription_status: subscription.status,
     subscription_period_end: subscriptionPeriodEnd,
-    subscription_cancel_at_period_end: subscription.cancel_at_period_end ?? null,
+    subscription_cancel_at_period_end: subscription.cancel_at_period_end || !!subscription.cancel_at,
     stripe_price_id: subscription.items.data[0]?.price.id,
     billing_interval: billingInterval,
   };
@@ -241,7 +241,7 @@ export async function syncSubscriptionToDatabase(
   // Split update into two parts to avoid type casting issues:
   // 1. Update plan field using RPC function with explicit type casting (bypasses Supabase client validation)
   // 2. Update rest of the fields normally
-  
+
   // First, update all fields EXCEPT plan
   const { plan: _, plan_updated_at: __, ...restOfFields } = updateData;
   const { error: restError } = await supabase
@@ -266,7 +266,7 @@ export async function syncSubscriptionToDatabase(
         plan_updated_at: updateData.plan_updated_at,
       } as any)
       .eq('id', userId);
-    
+
     if (fallbackError) {
       console.error('[syncSubscriptionToDatabase] Both RPC and fallback plan update failed', {
         rpcError: planError.message,

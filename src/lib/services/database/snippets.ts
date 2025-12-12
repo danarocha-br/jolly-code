@@ -250,21 +250,23 @@ export async function getSnippetById({
  * @param {SupabaseClient<Database, "public", any>} supabase - The Supabase client.
  * @return {Promise<Snippet[]>} - A promise that resolves to an array of snippets.
  */
-export async function getUsersSnippetsList({
+export async function getUsersSnippetsList<T = Snippet>({
 	user_id,
 	supabase,
+	columns,
 }: {
 	user_id: string;
 	supabase: SupabaseClient<Database, "public", any>;
-}): Promise<Snippet[]> {
+	columns?: string;
+}): Promise<T[]> {
 	try {
 		const { data } = await supabase
 			.from("snippet")
-			.select("*")
+			.select(columns || "*")
 			.eq("user_id", user_id);
 
 		if (data) {
-			return data;
+			return data as T[];
 		} else {
 			throw new Error("No snippets found.");
 		}

@@ -2,8 +2,8 @@
 import { FaCcAmex, FaCcDiscover, FaCcMastercard, FaCcVisa } from "react-icons/fa";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { PaymentMethodInfo } from "@/lib/services/billing";
-import { Skeleton } from "../../skeleton";
 
 type PaymentMethodProps = {
   paymentMethod: PaymentMethodInfo | null;

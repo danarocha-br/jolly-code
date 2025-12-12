@@ -49,6 +49,14 @@ export async function bulkDeleteSnippets(
       )
     }
 
+    // Clear usage limits cache to ensure up-to-date counts
+    try {
+      const { getUsageLimitsCacheProvider } = await import('@/lib/services/usage-limits-cache')
+      getUsageLimitsCacheProvider().delete(user.id)
+    } catch (e) {
+      console.warn('Failed to clear usage cache:', e)
+    }
+
     // Revalidate relevant paths
     revalidatePath('/snippets')
     revalidatePath('/')
