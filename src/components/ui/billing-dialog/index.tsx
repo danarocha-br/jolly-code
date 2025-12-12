@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { RiAlertLine } from "react-icons/ri";
+
 import {
   Dialog,
   DialogContent,
@@ -10,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { BillingInfoView } from "./components/billing-info";
 import { PaymentMethod } from "./components/payment-method";
 import { InvoiceList } from "./components/invoice-list";
@@ -28,6 +29,7 @@ import { useUserPlan } from "@/features/user/queries";
 import { getDowngradeTarget } from "@/lib/utils/downgrade-impact";
 import type { PlanId } from "@/lib/config/plans";
 import { hasActiveSubscription } from "@/lib/services/billing";
+import { Alert, AlertDescription, AlertTitle } from "../alert";
 
 type BillingDialogProps = {
   open: boolean;
@@ -46,20 +48,23 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
     isLoading: isBillingLoading,
     error: billingError,
   } = useBillingInfo(userId);
+  
   const hasSubscription = hasActiveSubscription(billingInfo);
+  // Show payment method and invoices if there's an active subscription OR if there's a subscription ID
+  const shouldShowBillingDetails = hasSubscription || Boolean(billingInfo?.stripeSubscriptionId);
   const {
     data: paymentMethod,
     isLoading: isPaymentLoading,
     error: paymentError,
   } = usePaymentMethod(
-    hasSubscription ? billingInfo?.stripeCustomerId || undefined : undefined
+    shouldShowBillingDetails ? billingInfo?.stripeCustomerId || undefined : undefined
   );
   const {
     data: invoices,
     isLoading: isInvoicesLoading,
     error: invoicesError,
   } = useInvoices(
-    hasSubscription ? billingInfo?.stripeCustomerId || undefined : undefined
+    shouldShowBillingDetails ? billingInfo?.stripeCustomerId || undefined : undefined
   );
   const { data: planData } = useUserPlan(userId);
   const currentPlan: PlanId | undefined =
@@ -105,55 +110,75 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <Badge variant="outline" className="w-fit mb-2">
-              Billing & Subscription
-            </Badge>
-            <DialogTitle>Manage Subscription</DialogTitle>
+            <DialogTitle>Manage your subscription</DialogTitle>
             <DialogDescription>
-              View your current plan, payment method, and invoice history
+              Keep track of your current plan, payment details, and billing history.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
-            {billingError && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                Failed to load billing information. Please try again.
-              </div>
-            )}
+          <div className="space-y-4">
+            <div className="px-4 space-y-4">
 
-            <BillingInfoView
-              billingInfo={billingInfo || null}
-              isLoading={isBillingLoading}
-            />
+              {billingError && (
+                <Alert variant="destructive">
+                  <RiAlertLine className="h-5 w-5" />
+                  <AlertTitle>
+                    Uh-oh! We couldn’t load your billing info
+                  </AlertTitle>
+                  <AlertDescription>
+                    Something didn’t go as planned. Please refresh and try again. If the issue persists, we’re here to help!
+                  </AlertDescription>
+                </Alert>
+              )}
 
-            {hasSubscription && (
-              <>
-                {paymentError && (
-                  <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                    Failed to load payment method.
-                  </div>
-                )}
-                <PaymentMethod
-                  paymentMethod={paymentMethod || null}
-                  isLoading={isPaymentLoading}
-                />
+              <BillingInfoView
+                billingInfo={billingInfo || null}
+                isLoading={isBillingLoading}
+                userId={userId}
+              />
 
-                {invoicesError && (
-                  <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                    Failed to load invoices.
-                  </div>
-                )}
-                <InvoiceList
-                  invoices={invoices || []}
-                  isLoading={isInvoicesLoading}
-                />
-              </>
-            )}
+              {/* Show payment method and invoices if there's an active subscription OR if there's a subscription ID (for canceled subscriptions that still have access) */}
+              {shouldShowBillingDetails && (
+                <>
+                  {paymentError && (
+                    <Alert variant="destructive">
+                      <RiAlertLine className="h-5 w-5" />
+                      <AlertTitle>
+                        Uh-oh! We couldn't load your payment method
+                      </AlertTitle>
+                      <AlertDescription>
+                        Something didn't go as planned. Please refresh and try again. <br /> If the issue persists, we're here to help!
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <PaymentMethod
+                    paymentMethod={paymentMethod || null}
+                    isLoading={isPaymentLoading}
+                  />
+
+                  {invoicesError && (
+                    <Alert variant="destructive">
+                      <RiAlertLine className="h-5 w-5" />
+                      <AlertTitle>
+                        Uh-oh! We couldn't load your invoices
+                      </AlertTitle>
+                      <AlertDescription>
+                        Something didn't go as planned. Please refresh and try again. <br /> If the issue persists, we're here to help!
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <InvoiceList
+                    invoices={invoices || []}
+                    isLoading={isInvoicesLoading}
+                  />
+                </>
+              )}
+            </div>
 
             <Separator />
 
-            <div className="flex flex-col gap-3">
-              {hasSubscription ? (
+            <div className="flex gap-3 px-4">
+              {shouldShowBillingDetails ? (
                 <>
                   <Button
                     onClick={handleOpenPortal}
@@ -185,6 +210,33 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                     </Button>
                   )}
                 </>
+              ) : (billingInfo?.stripeSubscriptionId && currentPlan === 'free') ? (
+                <>
+                  <Button
+                    onClick={async () => {
+                      const { syncSubscription } = await import('@/actions/stripe/checkout');
+                      const result = await syncSubscription({ subscriptionId: billingInfo.stripeSubscriptionId });
+                      if (result.success) {
+                        window.location.reload();
+                      } else {
+                        toast.error(result.error || 'Failed to restore subscription');
+                      }
+                    }}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <i className="ri-refresh-line text-lg mr-2" />
+                    Restore Subscription
+                  </Button>
+                  <Button
+                    onClick={() => setIsUpgradeOpen(true)}
+                    variant="outline"
+                    className="w-full"
+                    size="lg"
+                  >
+                    Upgrade Plan
+                  </Button>
+                </>
               ) : (
                 <Button
                   onClick={() => setIsUpgradeOpen(true)}
@@ -195,19 +247,19 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                 </Button>
               )}
 
-              {!hasSubscription && (
-                <p className="text-xs text-center text-muted-foreground">
-                  Upgrade to unlock more features and save your work
-                </p>
-              )}
-
-              {hasSubscription && (
-                <p className="text-xs text-center text-muted-foreground">
-                  Use the Customer Portal to update your payment method, view
-                  invoices, and manage your subscription
-                </p>
-              )}
             </div>
+            {!shouldShowBillingDetails && (
+              <p className="text-xs text-center text-muted-foreground">
+                Upgrade to unlock more features and save your work
+              </p>
+            )}
+
+            {shouldShowBillingDetails && (
+              <p className="text-xs text-center text-muted-foreground">
+                Use the Customer Portal to update your payment method, view
+                invoices, and manage your subscription
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getStripeClient } from "./stripe";
+import { syncSubscriptionById } from "./subscription-sync";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -98,6 +99,36 @@ async function backfillBillingInterval(
   }
 }
 
+/**
+ * Asynchronously sync subscription period end from Stripe
+ * This is fire-and-forget and does not block the calling function
+ * Used as a safety net when webhooks fail or data is missing
+ */
+async function backfillSubscriptionPeriodEnd(
+  supabase: Supabase,
+  userId: string,
+  subscriptionId: string
+): Promise<void> {
+  try {
+    const result = await syncSubscriptionById(subscriptionId);
+    
+    if (result) {
+      console.log(
+        `Backfilled subscription_period_end for user ${userId} via subscription ${subscriptionId}`
+      );
+    } else {
+      console.warn(
+        `Failed to backfill subscription_period_end for user ${userId}: sync returned null`
+      );
+    }
+  } catch (error) {
+    console.error(
+      `Failed to backfill subscription_period_end from Stripe for subscription ${subscriptionId}:`,
+      error
+    );
+  }
+}
+
 export type BillingInfo = {
   plan: Database["public"]["Enums"]["plan_type"];
   stripeCustomerId: string | null;
@@ -187,6 +218,25 @@ export async function getBillingInfo(
         }
       );
     }
+  }
+
+  // Automatic background sync for missing subscription_period_end
+  // This ensures production reliability - webhooks should handle this, but we backfill if missing
+  if (!data.subscription_period_end && data.stripe_subscription_id && data.stripe_subscription_status === 'active') {
+    console.warn(
+      `[SUBSCRIPTION_PERIOD_END_MISSING] User ${userId} has active subscription ${data.stripe_subscription_id} but subscription_period_end is missing. ` +
+      `This should be set via webhook. Triggering async sync.`
+    );
+    
+    // Fire-and-forget async sync (does not block this request)
+    backfillSubscriptionPeriodEnd(supabase, userId, data.stripe_subscription_id).catch(
+      (error) => {
+        console.error(
+          `Failed to backfill subscription_period_end for user ${userId}:`,
+          error
+        );
+      }
+    );
   }
 
   return {

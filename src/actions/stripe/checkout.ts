@@ -8,6 +8,7 @@ import {
   getStripePriceId,
   createCustomerPortalSession,
 } from '@/lib/services/stripe';
+import { syncSubscriptionById, syncActiveSubscriptionForCustomer } from '@/lib/services/subscription-sync';
 import { resolveBaseUrl } from '@/lib/utils/resolve-base-url';
 
 type CheckoutResponse = {
@@ -178,5 +179,63 @@ export async function createPortalSession({
   } catch (error) {
     console.error('Portal action error:', error);
     return { error: 'Failed to create portal session' };
+  }
+}
+
+/**
+ * Sync subscription data from Stripe
+ * If subscriptionId is provided, syncs that specific subscription.
+ * Otherwise, finds and syncs the active subscription for the user's customer.
+ */
+export async function syncSubscription({
+  subscriptionId,
+}: {
+  subscriptionId?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get authenticated user
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // Get user profile with customer ID
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('stripe_subscription_id, stripe_customer_id')
+      .eq('id', user.id)
+      .single();
+
+    let result: { userId: string; planId: PlanId } | null = null;
+
+    if (subscriptionId) {
+      // If subscriptionId is provided, verify it belongs to the user
+      if (profile?.stripe_subscription_id !== subscriptionId) {
+        return { success: false, error: 'Subscription does not belong to user' };
+      }
+
+      result = await syncSubscriptionById(subscriptionId);
+    } else {
+      // No subscriptionId provided - find and sync active subscription
+      if (!profile?.stripe_customer_id) {
+        return { success: false, error: 'No Stripe customer found' };
+      }
+
+      result = await syncActiveSubscriptionForCustomer(profile.stripe_customer_id, user.id);
+    }
+
+    if (!result) {
+      return { success: false, error: 'Failed to sync subscription' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Sync subscription action error:', error);
+    return { success: false, error: 'Failed to sync subscription' };
   }
 }

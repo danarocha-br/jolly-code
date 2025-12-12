@@ -7,6 +7,8 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { UsageStatsWidget } from '@/components/usage-stats-widget';
 import { BillingDialog } from '@/components/ui/billing-dialog';
 import type { UsageSummary } from '@/lib/services/usage-limits';
+import { useBillingInfo } from '@/features/billing/queries';
+import { useUserStore } from '@/app/store';
 
 export const UserMenu = ({
   username,
@@ -24,7 +26,11 @@ export const UserMenu = ({
   onUpgrade?: () => void;
 }) => {
   const [isBillingOpen, setIsBillingOpen] = useState(false);
+  const { user } = useUserStore();
+  const { data: billingInfo } = useBillingInfo(user?.id);
   const hasSubscription = Boolean(usage?.plan && usage.plan !== 'free');
+  // Show billing option if user has subscription OR has a subscription ID (for restore)
+  const showBillingOption = hasSubscription || Boolean(billingInfo?.stripeSubscriptionId);
 
   return (
     <>
@@ -47,12 +53,12 @@ export const UserMenu = ({
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          {hasSubscription && (
+          {showBillingOption && (
             <>
               <DropdownMenuItem onClick={() => setIsBillingOpen(true)}>
                 <div className="flex items-center">
                   <i className="ri-bill-line text-lg mr-3" />
-                  Manage subscription
+                  {hasSubscription ? 'Manage subscription' : 'Billing & Subscription'}
                 </div>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
