@@ -11,13 +11,19 @@ const UsersPresence = () => {
   const filteredUsers = useMemo(() => {
     const currentUserId = currentUser?.id;
 
-    // Keep showing all users when the viewer is anonymous so we don't hide others
-    if (!currentUserId || currentUserId === "anonymous") {
-      return users;
+    // Filter out duplicate connections from the same user (whether authenticated or anonymous)
+    const uniqueUsers = users.filter((user, index, arr) => {
+      // Keep the first occurrence of each user ID
+      return arr.findIndex(u => u.id === user.id) === index;
+    });
+
+    // If current user is authenticated, also filter out their own connections
+    if (currentUserId && currentUserId !== "anonymous") {
+      return uniqueUsers.filter((user) => user.id !== currentUserId);
     }
 
-    // Avoid rendering the logged-in user twice when they have multiple connections open
-    return users.filter((user) => user.id !== currentUserId);
+    // For anonymous users, just return the unique users (no self-filtering needed)
+    return uniqueUsers;
   }, [currentUser?.id, users]);
 
   const userCount = filteredUsers.length;

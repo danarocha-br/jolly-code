@@ -30,7 +30,7 @@ const codeSizeValidator = (code: string) => new TextEncoder().encode(code).lengt
 
 export const codeSchema = z
   .string()
-  .min(1, 'Code is required')
+  .min(1, 'One or more sliders are empty. Please add code to all sliders.')
   .refine(codeSizeValidator, 'Code exceeds 100KB limit')
   .transform(sanitizeCodeInput)
 
