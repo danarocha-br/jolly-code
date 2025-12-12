@@ -101,6 +101,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if user already has an active subscription
+    // We check the profile first as it's faster than Stripe API
+    const { data: subscriptionData } = await supabase
+      .from('profiles')
+      .select('stripe_subscription_status')
+      .eq('id', user.id)
+      .single();
+
+    const hasActiveSubscription =
+      subscriptionData?.stripe_subscription_status === 'active' ||
+      subscriptionData?.stripe_subscription_status === 'trialing';
+
+    if (hasActiveSubscription) {
+      return NextResponse.json(
+        {
+          error: 'You already have an active subscription. Please use the customer portal to manage your plan.',
+          code: 'ACTIVE_SUBSCRIPTION_EXISTS'
+        },
+        { status: 409 }
+      );
+    }
+
     // Get price ID for the plan
     let priceId: string;
     try {

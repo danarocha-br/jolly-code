@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getStripeClient } from "./stripe";
+import type Stripe from "stripe";
 import { syncSubscriptionById } from "./subscription-sync";
 
 type Supabase = SupabaseClient<Database>;
@@ -67,19 +68,19 @@ async function backfillBillingInterval(
       subscriptionId
     );
     const priceInterval = subscription.items.data[0]?.price?.recurring?.interval;
-    
+
     if (priceInterval === "month" || priceInterval === "year") {
       const billingInterval = priceInterval === "month" ? "monthly" : "yearly";
-      
+
       // Update cache immediately
       setCachedBillingInterval(subscriptionId, billingInterval);
-      
+
       // Update database
       const { error } = await supabase
         .from("profiles")
         .update({ billing_interval: billingInterval })
         .eq("id", userId);
-      
+
       if (error) {
         console.error(
           `Failed to update billing_interval in DB for user ${userId}:`,
@@ -111,7 +112,7 @@ async function backfillSubscriptionPeriodEnd(
 ): Promise<void> {
   try {
     const result = await syncSubscriptionById(subscriptionId);
-    
+
     if (result) {
       console.log(
         `Backfilled subscription_period_end for user ${userId} via subscription ${subscriptionId}`
@@ -196,18 +197,18 @@ export async function getBillingInfo(
 
   // Use billing interval from database if available
   let billingInterval: "monthly" | "yearly" | null = (data.billing_interval as "monthly" | "yearly" | null) || null;
-  
+
   // Fallback to cache if not in database (for backward compatibility)
   if (!billingInterval && data.stripe_subscription_id) {
     billingInterval = getCachedBillingInterval(data.stripe_subscription_id);
-    
+
     // If still missing, log alert and trigger async backfill (non-blocking)
     if (!billingInterval) {
       console.warn(
         `[BILLING_INTERVAL_MISSING] User ${userId} has subscription ${data.stripe_subscription_id} but billing_interval is missing from DB and cache. ` +
         `This should be backfilled via webhook or migration. Triggering async backfill.`
       );
-      
+
       // Fire-and-forget async backfill (does not block this request)
       backfillBillingInterval(supabase, userId, data.stripe_subscription_id).catch(
         (error) => {
@@ -227,7 +228,7 @@ export async function getBillingInfo(
       `[SUBSCRIPTION_PERIOD_END_MISSING] User ${userId} has active subscription ${data.stripe_subscription_id} but subscription_period_end is missing. ` +
       `This should be set via webhook. Triggering async sync.`
     );
-    
+
     // Fire-and-forget async sync (does not block this request)
     backfillSubscriptionPeriodEnd(supabase, userId, data.stripe_subscription_id).catch(
       (error) => {
@@ -379,17 +380,49 @@ export async function getPaymentMethod(
 }
 
 /**
+ * Find the active subscription ID for a customer
+ * Returns the ID of the first active or trialing subscription found
+ */
+export async function findActiveSubscriptionId(
+  customerId: string
+): Promise<string | null> {
+  try {
+    const subscriptions = await getStripeClient().subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 100, // Reasonable limit
+    });
+
+    const activeSub = subscriptions.data.find(
+      (sub) => sub.status === "active" || sub.status === "trialing"
+    );
+
+    return activeSub ? activeSub.id : null;
+  } catch (error) {
+    console.error("Error finding active subscription:", error);
+    return null;
+  }
+}
+
+/**
  * Get invoices for a Stripe customer
  */
 export async function getInvoices(
   customerId: string,
-  limit: number = 10
+  limit: number = 10,
+  subscriptionId?: string
 ): Promise<InvoiceInfo[]> {
   try {
-    const invoices = await getStripeClient().invoices.list({
+    const listParams: Stripe.InvoiceListParams = {
       customer: customerId,
       limit,
-    });
+    };
+
+    if (subscriptionId) {
+      listParams.subscription = subscriptionId;
+    }
+
+    const invoices = await getStripeClient().invoices.list(listParams);
 
     return invoices.data.map((invoice) => ({
       id: invoice.id,

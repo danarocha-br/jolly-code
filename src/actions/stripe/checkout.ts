@@ -81,6 +81,23 @@ export async function createCheckoutSession({
         .eq('id', user.id);
     }
 
+    // Check if user already has an active subscription
+    const { data: subscriptionData } = await supabase
+      .from('profiles')
+      .select('stripe_subscription_status')
+      .eq('id', user.id)
+      .single();
+
+    const hasActiveSubscription =
+      subscriptionData?.stripe_subscription_status === 'active' ||
+      subscriptionData?.stripe_subscription_status === 'trialing';
+
+    if (hasActiveSubscription) {
+      return {
+        error: 'You already have an active subscription. Please manage your plan in the customer portal.'
+      };
+    }
+
     // Get price ID for the plan
     let priceId: string;
     try {

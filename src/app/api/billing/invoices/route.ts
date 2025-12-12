@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { getInvoices } from "@/lib/services/billing";
+import { getInvoices, findActiveSubscriptionId } from "@/lib/services/billing";
 import { enforceRateLimit, publicLimiter, strictLimiter } from "@/lib/arcjet/limiters";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     // Fetch profile once
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, stripe_subscription_id, stripe_subscription_status")
       .eq("id", user.id)
       .single();
 
@@ -67,7 +67,20 @@ export async function GET(request: NextRequest) {
 
     // Fetch invoices from Stripe
     try {
-      const invoices = await getInvoices(stripeCustomerId);
+      // Pass subscription ID if available to filter invoices
+      let subscriptionId = (profile as any)?.stripe_subscription_id;
+      const status = (profile as any)?.stripe_subscription_status;
+
+      // If DB says no subscription or canceled, but user might have just upgraded (stale DB),
+      // try to find the actual active subscription from Stripe to ensure we show the right invoices.
+      if (!subscriptionId || (status !== 'active' && status !== 'trialing')) {
+        const activeSubId = await findActiveSubscriptionId(stripeCustomerId);
+        if (activeSubId) {
+          subscriptionId = activeSubId;
+        }
+      }
+
+      const invoices = await getInvoices(stripeCustomerId, 10, subscriptionId);
       return NextResponse.json({ invoices });
     } catch (error: any) {
       // getInvoices already handles resource_missing and returns []

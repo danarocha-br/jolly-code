@@ -25,12 +25,12 @@ type UpgradeDialogProps = {
   open: boolean;
   onOpenChange: (next: boolean) => void;
   limitType?:
-    | "snippets"
-    | "animations"
-    | "slides"
-    | "folders"
-    | "videoExports"
-    | "publicShares";
+  | "snippets"
+  | "animations"
+  | "slides"
+  | "folders"
+  | "videoExports"
+  | "publicShares";
   currentCount?: number;
   maxCount?: number | null;
   currentPlan?: PlanId;
@@ -141,6 +141,26 @@ export function UpgradeDialog({
 
     startTransition(async () => {
       try {
+        // If updating from a paid plan (started/pro) to another paid plan,
+        // redirect to customer portal instead of creating a new checkout session.
+        // This prevents duplicate subscriptions.
+        if (currentPlan !== "free") {
+          const response = await fetch("/api/customer-portal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.url) {
+            toast.error(data.error || "Unable to access customer portal.");
+            return;
+          }
+
+          window.location.href = data.url;
+          return;
+        }
+
         const response = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -160,7 +180,7 @@ export function UpgradeDialog({
         window.location.href = data.url;
       } catch (error) {
         console.error(error);
-        toast.error("Something went wrong starting checkout.");
+        toast.error("Something went wrong processing your request.");
       }
     });
   };
@@ -221,7 +241,7 @@ export function UpgradeDialog({
                     "hover:border-foreground/30 hover:bg-card",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isSelected &&
-                      "border-primary bg-primary/5 ring-2 ring-primary/30"
+                    "border-primary bg-primary/5 ring-2 ring-primary/30"
                   )}
                 >
                   <div className="flex flex-col gap-4">
@@ -279,7 +299,9 @@ export function UpgradeDialog({
                         ? "Free forever"
                         : isPending && isSelected
                           ? "Redirecting..."
-                          : `Upgrade to ${plan.name}`}
+                          : currentPlan !== "free"
+                            ? "Manage Plan"
+                            : `Upgrade to ${plan.name}`}
                   </Button>
                 </div>
               );
