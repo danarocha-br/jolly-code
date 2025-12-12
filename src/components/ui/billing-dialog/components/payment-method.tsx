@@ -1,7 +1,9 @@
 "use client";
+import { FaCcAmex, FaCcDiscover, FaCcMastercard, FaCcVisa } from "react-icons/fa";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PaymentMethodInfo } from "@/lib/services/billing";
+import { Skeleton } from "../../skeleton";
 
 type PaymentMethodProps = {
   paymentMethod: PaymentMethodInfo | null;
@@ -10,11 +12,11 @@ type PaymentMethodProps = {
 
 const getCardBrandIcon = (brand: string) => {
   const brandLower = brand.toLowerCase();
-  if (brandLower.includes("visa")) return "💳";
-  if (brandLower.includes("mastercard")) return "💳";
-  if (brandLower.includes("amex")) return "💳";
-  if (brandLower.includes("discover")) return "💳";
-  return "💳";
+  if (brandLower.includes("visa")) return <FaCcVisa />;
+  if (brandLower.includes("mastercard")) return <FaCcMastercard />;
+  if (brandLower.includes("amex")) return <FaCcAmex />;
+  if (brandLower.includes("discover")) return <FaCcDiscover />;
+  return <FaCcVisa />;
 };
 
 export function PaymentMethod({
@@ -23,12 +25,12 @@ export function PaymentMethod({
 }: PaymentMethodProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Method</CardTitle>
+      <Card className="p-0 bg-white dark:bg-card">
+        <CardHeader className="p-0">
+          <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm">Payment method</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+        <CardContent className="px-4">
+          <Skeleton className="h-6 w-full bg-card dark:bg-muted/50" />
         </CardContent>
       </Card>
     );
@@ -36,30 +38,21 @@ export function PaymentMethod({
 
   if (!paymentMethod) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Method</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No payment method on file
-          </p>
-        </CardContent>
-      </Card>
+      null
     );
   }
 
   if (paymentMethod.type === "card" && paymentMethod.card) {
     const { brand, last4, expMonth, expYear } = paymentMethod.card;
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Method</CardTitle>
+      <Card className="p-0 bg-white dark:bg-card">
+      <CardHeader className="p-0">
+          <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm">Payment method</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{getCardBrandIcon(brand)}</span>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <p className="text-sm font-medium">
                 {brand.charAt(0).toUpperCase() + brand.slice(1)} •••• {last4}
               </p>
@@ -74,12 +67,12 @@ export function PaymentMethod({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Payment Method</CardTitle>
+    <Card className="p-0 bg-white dark:bg-card">
+      <CardHeader className="p-0">
+        <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm" >Payment method</CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">
+      <CardContent className="px-4">
+        <p className="text-sm">
           {paymentMethod.type.charAt(0).toUpperCase() +
             paymentMethod.type.slice(1)}
         </p>

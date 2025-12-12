@@ -67,47 +67,38 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Invoice History</CardTitle>
+    <Card className="p-0 bg-white dark:bg-card">
+      <CardHeader className="p-0">
+        <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm">
+          Invoice history
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className="px-4 py-0">
+        <div className="space-y-2">
           {invoices.map((invoice, index) => (
             <div key={invoice.id}>
               <div className="flex items-center justify-between py-2">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">
-                      {new Date(invoice.created * 1000).toLocaleDateString(
-                        undefined,
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )}
-                    </p>
+                  <div className="flex items-center gap-3">
                     {getStatusBadge(invoice.status)}
+                    <div className="text-sm font-medium">
+                      <p>
+                        {new Date(invoice.created * 1000).toLocaleDateString(
+                          undefined,
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(invoice.amount, invoice.currency)}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(invoice.amount, invoice.currency)}
-                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {invoice.hostedInvoiceUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (invoice.hostedInvoiceUrl) {
-                          window.open(invoice.hostedInvoiceUrl, "_blank");
-                        }
-                      }}
-                    >
-                      View
-                    </Button>
-                  )}
                   {invoice.invoicePdf && (
                     <Button
                       variant="ghost"
@@ -119,6 +110,20 @@ export function InvoiceList({ invoices, isLoading }: InvoiceListProps) {
                       }}
                     >
                       <i className="ri-download-line text-lg" />
+                    </Button>
+                  )}
+
+                  {invoice.hostedInvoiceUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (invoice.hostedInvoiceUrl) {
+                          window.open(invoice.hostedInvoiceUrl, "_blank");
+                        }
+                      }}
+                    >
+                      View
                     </Button>
                   )}
                 </div>

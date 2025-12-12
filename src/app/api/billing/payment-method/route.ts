@@ -33,14 +33,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     let customerId = searchParams.get("customerId");
 
-    // Get user's Stripe customer ID from database
+    // Get user's Stripe customer ID and subscription ID from database
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, stripe_subscription_id")
       .eq("id", user.id)
       .single();
 
     const userCustomerId = (profile?.stripe_customer_id ?? null) as string | null;
+    const subscriptionId = (profile?.stripe_subscription_id ?? null) as string | null;
 
     // If customerId provided in query, verify it matches
     if (customerId && customerId !== userCustomerId) {
@@ -57,9 +58,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch payment method from Stripe
+    // Fetch payment method from Stripe (check customer first, then subscription as fallback)
     try {
-      const paymentMethod = await getPaymentMethod(customerId);
+      const paymentMethod = await getPaymentMethod(customerId, subscriptionId);
       return NextResponse.json({ paymentMethod });
     } catch (error) {
       // Handle unexpected errors (getPaymentMethod already handles resource_missing)

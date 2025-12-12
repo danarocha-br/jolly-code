@@ -19,14 +19,20 @@ type BillingInfoProps = {
   userId?: string;
 };
 
-export function BillingInfoView({ billingInfo, isLoading, userId }: BillingInfoProps) {
+export function BillingInfoView({
+  billingInfo,
+  isLoading,
+  userId,
+}: BillingInfoProps) {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSyncSubscription = async () => {
     // If we have a canceled subscription, find and sync the active one instead
     // Otherwise, sync the stored subscription ID
-    const isCanceled = billingInfo?.stripeSubscriptionStatus === 'canceled';
-    const subscriptionId = isCanceled ? undefined : (billingInfo?.stripeSubscriptionId || undefined);
+    const isCanceled = billingInfo?.stripeSubscriptionStatus === "canceled";
+    const subscriptionId = isCanceled
+      ? undefined
+      : billingInfo?.stripeSubscriptionId || undefined;
 
     setIsSyncing(true);
     try {
@@ -42,21 +48,23 @@ export function BillingInfoView({ billingInfo, isLoading, userId }: BillingInfoP
         toast.error(result.error || "Failed to sync subscription data");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Error syncing subscription:", error);
-      
+
       // Report to Sentry in production
       reportBillingIssue(
         `Failed to sync subscription: ${errorMessage}`,
         "error",
         {
           userId,
-          stripeSubscriptionId: subscriptionId || billingInfo?.stripeSubscriptionId || null,
+          stripeSubscriptionId:
+            subscriptionId || billingInfo?.stripeSubscriptionId || null,
           stripeCustomerId: billingInfo?.stripeCustomerId || null,
           error: error instanceof Error ? error.message : String(error),
         }
       );
-      
+
       toast.error("Failed to sync subscription data");
     } finally {
       setIsSyncing(false);
@@ -65,9 +73,9 @@ export function BillingInfoView({ billingInfo, isLoading, userId }: BillingInfoP
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Current plan</CardTitle>
+      <Card className="p-0 bg-white dark:bg-card">
+      <CardHeader className="p-0">
+          <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm">Current plan</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -92,24 +100,22 @@ export function BillingInfoView({ billingInfo, isLoading, userId }: BillingInfoP
   if (!["free", "started", "pro"].includes(planId)) {
     const invalidPlan = billingInfo.plan;
     console.error("Invalid plan type:", invalidPlan);
-    
+
     // Report to Sentry in production - this is a data integrity issue
-    reportBillingIssue(
-      `Invalid plan type detected: ${invalidPlan}`,
-      "error",
-      {
-        userId,
-        stripeCustomerId: billingInfo.stripeCustomerId,
-        stripeSubscriptionId: billingInfo.stripeSubscriptionId,
-        plan: invalidPlan,
-        stripeSubscriptionStatus: billingInfo.stripeSubscriptionStatus,
-      }
-    );
-    
+    reportBillingIssue(`Invalid plan type detected: ${invalidPlan}`, "error", {
+      userId,
+      stripeCustomerId: billingInfo.stripeCustomerId,
+      stripeSubscriptionId: billingInfo.stripeSubscriptionId,
+      plan: invalidPlan,
+      stripeSubscriptionStatus: billingInfo.stripeSubscriptionStatus,
+    });
+
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Current plan</CardTitle>
+      <Card className="p-0 bg-white dark:bg-card">
+        <CardHeader className="p-0">
+          <CardTitle className="bg-card dark:bg-muted px-3 py-1 rounded-t-xl font-normal text-sm">
+            Current plan
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
@@ -154,7 +160,9 @@ export function BillingInfoView({ billingInfo, isLoading, userId }: BillingInfoP
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-4">
-                <span className="text-xl tracking-normal font-semibold">{planConfig.name}</span>
+                <span className="text-xl tracking-normal font-semibold">
+                  {planConfig.name}
+                </span>
                 {isCanceling && (
                   <Badge variant="destructive" className="text-xs">
                     Canceling

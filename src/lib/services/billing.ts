@@ -252,10 +252,46 @@ export async function getBillingInfo(
 }
 
 /**
- * Get payment method from Stripe customer
+ * Helper function to retrieve and format a payment method
+ */
+async function retrievePaymentMethodById(
+  paymentMethodId: string
+): Promise<PaymentMethodInfo | null> {
+  try {
+    const paymentMethod = await getStripeClient().paymentMethods.retrieve(
+      paymentMethodId
+    );
+
+    if (paymentMethod.type === "card" && paymentMethod.card) {
+      return {
+        type: "card",
+        card: {
+          brand: paymentMethod.card.brand,
+          last4: paymentMethod.card.last4,
+          expMonth: paymentMethod.card.exp_month,
+          expYear: paymentMethod.card.exp_year,
+        },
+      };
+    }
+    return null;
+  } catch (pmError: any) {
+    // Payment method might not exist or be accessible
+    if (pmError?.code !== "resource_missing") {
+      console.error("Error retrieving payment method:", pmError);
+      throw pmError;
+    }
+    return null;
+  }
+}
+
+/**
+ * Get payment method from Stripe customer or subscription
+ * Checks customer's default payment method first, then all customer payment methods,
+ * then falls back to subscription's payment method
  */
 export async function getPaymentMethod(
-  customerId: string
+  customerId: string,
+  subscriptionId?: string | null
 ): Promise<PaymentMethodInfo | null> {
   try {
     const customer = await getStripeClient().customers.retrieve(customerId);
@@ -264,36 +300,69 @@ export async function getPaymentMethod(
       return null;
     }
 
-    // Get default payment method
+    // First, try customer's default payment method
     if (customer.invoice_settings?.default_payment_method) {
       const paymentMethodId =
         typeof customer.invoice_settings.default_payment_method === "string"
           ? customer.invoice_settings.default_payment_method
           : customer.invoice_settings.default_payment_method.id;
 
-      try {
-        const paymentMethod = await getStripeClient().paymentMethods.retrieve(
-          paymentMethodId
-        );
+      const paymentMethod = await retrievePaymentMethodById(paymentMethodId);
+      if (paymentMethod) {
+        return paymentMethod;
+      }
+    }
 
-        if (paymentMethod.type === "card" && paymentMethod.card) {
+    // If no default payment method, check all customer payment methods
+    try {
+      const paymentMethods = await getStripeClient().paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+      });
+
+      for (const pm of paymentMethods.data) {
+        if (pm.type === 'card' && pm.card) {
           return {
             type: "card",
             card: {
-              brand: paymentMethod.card.brand,
-              last4: paymentMethod.card.last4,
-              expMonth: paymentMethod.card.exp_month,
-              expYear: paymentMethod.card.exp_year,
+              brand: pm.card.brand,
+              last4: pm.card.last4,
+              expMonth: pm.card.exp_month,
+              expYear: pm.card.exp_year,
             },
           };
         }
-      } catch (pmError: any) {
-        // Payment method might not exist or be accessible
-        if (pmError?.code !== "resource_missing") {
-          console.error("Error retrieving payment method:", pmError);
-          throw pmError;
+      }
+    } catch (pmListError: any) {
+      // Payment methods listing failed, continue to subscription check
+    }
+
+    // Fallback: Check subscription's payment method if subscription ID is provided
+    if (subscriptionId) {
+      try {
+        const subscription = await getStripeClient().subscriptions.retrieve(
+          subscriptionId,
+          { expand: ["default_payment_method"] }
+        );
+
+        // Check if subscription has a default payment method
+        if (subscription.default_payment_method) {
+          const paymentMethodId =
+            typeof subscription.default_payment_method === "string"
+              ? subscription.default_payment_method
+              : subscription.default_payment_method.id;
+
+          const paymentMethod = await retrievePaymentMethodById(paymentMethodId);
+          if (paymentMethod) {
+            return paymentMethod;
+          }
         }
-        return null;
+      } catch (subError: any) {
+        // Subscription might not exist or be accessible, but don't fail the whole request
+        if (subError?.code !== "resource_missing") {
+          console.error("Error retrieving subscription for payment method:", subError);
+        }
+        // Continue to return null below
       }
     }
 

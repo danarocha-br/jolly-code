@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { RiAlertLine } from "react-icons/ri";
+import { RiAlertLine, RiInformationLine } from "react-icons/ri";
 
 import {
   Dialog,
@@ -48,23 +48,28 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
     isLoading: isBillingLoading,
     error: billingError,
   } = useBillingInfo(userId);
-  
+
   const hasSubscription = hasActiveSubscription(billingInfo);
   // Show payment method and invoices if there's an active subscription OR if there's a subscription ID
-  const shouldShowBillingDetails = hasSubscription || Boolean(billingInfo?.stripeSubscriptionId);
+  const shouldShowBillingDetails =
+    hasSubscription || Boolean(billingInfo?.stripeSubscriptionId);
   const {
     data: paymentMethod,
     isLoading: isPaymentLoading,
     error: paymentError,
   } = usePaymentMethod(
-    shouldShowBillingDetails ? billingInfo?.stripeCustomerId || undefined : undefined
+    shouldShowBillingDetails
+      ? billingInfo?.stripeCustomerId || undefined
+      : undefined
   );
   const {
     data: invoices,
     isLoading: isInvoicesLoading,
     error: invoicesError,
   } = useInvoices(
-    shouldShowBillingDetails ? billingInfo?.stripeCustomerId || undefined : undefined
+    shouldShowBillingDetails
+      ? billingInfo?.stripeCustomerId || undefined
+      : undefined
   );
   const { data: planData } = useUserPlan(userId);
   const currentPlan: PlanId | undefined =
@@ -108,17 +113,17 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
         userId={userId}
       />
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Manage your subscription</DialogTitle>
             <DialogDescription>
-              Keep track of your current plan, payment details, and billing history.
+              Keep track of your current plan, payment details, and billing
+              history.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4">
             <div className="px-4 space-y-4">
-
               {billingError && (
                 <Alert variant="destructive">
                   <RiAlertLine className="h-5 w-5" />
@@ -126,7 +131,8 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                     Uh-oh! We couldn’t load your billing info
                   </AlertTitle>
                   <AlertDescription>
-                    Something didn’t go as planned. Please refresh and try again. If the issue persists, we’re here to help!
+                    Something didn’t go as planned. Please refresh and try
+                    again. If the issue persists, we’re here to help!
                   </AlertDescription>
                 </Alert>
               )}
@@ -147,7 +153,8 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                         Uh-oh! We couldn't load your payment method
                       </AlertTitle>
                       <AlertDescription>
-                        Something didn't go as planned. Please refresh and try again. <br /> If the issue persists, we're here to help!
+                        Something didn't go as planned. Please refresh and try
+                        again. <br /> If the issue persists, we're here to help!
                       </AlertDescription>
                     </Alert>
                   )}
@@ -163,7 +170,8 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                         Uh-oh! We couldn't load your invoices
                       </AlertTitle>
                       <AlertDescription>
-                        Something didn't go as planned. Please refresh and try again. <br /> If the issue persists, we're here to help!
+                        Something didn't go as planned. Please refresh and try
+                        again. <br /> If the issue persists, we're here to help!
                       </AlertDescription>
                     </Alert>
                   )}
@@ -194,7 +202,7 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                     ) : (
                       <>
                         <i className="ri-external-link-line text-lg mr-2" />
-                        Open Customer Portal
+                        Open customer portal
                       </>
                     )}
                   </Button>
@@ -210,23 +218,30 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                     </Button>
                   )}
                 </>
-              ) : (billingInfo?.stripeSubscriptionId && currentPlan === 'free') ? (
+              ) : billingInfo?.stripeSubscriptionId &&
+                currentPlan === "free" ? (
                 <>
                   <Button
                     onClick={async () => {
-                      const { syncSubscription } = await import('@/actions/stripe/checkout');
-                      const result = await syncSubscription({ subscriptionId: billingInfo.stripeSubscriptionId });
+                      const { syncSubscription } = await import(
+                        "@/actions/stripe/checkout"
+                      );
+                      const result = await syncSubscription({
+                        subscriptionId: billingInfo.stripeSubscriptionId || undefined,
+                      });
                       if (result.success) {
                         window.location.reload();
                       } else {
-                        toast.error(result.error || 'Failed to restore subscription');
+                        toast.error(
+                          result.error || "Failed to restore subscription"
+                        );
                       }
                     }}
                     className="w-full"
                     size="lg"
                   >
                     <i className="ri-refresh-line text-lg mr-2" />
-                    Restore Subscription
+                    Restore subscription
                   </Button>
                   <Button
                     onClick={() => setIsUpgradeOpen(true)}
@@ -234,7 +249,7 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                     className="w-full"
                     size="lg"
                   >
-                    Upgrade Plan
+                    Upgrade plan
                   </Button>
                 </>
               ) : (
@@ -243,10 +258,9 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
                   className="w-full"
                   size="lg"
                 >
-                  Upgrade Plan
+                  Upgrade plan
                 </Button>
               )}
-
             </div>
             {!shouldShowBillingDetails && (
               <p className="text-xs text-center text-muted-foreground">
@@ -255,10 +269,13 @@ export function BillingDialog({ open, onOpenChange }: BillingDialogProps) {
             )}
 
             {shouldShowBillingDetails && (
-              <p className="text-xs text-center text-muted-foreground">
-                Use the Customer Portal to update your payment method, view
-                invoices, and manage your subscription
-              </p>
+              <div className="px-4 inline-flex items-center gap-2 text-xs text-center text-muted-foreground">
+                <RiInformationLine className="h-4 w-4" />{" "}
+                <p>
+                  Tip: Use the Customer Portal to update your payment method,
+                  download invoices, or make changes to your plan.
+                </p>
+              </div>
             )}
           </div>
         </DialogContent>
