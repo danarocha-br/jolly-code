@@ -35,6 +35,7 @@ import { Collection, Snippet } from "./dtos";
 import { CollectionItem } from "./ui/collection-item";
 import { CollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { analytics } from "@/lib/services/tracking";
 import { cn } from "@/lib/utils";
 import { languagesLogos } from "@/lib/language-logos";
@@ -82,6 +83,10 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
   const [pendingMove, setPendingMove] = useState<{
     snippetId: string;
     toCollectionId: string;
+  } | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    collection: Collection;
+    snippetIds: string[];
   } | null>(null);
   const moveLockRef = useRef<string | null>(null);
 
@@ -177,6 +182,40 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       }
     },
   });
+
+  const openDeleteDialog = useCallback((collection: Collection) => {
+    const snippetIds =
+      collection.snippets?.map((snippet) => snippet.id).filter(Boolean) ?? [];
+    setDeleteDialog({ collection, snippetIds });
+  }, []);
+
+  const handleConfirmDeleteCollection = useCallback(() => {
+    if (!deleteDialog) return;
+
+    const { collection, snippetIds } = deleteDialog;
+
+    if (snippetIds.length) {
+      useEditorStore.setState({
+        editors: editors.map((editor) => {
+          if (
+            collection.snippets?.some((snippet) => snippet.id === editor.id)
+          ) {
+            return {
+              ...editor,
+              isSnippetSaved: false,
+            };
+          }
+          return editor;
+        }),
+      });
+    }
+
+    handleDeleteCollection({
+      collection_id: collection.id,
+      user_id: collection.user_id,
+    });
+    setDeleteDialog(null);
+  }, [deleteDialog, editors, handleDeleteCollection]);
 
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateCollectionTitle,
@@ -456,7 +495,29 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
   }, [collections]);
 
   return (
-    <DndContext
+    <>
+      <ConfirmDeleteDialog
+        open={!!deleteDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialog(null);
+          }
+        }}
+        title="Are you sure you want to delete this folder?"
+        description={
+          deleteDialog
+            ? deleteDialog.snippetIds.length > 0
+              ? `Deleting this folder will also delete ${deleteDialog.snippetIds.length} snippet${
+                  deleteDialog.snippetIds.length === 1 ? "" : "s"
+                }. This cannot be undone.`
+              : "This action cannot be undone."
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmDeleteCollection}
+      />
+      <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
@@ -498,34 +559,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
                             isBusy={isMoveDestination}
                             isDropTarget={isDropTargetActive}
                             onRemove={() => {
-                              const snippetIds = collection.snippets?.map((s) => s.id) ?? [];
-
-                              if (snippetIds.length) {
-                                const confirmed = window.confirm(
-                                  "Deleting this folder will also delete all snippets inside. This cannot be undone. Continue?"
-                                );
-                                if (!confirmed) return;
-                              }
-
-                              useEditorStore.setState({
-                                editors: editors.map((editor) => {
-                                  if (
-                                    collection.snippets?.some(
-                                      (snippet) => snippet.id === editor.id
-                                    )
-                                  ) {
-                                    return {
-                                      ...editor,
-                                      isSnippetSaved: false,
-                                    };
-                                  }
-                                  return editor;
-                                }),
-                              });
-                              handleDeleteCollection({
-                                collection_id: collection.id,
-                                user_id: collection.user_id,
-                              })
+                          openDeleteDialog(collection);
                             }
                             }
                             onUpdate={() => {
@@ -637,5 +671,6 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
         ) : null}
       </DragOverlay>
     </DndContext>
+    </>
   );
 }

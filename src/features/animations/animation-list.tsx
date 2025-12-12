@@ -36,6 +36,7 @@ import { AnimationCollection, Animation } from "./dtos";
 import { AnimationCollectionItem } from "./ui/collection-item";
 import { AnimationCollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { cn } from "@/lib/utils";
 import * as AnimationStyles from "./ui/styles";
 import { USAGE_QUERY_KEY } from "@/features/user/queries";
@@ -78,6 +79,10 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   const [pendingMove, setPendingMove] = useState<{
     animationId: string;
     toCollectionId: string;
+  } | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    collection: AnimationCollection;
+    animationIds: string[];
   } | null>(null);
   const moveLockRef = useRef<string | null>(null);
 
@@ -163,6 +168,44 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
       }
     },
   });
+
+  const openDeleteDialog = useCallback((collection: AnimationCollection) => {
+    const animationIds =
+      collection.animations
+        ?.map((animation: any) => (typeof animation === "string" ? animation : animation?.id))
+        .filter(Boolean) ?? [];
+    setDeleteDialog({ collection, animationIds });
+  }, []);
+
+  const handleConfirmDeleteCollection = useCallback(() => {
+    if (!deleteDialog) return;
+
+    const { collection, animationIds } = deleteDialog;
+
+    if (animationIds.length) {
+      // Remove from tabs (already updates saved flag in tabs)
+      useAnimationStore.setState((state) => {
+        animationIds.forEach((id) => {
+          if (id) {
+            state.removeAnimationFromTabs(id);
+          }
+        });
+        return state;
+      });
+
+      // If active animation is being removed, clear active state and reset editor
+      const { animationId: currentAnimationId, resetActiveAnimation } = useAnimationStore.getState();
+      if (currentAnimationId && animationIds.includes(currentAnimationId)) {
+        resetActiveAnimation();
+      }
+    }
+
+    handleDeleteCollection({
+      collection_id: collection.id,
+      user_id: collection.user_id,
+    });
+    setDeleteDialog(null);
+  }, [deleteDialog, handleDeleteCollection]);
 
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateAnimationCollectionTitle,
@@ -394,13 +437,35 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   }, [collections]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
+    <>
+      <ConfirmDeleteDialog
+        open={!!deleteDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialog(null);
+          }
+        }}
+        title="Are you sure you want to delete this folder?"
+        description={
+          deleteDialog
+            ? deleteDialog.animationIds.length > 0
+              ? `Deleting this folder will also delete ${deleteDialog.animationIds.length} animation${
+                  deleteDialog.animationIds.length === 1 ? "" : "s"
+                }. This cannot be undone.`
+              : "This action cannot be undone."
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmDeleteCollection}
+      />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
       {sortedCollections && (
         <div className="flex flex-col items-center justify-center">
           <Accordion
@@ -436,42 +501,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
                             isBusy={isMoveDestination}
                             isDropTarget={isDropTargetActive}
                             onRemove={() => {
-                              if (collection.animations?.length) {
-                                const animationIds = collection.animations.map((a: any) =>
-                                  typeof a === "string" ? a : a?.id
-                                );
-
-                                const confirmed = window.confirm(
-                                  "Deleting this folder will also delete all animations inside. This cannot be undone. Continue?"
-                                );
-                                if (!confirmed) {
-                                  return;
-                                }
-
-                                if (animationIds.length) {
-                                // Remove from tabs (already updates saved flag in tabs)
-                                useAnimationStore.setState((state) => {
-                                  animationIds.forEach((id) => {
-                                    if (id) {
-                                      state.removeAnimationFromTabs(id);
-                                    }
-                                  });
-                                  return state;
-                                });
-
-                                // If active animation is being removed, clear active state and reset editor
-                                const { animationId: currentAnimationId, resetActiveAnimation } =
-                                  useAnimationStore.getState();
-                                if (currentAnimationId && animationIds.includes(currentAnimationId)) {
-                                  resetActiveAnimation();
-                                }
-                                }
-                              }
-
-                              handleDeleteCollection({
-                                collection_id: collection.id,
-                                user_id: collection.user_id,
-                              });
+                              openDeleteDialog(collection);
                             }}
                             onUpdate={() => {
                               collectionTitleInputRef.current?.focus();
@@ -579,6 +609,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
           </div>
         ) : null}
       </DragOverlay>
-    </DndContext>
+      </DndContext>
+    </>
   );
 }
