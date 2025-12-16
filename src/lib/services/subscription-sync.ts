@@ -118,7 +118,7 @@ export async function syncSubscriptionToDatabase(
   // Try subscription object first, then check subscription items
   let currentPeriodEnd = subscription.current_period_end ?? (subscription as any).current_period_end;
   let currentPeriodStart = subscription.current_period_start ?? (subscription as any).current_period_start;
-  
+
   // If missing on subscription object, check subscription items (for flexible billing mode)
   if (!currentPeriodEnd || !currentPeriodStart) {
     const firstItem = subscription.items?.data?.[0];
@@ -126,7 +126,7 @@ export async function syncSubscriptionToDatabase(
       // For flexible billing, period dates are on the subscription item
       const itemPeriodEnd = (firstItem as any).current_period_end;
       const itemPeriodStart = (firstItem as any).current_period_start;
-      
+
       if (!currentPeriodEnd && itemPeriodEnd) {
         currentPeriodEnd = itemPeriodEnd;
       }
@@ -135,7 +135,7 @@ export async function syncSubscriptionToDatabase(
       }
     }
   }
-  
+
   const periodEndDate = currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null;
   const now = new Date();
   // If we can't determine period end, assume period is still active (conservative approach)
@@ -201,47 +201,47 @@ export async function syncSubscriptionToDatabase(
   // If it's missing, try to get from latest_invoice, then calculate from current_period_start + interval
   const cancelAtCallback = subscription.cancel_at;
   let periodEndTimestamp = cancelAtCallback || currentPeriodEnd;
-  
+
   // If current_period_end is missing, try latest_invoice.period_end
   if (!periodEndTimestamp && subscription.latest_invoice) {
-    const latestInvoice = typeof subscription.latest_invoice === 'string' 
-      ? null 
+    const latestInvoice = typeof subscription.latest_invoice === 'string'
+      ? null
       : subscription.latest_invoice;
     if (latestInvoice && (latestInvoice as any).period_end) {
       periodEndTimestamp = (latestInvoice as any).period_end;
     }
   }
-  
+
   // If still missing but current_period_start exists, calculate it
   if (!periodEndTimestamp && currentPeriodStart && priceInterval) {
     const periodStartDate = new Date(currentPeriodStart * 1000);
     const calculatedEndDate = new Date(periodStartDate);
-    
+
     if (priceInterval === 'month') {
       calculatedEndDate.setMonth(calculatedEndDate.getMonth() + 1);
     } else if (priceInterval === 'year') {
       calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
     }
-    
+
     periodEndTimestamp = Math.floor(calculatedEndDate.getTime() / 1000);
   }
-  
+
   // Also try to get current_period_start from latest_invoice if missing
   if (!currentPeriodStart && subscription.latest_invoice && priceInterval) {
-    const latestInvoice = typeof subscription.latest_invoice === 'string' 
-      ? null 
+    const latestInvoice = typeof subscription.latest_invoice === 'string'
+      ? null
       : subscription.latest_invoice;
     if (latestInvoice && (latestInvoice as any).period_start) {
       const invoicePeriodStart = (latestInvoice as any).period_start;
       const invoicePeriodStartDate = new Date(invoicePeriodStart * 1000);
       const calculatedEndDate = new Date(invoicePeriodStartDate);
-      
+
       if (priceInterval === 'month') {
         calculatedEndDate.setMonth(calculatedEndDate.getMonth() + 1);
       } else if (priceInterval === 'year') {
         calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
       }
-      
+
       if (!periodEndTimestamp) {
         periodEndTimestamp = Math.floor(calculatedEndDate.getTime() / 1000);
       }
@@ -254,18 +254,18 @@ export async function syncSubscriptionToDatabase(
     // This fallback should rarely be needed since we calculate from current_period_start above
     // But keep it as a safety net for edge cases
     const fallbackCurrentPeriodStart = subscription.current_period_start ?? (subscription as any).current_period_start;
-    
+
     if (fallbackCurrentPeriodStart && priceInterval && !periodEndTimestamp) {
       const currentPeriodStart = fallbackCurrentPeriodStart;
       const periodStartDate = new Date(currentPeriodStart * 1000);
       const periodEndDate = new Date(periodStartDate);
-      
+
       if (priceInterval === 'month') {
         periodEndDate.setMonth(periodEndDate.getMonth() + 1);
       } else if (priceInterval === 'year') {
         periodEndDate.setFullYear(periodEndDate.getFullYear() + 1);
       }
-      
+
       periodEndTimestamp = Math.floor(periodEndDate.getTime() / 1000);
     }
 
@@ -295,18 +295,18 @@ export async function syncSubscriptionToDatabase(
       const billingCycleAnchor = (subscription as any).billing_cycle_anchor;
       const subscriptionCreated = (subscription as any).created;
       const interval = priceInterval; // 'month' or 'year'
-      
+
       let baseDate: Date | null = null;
-      
+
       // Priority 1: Use current_period_start if available
       if (currentPeriodStart) {
         baseDate = new Date(currentPeriodStart * 1000);
-      } 
+      }
       // Priority 2: Use billing cycle anchor if it's in the past (not a future date)
       else if (billingCycleAnchor && interval) {
         const anchorDate = new Date(billingCycleAnchor * 1000);
         const nowDate = new Date();
-        
+
         // Only use anchor if it's in the past (future anchors are likely wrong)
         if (anchorDate <= nowDate) {
           // Find the current period start by calculating how many periods have passed
@@ -330,7 +330,7 @@ export async function syncSubscriptionToDatabase(
       if (!baseDate && subscriptionCreated && interval) {
         const createdDate = new Date(subscriptionCreated * 1000);
         const nowDate = new Date();
-        
+
         // Find the current period start by calculating how many periods have passed since creation
         let periodsPassed = 0;
         if (interval === 'month') {
@@ -347,7 +347,7 @@ export async function syncSubscriptionToDatabase(
           baseDate.setFullYear(baseDate.getFullYear() + periodsPassed);
         }
       }
-      
+
       // Calculate next period end (current period start + 1 interval)
       if (baseDate && interval) {
         const nextPeriodEnd = new Date(baseDate);
@@ -437,7 +437,7 @@ export async function syncSubscriptionToDatabase(
     console.error('[syncSubscriptionToDatabase] Failed to reconcile over-limit content', reconcileError);
   }
 
-  console.log(`[syncSubscriptionToDatabase] Updated user ${userId} to plan ${planId}`);
+
   return { userId, planId };
 }
 

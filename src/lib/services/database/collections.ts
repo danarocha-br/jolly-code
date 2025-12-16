@@ -50,9 +50,7 @@ export async function insertCollection({
 					cleanupError
 				);
 			} else {
-				console.log(
-					`[insertCollection] Successfully cleaned up orphaned collection ${collectionId}`
-				);
+
 			}
 		} catch (cleanupErr) {
 			console.error(

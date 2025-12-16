@@ -15,10 +15,9 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get("next") || "/";
 
   if (code) {
-    console.log('Exchanging code for session...');
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    
+
     if (error) {
       console.error('OAuth callback error:', error.message);
       // Redirect to home with error parameter
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
         new URL(`/?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
       );
     }
-    
+
     console.log('Session established successfully:', !!data.session);
   }
 

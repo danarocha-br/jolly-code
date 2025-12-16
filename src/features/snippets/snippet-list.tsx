@@ -315,37 +315,37 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
       if (previousCollections) {
         const optimisticCollections = previousCollections.map((collection) => {
-            if (collection.id === variables.previous_collection_id) {
-              return {
-                ...collection,
-                snippets:
-                  collection.snippets?.filter(
-                    (s) => s.id !== variables.snippet_id
-                  ) || [],
-              };
+          if (collection.id === variables.previous_collection_id) {
+            return {
+              ...collection,
+              snippets:
+                collection.snippets?.filter(
+                  (s) => s.id !== variables.snippet_id
+                ) || [],
+            };
+          }
+
+          if (collection.id === variables.id) {
+            const currentSnippets = collection.snippets || [];
+            if (currentSnippets.some(s => s.id === variables.snippet_id)) {
+              return collection;
             }
+            // We need the full snippet object here for optimistic update.
+            // Since we don't have it easily available in this context without fetching or passing it,
+            // we might need to rely on the server response or try to find it in the previous collection.
+            // For now, let's try to find it in the previous collection.
+            const snippetToMove = previousCollections?.flatMap(c => c.snippets || []).find(s => s.id === variables.snippet_id);
 
-            if (collection.id === variables.id) {
-              const currentSnippets = collection.snippets || [];
-              if (currentSnippets.some(s => s.id === variables.snippet_id)) {
-                return collection;
-              }
-              // We need the full snippet object here for optimistic update.
-              // Since we don't have it easily available in this context without fetching or passing it,
-              // we might need to rely on the server response or try to find it in the previous collection.
-              // For now, let's try to find it in the previous collection.
-              const snippetToMove = previousCollections?.flatMap(c => c.snippets || []).find(s => s.id === variables.snippet_id);
+            if (!snippetToMove) return collection;
 
-              if (!snippetToMove) return collection;
+            return {
+              ...collection,
+              snippets: [...currentSnippets, snippetToMove],
+            };
+          }
 
-              return {
-                ...collection,
-                snippets: [...currentSnippets, snippetToMove],
-              };
-            }
-
-            return collection;
-          });
+          return collection;
+        });
         queryClient.setQueryData<Collection[]>(queryKey, optimisticCollections);
       }
 
@@ -361,14 +361,14 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       moveLockRef.current = null;
     },
     onSuccess: (data, variables, context) => {
-      console.log('=== MUTATION SUCCESS ===', { data, variables });
-      console.error('[handleMoveSnippet] onSuccess - returned data:', { 
-        id: data?.id, 
-        title: data?.title, 
+
+      console.error('[handleMoveSnippet] onSuccess - returned data:', {
+        id: data?.id,
+        title: data?.title,
         hasTitle: !!data?.title,
-        titleLength: data?.title?.length 
+        titleLength: data?.title?.length
       });
-      
+
       // Update the query cache with the returned collection data
       // This prevents needing to refetch all collections, which could return stale/corrupted data
       if (data) {
@@ -388,7 +388,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
           queryClient.setQueryData(queryKey, updatedCollections);
         }
       }
-      
+
       analytics.track("move_snippet", {
         snippet_id: variables.snippet_id,
         from_collection_id: variables.previous_collection_id,
@@ -397,7 +397,7 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
     },
     onSettled: () => {
       const collectionsAfterSettle = queryClient.getQueryData<Collection[]>(queryKey);
-      console.error('[handleMoveSnippet] onSettled - collections before invalidate:', 
+      console.error('[handleMoveSnippet] onSettled - collections before invalidate:',
         collectionsAfterSettle?.map(c => ({ id: c.id, title: c.title }))
       );
       // Only invalidate queries if we didn't successfully update the cache in onSuccess
@@ -507,9 +507,8 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
         description={
           deleteDialog
             ? deleteDialog.snippetIds.length > 0
-              ? `Deleting this folder will also delete ${deleteDialog.snippetIds.length} snippet${
-                  deleteDialog.snippetIds.length === 1 ? "" : "s"
-                }. This cannot be undone.`
+              ? `Deleting this folder will also delete ${deleteDialog.snippetIds.length} snippet${deleteDialog.snippetIds.length === 1 ? "" : "s"
+              }. This cannot be undone.`
               : "This action cannot be undone."
             : undefined
         }
@@ -518,159 +517,159 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
         onConfirm={handleConfirmDeleteCollection}
       />
       <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
-      {sortedCollections && (
-        <div className="flex flex-col items-center justify-center">
-          <Accordion
-            type="multiple"
-            defaultValue={
-              sortedCollections && sortedCollections.length > 0 ? [sortedCollections[0].id] : []
-            }
-            className="w-full"
-          >
-            {sortedCollections && !isRefetching ? (
-              sortedCollections.map((collection: Collection) => (
-                <CollectionDroppable key={collection.id} collectionId={collection.id}>
-                  {({ isOver, setNodeRef }) => {
-                    const isDropTargetActive =
-                      isOver &&
-                      dragSourceCollectionId !== collection.id &&
-                      !!draggedSnippetId;
-                    const isMoveDestination =
-                      pendingMove?.toCollectionId === collection.id;
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        {sortedCollections && (
+          <div className="flex flex-col items-center justify-center">
+            <Accordion
+              type="multiple"
+              defaultValue={
+                sortedCollections && sortedCollections.length > 0 ? [sortedCollections[0].id] : []
+              }
+              className="w-full"
+            >
+              {sortedCollections && !isRefetching ? (
+                sortedCollections.map((collection: Collection) => (
+                  <CollectionDroppable key={collection.id} collectionId={collection.id}>
+                    {({ isOver, setNodeRef }) => {
+                      const isDropTargetActive =
+                        isOver &&
+                        dragSourceCollectionId !== collection.id &&
+                        !!draggedSnippetId;
+                      const isMoveDestination =
+                        pendingMove?.toCollectionId === collection.id;
 
-                    return (
-                      <div
-                        ref={setNodeRef}
-                        className={cn(
-                          "rounded-md transition-colors",
-                          isDropTargetActive &&
-                          "border border-dashed border-indigo-200 bg-indigo-200/30 dark:border-primary/50 dark:bg-primary/5"
-                        )}
-                      >
-                        <AccordionItem key={collection.id} value={collection.id}>
-                          <CollectionTrigger
-                            title={collection.title}
-                            isBusy={isMoveDestination}
-                            isDropTarget={isDropTargetActive}
-                            onRemove={() => {
-                          openDeleteDialog(collection);
-                            }
-                            }
-                            onUpdate={() => {
-                              collectionTitleInputRef.current?.focus();
-                              setCollectionTitle(collection.title);
-                              setEditableCollectionId(collection.id);
-                            }}
-                          >
-                            <>
-                              <i className="ri-folder-line mr-3 " />
-                              {editableCollectionId === collection.id ? (
-                                <input
-                                  ref={collectionTitleInputRef}
-                                  id={collection.id}
-                                  type="text"
-                                  onBlur={() => {
-                                    setEditableCollectionId(null);
-                                    handleUpdateCollection({
-                                      id: collection.id,
-                                      user_id: collection.user_id,
-                                      title: collectionTitle,
-                                    });
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      collectionTitleInputRef.current?.blur();
-                                    }
-                                    if (e.key === "Escape") {
-                                      e.preventDefault();
-                                      collectionTitleInputRef.current?.blur();
-                                    }
-                                  }}
-                                  onChange={(e) => setCollectionTitle(e.target.value)}
-                                  value={collectionTitle}
-                                  className="bg-transparent border-2 border-secondary dark:border-border outline-none dark:focus:border-primary focus:border-indigo-200 rounded-sm p-px px-2 w-[80%]"
-                                />
-                              ) : (
-                                collection.title
-                              )}
-
-                              {collection.snippets &&
-                                collection.snippets?.length > 0 && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="absolute right-0 rounded-full px-2 w-6 h-6 group-hover:opacity-0 scale-90"
-                                  >
-                                    {collection.snippets?.length}
-                                  </Badge>
-                                )}
-                            </>
-                          </CollectionTrigger>
-
-                          <AccordionContent>
-                            <ul className="w-full grid grid-cols-1 gap-2">
-                              {collection.snippets?.length
-                                ? collection.snippets.map((snippet) => (
-                                  <CollectionItem
-                                    key={snippet.id}
-                                    snippet={snippet}
-                                    collectionId={collection.id}
-                                    onItemSelect={handleSnippetClick}
-                                    onDelete={handleDeleteSnippet}
-                                    onMoveToCollection={handleOpenMoveToFolderDialog}
-                                    isPendingMove={
-                                      pendingMove?.snippetId === snippet.id
-                                    }
-                                    isDragging={draggedSnippetId === snippet.id}
+                      return (
+                        <div
+                          ref={setNodeRef}
+                          className={cn(
+                            "rounded-md transition-colors",
+                            isDropTargetActive &&
+                            "border border-dashed border-indigo-200 bg-indigo-200/30 dark:border-primary/50 dark:bg-primary/5"
+                          )}
+                        >
+                          <AccordionItem key={collection.id} value={collection.id}>
+                            <CollectionTrigger
+                              title={collection.title}
+                              isBusy={isMoveDestination}
+                              isDropTarget={isDropTargetActive}
+                              onRemove={() => {
+                                openDeleteDialog(collection);
+                              }
+                              }
+                              onUpdate={() => {
+                                collectionTitleInputRef.current?.focus();
+                                setCollectionTitle(collection.title);
+                                setEditableCollectionId(collection.id);
+                              }}
+                            >
+                              <>
+                                <i className="ri-folder-line mr-3 " />
+                                {editableCollectionId === collection.id ? (
+                                  <input
+                                    ref={collectionTitleInputRef}
+                                    id={collection.id}
+                                    type="text"
+                                    onBlur={() => {
+                                      setEditableCollectionId(null);
+                                      handleUpdateCollection({
+                                        id: collection.id,
+                                        user_id: collection.user_id,
+                                        title: collectionTitle,
+                                      });
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        collectionTitleInputRef.current?.blur();
+                                      }
+                                      if (e.key === "Escape") {
+                                        e.preventDefault();
+                                        collectionTitleInputRef.current?.blur();
+                                      }
+                                    }}
+                                    onChange={(e) => setCollectionTitle(e.target.value)}
+                                    value={collectionTitle}
+                                    className="bg-transparent border-2 border-secondary dark:border-border outline-none dark:focus:border-primary focus:border-indigo-200 rounded-sm p-px px-2 w-[80%]"
                                   />
-                                ))
-                                : null}
-                            </ul>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </div>
-                    );
-                  }}
-                </CollectionDroppable>
-              ))
-            ) : (
-              <div className="w-full flex flex-col gap-3">
-                <Skeleton />
-                <Skeleton />
-                <Skeleton />
-              </div>
-            )}
-          </Accordion>
-        </div>
-      )}
+                                ) : (
+                                  collection.title
+                                )}
 
-      {selectedSnippet && (
-        <DialogChooseCollection
-          ref={moveToFolderDialog}
-          snippet={selectedSnippet}
-          previousCollectionId={previousCollectionId}
-        />
-      )}
+                                {collection.snippets &&
+                                  collection.snippets?.length > 0 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="absolute right-0 rounded-full px-2 w-6 h-6 group-hover:opacity-0 scale-90"
+                                    >
+                                      {collection.snippets?.length}
+                                    </Badge>
+                                  )}
+                              </>
+                            </CollectionTrigger>
 
-      <DragOverlay adjustScale={false}>
-        {activeSnippet ? (
-          <div className={SnippetStyles.snippet({ dragging: true, origin: false })}>
-            <span className="scale-75">
-              {languagesLogos[
-                activeSnippet.language as keyof typeof languagesLogos
-              ]}
-            </span>
-            <p className="flex-2 truncate capitalize">{activeSnippet.title}</p>
+                            <AccordionContent>
+                              <ul className="w-full grid grid-cols-1 gap-2">
+                                {collection.snippets?.length
+                                  ? collection.snippets.map((snippet) => (
+                                    <CollectionItem
+                                      key={snippet.id}
+                                      snippet={snippet}
+                                      collectionId={collection.id}
+                                      onItemSelect={handleSnippetClick}
+                                      onDelete={handleDeleteSnippet}
+                                      onMoveToCollection={handleOpenMoveToFolderDialog}
+                                      isPendingMove={
+                                        pendingMove?.snippetId === snippet.id
+                                      }
+                                      isDragging={draggedSnippetId === snippet.id}
+                                    />
+                                  ))
+                                  : null}
+                              </ul>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </div>
+                      );
+                    }}
+                  </CollectionDroppable>
+                ))
+              ) : (
+                <div className="w-full flex flex-col gap-3">
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton />
+                </div>
+              )}
+            </Accordion>
           </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+        )}
+
+        {selectedSnippet && (
+          <DialogChooseCollection
+            ref={moveToFolderDialog}
+            snippet={selectedSnippet}
+            previousCollectionId={previousCollectionId}
+          />
+        )}
+
+        <DragOverlay adjustScale={false}>
+          {activeSnippet ? (
+            <div className={SnippetStyles.snippet({ dragging: true, origin: false })}>
+              <span className="scale-75">
+                {languagesLogos[
+                  activeSnippet.language as keyof typeof languagesLogos
+                ]}
+              </span>
+              <p className="flex-2 truncate capitalize">{activeSnippet.title}</p>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </>
   );
 }

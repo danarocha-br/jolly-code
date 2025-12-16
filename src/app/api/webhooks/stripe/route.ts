@@ -599,7 +599,7 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature
     event = constructWebhookEvent(body, signature, webhookSecret);
 
-    console.log('Received Stripe webhook:', event.type);
+
 
     // Check if we've already processed this event (idempotency check)
     const { data: existingEvent } = await supabase

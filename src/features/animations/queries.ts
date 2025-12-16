@@ -356,7 +356,7 @@ export async function createAnimation({
 
     return animation ? { data: animation } : undefined;
   } catch (error) {
-    console.log(error);
+
     toast.error(`Failed to save the animation.`);
     return undefined;
   }

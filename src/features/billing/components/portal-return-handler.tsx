@@ -19,9 +19,6 @@ export function PortalReturnHandler() {
 
     if (action === "portal_return" && !handledRef.current) {
       handledRef.current = true;
-      console.log(
-        "[PortalReturnHandler] Detected return from Stripe Portal, refreshing data..."
-      );
 
       // Sync subscription data directly from Stripe first to ensure we have the latest data
       // This is important because webhooks might not have processed yet when user returns

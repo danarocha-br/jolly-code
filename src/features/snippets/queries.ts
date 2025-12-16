@@ -100,15 +100,9 @@ export async function createCollection({
  * @throws {Error} - Throws an error if collections cannot be fetched.
  */
 export async function fetchCollections(): Promise<Collection[]> {
-  console.log('[fetchCollections] Called');
+
   try {
     const result = await getCollections();
-    console.log('[fetchCollections] Result:', { 
-      hasError: !!result.error, 
-      hasData: !!result.data,
-      collectionCount: result.data?.length,
-      collectionTitles: result.data?.map(c => ({ id: c.id, title: c.title }))
-    });
 
     if (result.error) {
       toast.error(result.error);
@@ -343,14 +337,14 @@ export const updateCollection = async ({
       // If title was provided, use serverTitle (the updated value)
       // If title was undefined (snippet-only update), prefer serverTitle but fallback to currentCollection.title
       // Always fallback to currentCollection.title if serverTitle is empty/null
-      const preservedTitle = (serverTitle && serverTitle !== '') 
-        ? serverTitle 
+      const preservedTitle = (serverTitle && serverTitle !== '')
+        ? serverTitle
         : currentCollection.title;
-      
-      const returnValue = { 
-        ...result.data!, 
+
+      const returnValue = {
+        ...result.data!,
         title: preservedTitle,
-        snippets: updatedSnippets 
+        snippets: updatedSnippets
       };
       return returnValue;
     } else {

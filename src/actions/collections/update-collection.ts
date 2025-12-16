@@ -48,7 +48,7 @@ export async function updateCollection(
 			return error('Failed to update collection')
 		}
 		// Debug log to verify title preservation
-		console.log('[updateCollection] Returning collection:', { id: collection.id, title: collection.title, wasArray: Array.isArray(data) });
+
 
 		// Revalidate relevant paths
 		revalidatePath('/collections')

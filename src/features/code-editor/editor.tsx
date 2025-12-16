@@ -75,12 +75,12 @@ function isUpgradeError(error: unknown): boolean {
   // Handle error objects with code or type properties
   if (typeof error === "object" && error !== null) {
     const errorObj = error as Record<string, unknown>;
-    
+
     // Check for explicit error codes
     if (errorObj.code === "UPGRADE_REQUIRED" || errorObj.code === "PLAN_LIMIT_EXCEEDED") {
       return true;
     }
-    
+
     // Check error.type for upgrade markers
     if (typeof errorObj.type === "string" && errorObj.type.toLowerCase().includes("upgrade")) {
       return true;
@@ -522,7 +522,7 @@ export const Editor = forwardRef<any, EditorProps>(
             currentUrl: string | null
           ) => {
             if (id) {
-              console.log(" hey");
+
 
               handleUpdateSnippet({
                 id: currentEditor?.id!,

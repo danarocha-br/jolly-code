@@ -66,14 +66,14 @@ const createInitialSlide = (index: number): AnimationSlide => {
   const sampleCode = [
     `// Slide ${index} - JavaScript Example
 function greet(name) {
-  console.log(\`Hello, \${name}!\`);
+
 }
 
 greet("World");`,
     `// Slide ${index} - Improved Greeting
 function greet(name, { excited = false } = {}) {
   const punctuation = excited ? "!" : ".";
-  console.log(\`Hello, \${name}\${punctuation}\`);
+
 }
 
 greet("World", { excited: true });`,

@@ -86,10 +86,6 @@ async function backfillBillingInterval(
           `Failed to update billing_interval in DB for user ${userId}:`,
           error
         );
-      } else {
-        console.log(
-          `Backfilled billing_interval for user ${userId}: ${billingInterval}`
-        );
       }
     }
   } catch (error) {
@@ -227,8 +223,8 @@ export async function getBillingInfo(
   const isActive = data.stripe_subscription_status === 'active';
   const hasPeriodEnd = !!data.subscription_period_end;
 
-  const shouldBackfillPeriodEnd = 
-    hasSubscriptionId && 
+  const shouldBackfillPeriodEnd =
+    hasSubscriptionId &&
     isActive &&
     (!hasPeriodEnd || (() => {
       // Validate the date - if it's more than 1.5 billing periods in the future from now, it's likely wrong

@@ -128,7 +128,7 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
         toast.error("Code was not copied! Please try again.");
       }
     } catch (err) {
-      console.log(err);
+
       toast.error("Something went wrong!");
     }
   }

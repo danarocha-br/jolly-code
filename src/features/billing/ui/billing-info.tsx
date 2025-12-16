@@ -91,7 +91,7 @@ export function BillingInfoView({
   if (!billingInfo) {
     // This is expected in some cases (e.g., free users), so only log in dev
     if (process.env.NODE_ENV !== "production") {
-      console.log("BillingInfoView - No billingInfo, returning null");
+
     }
     return null;
   }
