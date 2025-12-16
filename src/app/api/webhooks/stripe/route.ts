@@ -127,6 +127,34 @@ async function sendPaymentFailedEmail(
   });
 }
 
+/**
+ * Attempt to resolve user ID from a Stripe customer ID
+ */
+async function resolveUserIdFromCustomerId(
+  customerId: string | null,
+  supabase: ServiceRoleClient
+): Promise<string | null> {
+  if (!customerId) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn(`[resolveUserIdFromCustomerId] Failed to lookup user for customer ${customerId}:`, error);
+      return null;
+    }
+
+    return data?.id ?? null;
+  } catch (error) {
+    console.warn(`[resolveUserIdFromCustomerId] Error looking up user for customer ${customerId}:`, error);
+    return null;
+  }
+}
+
 async function upsertWebhookAudit(
   supabase: ServiceRoleClient,
   event: Stripe.Event,
@@ -136,13 +164,16 @@ async function upsertWebhookAudit(
     userId,
   }: { status: string; errorMessage?: string; userId?: string | null }
 ) {
-  const stripeObject = event.data?.object as
-    | Stripe.Subscription
-    | Stripe.Invoice
-    | Stripe.Checkout.Session
-    | undefined;
-
+  // Try to extract customer ID from any Stripe event object
+  const stripeObject = event.data?.object as Record<string, unknown>;
   const stripeCustomerId = stripeObject ? getStripeCustomerId(stripeObject) : null;
+  
+  // If we have a customer ID but no user ID, try to resolve it
+  let resolvedUserId = userId;
+  if (!resolvedUserId && stripeCustomerId) {
+    resolvedUserId = await resolveUserIdFromCustomerId(stripeCustomerId, supabase);
+  }
+  
   const payload = JSON.parse(JSON.stringify(event)) as Json;
 
   const { error } = await supabase.from('stripe_webhook_audit').upsert(
@@ -153,7 +184,7 @@ async function upsertWebhookAudit(
       status,
       error_message: errorMessage ?? null,
       stripe_customer_id: stripeCustomerId,
-      user_id: userId ?? null,
+      user_id: resolvedUserId ?? null,
     },
     { onConflict: 'event_id' }
   );

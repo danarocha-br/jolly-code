@@ -292,3 +292,100 @@ export function constructWebhookEvent(
 ): Stripe.Event {
   return getStripeClient().webhooks.constructEvent(payload, signature, secret);
 }
+
+/**
+ * Cancel all active subscriptions for a customer
+ * Note: This is defensive - deleting a customer automatically cancels subscriptions,
+ * but this can be useful if you need to cancel before deletion.
+ */
+export async function cancelAllSubscriptions(
+  customerId: string
+): Promise<void> {
+  const stripe = getStripeClient();
+  
+  // List all active subscriptions for the customer
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+    status: 'active',
+    limit: 100, // Stripe default limit
+  });
+
+  // Cancel each active subscription immediately
+  for (const subscription of subscriptions.data) {
+    try {
+      await stripe.subscriptions.cancel(subscription.id);
+    } catch (error) {
+      console.error(`Failed to cancel subscription ${subscription.id}:`, error);
+      // Continue with other subscriptions even if one fails
+    }
+  }
+
+  // Also handle subscriptions that are past_due or trialing
+  const otherSubscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+    status: 'all',
+    limit: 100,
+  });
+
+  for (const subscription of otherSubscriptions.data) {
+    if (subscription.status === 'past_due' || subscription.status === 'trialing') {
+      try {
+        await stripe.subscriptions.cancel(subscription.id);
+      } catch (error) {
+        console.error(`Failed to cancel subscription ${subscription.id}:`, error);
+      }
+    }
+  }
+}
+
+/**
+ * Delete a Stripe customer
+ * This automatically cancels all active subscriptions and removes payment methods.
+ * The customer object remains retrievable via API for audit purposes but is marked as deleted.
+ * 
+ * @param customerId - The Stripe customer ID to delete
+ * @returns The deleted customer object
+ * @throws Error if customer doesn't exist or deletion fails
+ */
+export async function deleteStripeCustomer(
+  customerId: string
+): Promise<Stripe.DeletedCustomer> {
+  if (!customerId || customerId.trim() === '') {
+    throw new Error('Customer ID is required for deletion');
+  }
+
+  const stripe = getStripeClient();
+
+  try {
+    // First, verify the customer exists and is not already deleted
+    const customer = await stripe.customers.retrieve(customerId);
+    
+    if (customer.deleted) {
+      // Customer already deleted, return the deleted customer object
+      return customer as Stripe.DeletedCustomer;
+    }
+
+    // Delete the customer (this automatically cancels all subscriptions)
+    const deletedCustomer = await stripe.customers.del(customerId);
+    
+    return deletedCustomer;
+  } catch (error) {
+    // Handle case where customer doesn't exist
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      (error.code === 'resource_missing' || error.code === 'No such customer')
+    ) {
+      // Customer doesn't exist - this is fine, return a mock deleted customer
+      console.log(`[deleteStripeCustomer] Customer ${customerId} does not exist, treating as deleted`)
+      return {
+        id: customerId,
+        deleted: true,
+        object: 'customer',
+      } as Stripe.DeletedCustomer;
+    }
+    
+    // Re-throw other errors
+    throw error;
+  }
+}

@@ -26,6 +26,7 @@ import {
 } from "./queries";
 import { useBillingDialog } from "./hooks/use-billing-dialog";
 import type { BillingDialogProps } from "./dtos";
+import { DeleteAccountSection } from "@/features/settings-panel/delete-account-section";
 
 export function BillingFeature({ open, onOpenChange }: BillingDialogProps) {
   const {
@@ -284,6 +285,8 @@ export function BillingFeature({ open, onOpenChange }: BillingDialogProps) {
                 </p>
               </div>
             )}
+
+            <DeleteAccountSection />
           </div>
         </DialogContent>
       </Dialog>

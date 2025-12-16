@@ -6,13 +6,26 @@ type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
 
 /**
  * Get Stripe customer ID from various Stripe objects
+ * Works with Subscription, Invoice, Checkout.Session, Customer, PaymentIntent, Charge, etc.
  */
 export function getStripeCustomerId(
-  stripeObject: Stripe.Subscription | Stripe.Invoice | Stripe.Checkout.Session
+  stripeObject: Stripe.Subscription | Stripe.Invoice | Stripe.Checkout.Session | Stripe.Customer | Stripe.PaymentIntent | Stripe.Charge | Record<string, unknown>
 ): string | null {
-  const customer = (stripeObject as { customer?: string | Stripe.Customer | null }).customer;
-  if (!customer) return null;
-  return typeof customer === 'string' ? customer : customer.id;
+  // Try to extract customer from various possible locations
+  const obj = stripeObject as { customer?: string | Stripe.Customer | null; id?: string };
+  
+  // Direct customer field (most common)
+  const customer = obj.customer;
+  if (customer) {
+    return typeof customer === 'string' ? customer : customer.id;
+  }
+  
+  // For Customer objects, the ID is the object itself
+  if (obj.id && typeof obj.id === 'string' && obj.id.startsWith('cus_')) {
+    return obj.id;
+  }
+  
+  return null;
 }
 
 /**

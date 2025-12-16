@@ -18,6 +18,9 @@ export { AuthError }
 /**
  * Ensures the user is authenticated and returns user + supabase client
  * Throws an error if user is not authenticated
+ * 
+ * Note: If the error is "user_not_found" (user was deleted), we attempt to sign out
+ * to clear the invalid session, but still throw an error to prevent the action from proceeding.
  */
 export async function requireAuth(): Promise<AuthResult> {
 	const supabase = await createClient()
@@ -26,6 +29,18 @@ export async function requireAuth(): Promise<AuthResult> {
 
 	if (error) {
 		console.error('Auth error:', error)
+		
+		// If user was deleted (user_not_found), attempt to clear the session
+		// This helps prevent repeated errors from invalid JWTs
+		if (error.message?.includes('User from sub claim in JWT does not exist') || 
+		    error.code === 'user_not_found') {
+			try {
+				await supabase.auth.signOut()
+			} catch (signOutError) {
+				// Ignore sign out errors - the session is already invalid
+			}
+		}
+		
 		throw new AuthError(`Authentication failed: ${error.message}`)
 	}
 
