@@ -23,6 +23,8 @@ export const env = createEnv({
     SENTRY_REPLAYS_SESSION_SAMPLE_RATE: z.string().optional(),
     SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE: z.string().optional(),
     VERCEL_GIT_COMMIT_SHA: z.string().optional(),
+    RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
+    CRON_SECRET: z.string().min(1, "CRON_SECRET is required"),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -77,6 +79,8 @@ export const env = createEnv({
     SENTRY_REPLAYS_SESSION_SAMPLE_RATE: process.env.SENTRY_REPLAYS_SESSION_SAMPLE_RATE,
     SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE: process.env.SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE,
     VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

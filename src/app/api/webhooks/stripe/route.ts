@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import React from 'react';
 
 import { createServiceRoleClient } from '@/utils/supabase/admin';
 import { constructWebhookEvent, getStripeClient } from '@/lib/services/stripe';
@@ -10,6 +11,8 @@ import { captureServerEvent } from '@/lib/services/tracking/server';
 import { invalidateUserUsageCache } from '@/lib/services/usage-limits-cache';
 import { syncSubscriptionToDatabase } from '@/lib/services/subscription-sync';
 import { getPlanIdFromPriceId, getStripeCustomerId, resolveUserIdFromSubscription } from '@/lib/services/stripe-helpers';
+import { sendEmail } from '@/lib/email/send-email';
+import WelcomeEmail from '@emails/welcome-email';
 
 export const dynamic = 'force-dynamic';
 type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
@@ -58,18 +61,21 @@ async function resolveUserIdFromCheckoutSession(
   }
 
   // Try email lookup as fallback
-  if (session.customer_email) {
+  const email = session.customer_email || session.customer_details?.email;
+  if (email) {
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', session.customer_email)
+      .eq('email', email)
       .maybeSingle();
 
     if (error) {
       throw new Error(`Failed to resolve user by email: ${error.message}`);
     }
 
-    return data?.id ?? null;
+    if (data?.id) {
+      return data?.id;
+    }
   }
 
   return null;
@@ -96,8 +102,13 @@ async function resolveUserIdFromInvoice(
 }
 
 /**
- * Send payment failed notification email to user
- * TODO: Integrate with email service (Resend, SendGrid, etc.)
+ * Log payment failed event for tracking/analytics
+ * 
+ * Note: Payment failed emails are handled automatically by Stripe.
+ * Configure in Stripe Dashboard: Settings > Billing > Subscriptions and emails
+ * Enable "Send emails when card payments fail"
+ * 
+ * This function is kept for logging/tracking purposes only.
  */
 async function sendPaymentFailedEmail(
   userId: string,
@@ -106,23 +117,14 @@ async function sendPaymentFailedEmail(
   amount: number,
   currency: string
 ): Promise<void> {
-  // Placeholder implementation - log for now
-  // In production, integrate with your email service
-  console.log(`[Email] Payment failed notification for user ${userId}`, {
+  // Log payment failure for analytics/tracking
+  // Stripe automatically sends payment failed emails to customers
+  console.log(`[Payment Failed] User ${userId} - Invoice ${invoiceId}`, {
     email,
-    invoiceId,
     amount,
     currency,
+    note: 'Stripe handles payment failed email notifications automatically',
   });
-
-  // TODO: Implement actual email sending
-  // Example with Resend:
-  // await resend.emails.send({
-  //   from: 'noreply@yourapp.com',
-  //   to: email,
-  //   subject: 'Payment Failed - Action Required',
-  //   html: `...`
-  // });
 }
 
 async function upsertWebhookAudit(
@@ -174,10 +176,69 @@ async function handleSubscriptionChange(
     expand: ['items.data.price', 'latest_invoice'],
   });
 
+  // For customer.subscription.created, check if user had existing subscription BEFORE syncing
+  // This determines if we should send welcome email
+  let shouldSendWelcomeEmail = false;
+  let userEmail: string | null = null;
+  let userName: string | undefined = undefined;
+  
+  if (event.type === 'customer.subscription.created') {
+    try {
+      // Get userId first (before syncing)
+      const userId = await resolveUserIdFromSubscription(subscription, supabase);
+      if (userId) {
+        
+        // Check if user already had a subscription BEFORE we sync
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('stripe_subscription_id, email, username')
+          .eq('id', userId)
+          .single();
+
+        // If user had no subscription ID or it's different, this is a new subscription
+        const hadExistingSubscription = !!profile?.stripe_subscription_id && profile.stripe_subscription_id !== subscription.id;
+        shouldSendWelcomeEmail = !hadExistingSubscription && !!profile?.email;
+        userEmail = profile?.email || null;
+        userName = profile?.username || undefined;
+        
+      }
+    } catch (error) {
+      console.error('Error checking for welcome email in subscription.created:', error);
+    }
+  }
+
   const result = await syncSubscriptionToDatabase(subscription);
 
   if (!result) {
     throw new Error('Failed to sync subscription to database');
+  }
+
+  // Send welcome email for NEW subscriptions (customer.subscription.created only)
+  if (event.type === 'customer.subscription.created' && shouldSendWelcomeEmail && userEmail) {
+    try {
+      console.log(`[Welcome Email] Sending to ${userEmail} for user ${result.userId}`);
+      await sendEmail({
+        to: userEmail,
+        subject: 'Welcome to Jolly Code!',
+        react: React.createElement(WelcomeEmail, { name: userName }),
+        idempotencyKey: `welcome-email-${result.userId}-${subscription.id}`,
+      });
+      console.log(`[Welcome Email] Sent successfully to user ${result.userId}`);
+    } catch (emailError) {
+      // Don't fail webhook if email fails - log and continue
+      console.error('[Welcome Email] Failed to send:', emailError);
+      Sentry.captureException(emailError, {
+        level: 'warning',
+        tags: {
+          operation: 'send_welcome_email_subscription_created',
+        },
+        extra: {
+          userId: result.userId,
+          subscriptionId: subscription.id,
+          userEmail: userEmail,
+        },
+      });
+    }
   }
 
   // Invalidate usage cache
@@ -267,14 +328,51 @@ async function handleCheckoutSessionCompleted(
       typeof fullSession.subscription === 'string'
         ? fullSession.subscription
         : fullSession.subscription?.id;
+    
+    // Get user profile to check email and existing subscription
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('stripe_subscription_id, stripe_customer_id, email, username')
+      .eq('id', userId)
+      .single();
 
+    if (profileError) {
+      console.error(`[handleCheckoutSessionCompleted] Failed to load profile for user ${userId}:`, profileError);
+      throw new Error(`Failed to load user profile: ${profileError.message}`);
+    }
+
+    if (!profile) {
+      console.error(`[handleCheckoutSessionCompleted] Profile not found for user ${userId}`);
+      throw new Error(`User profile not found for userId: ${userId}`);
+    }
+
+    let hadExistingSubscription = false;
     if (subscriptionId) {
       // Verify subscription is linked (subscription webhook will handle plan update)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('stripe_subscription_id, stripe_customer_id')
-        .eq('id', userId)
-        .single();
+      // Profile already loaded above
+
+      // Check if user already had a subscription BEFORE this checkout
+      // Important: We need to check if the subscription existed BEFORE this checkout session
+      // The subscription.created webhook might have already run and set stripe_subscription_id,
+      // so we check if the existing subscription_id matches the new one from checkout.
+      // If they match, it means this is the NEW subscription (not an existing one).
+      const existingSubscriptionId = profile?.stripe_subscription_id;
+      
+      // If existing subscription ID is different from the new one, user had a previous subscription
+      // If they match (or existing is null), this is a new subscription
+      hadExistingSubscription = !!existingSubscriptionId && existingSubscriptionId !== subscriptionId;
+      
+      
+      console.log(`[Welcome Email Check] User ${userId}:`, {
+        existingSubscriptionId,
+        newSubscriptionId: subscriptionId,
+        hadExistingSubscription,
+        isNewSubscription: !hadExistingSubscription,
+        hasEmail: !!profile?.email,
+        email: profile?.email || 'none',
+        willSendEmail: !hadExistingSubscription && !!profile?.email,
+      });
+      
 
       const customerId = getStripeCustomerId(fullSession);
       if (customerId && !profile?.stripe_customer_id) {
@@ -284,6 +382,9 @@ async function handleCheckoutSessionCompleted(
           .update({ stripe_customer_id: customerId })
           .eq('id', userId);
       }
+
+      // NOTE: Welcome email is sent by customer.subscription.created webhook handler
+      // We don't send it here to avoid duplicates, since both events fire for new subscriptions
     }
 
     // Track checkout completion event
@@ -597,11 +698,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify webhook signature
+    console.log('[Webhook] Verifying webhook signature...');
     event = constructWebhookEvent(body, signature, webhookSecret);
+    console.log('[Webhook] Event verified:', event.type, event.id);
 
 
 
     // Check if we've already processed this event (idempotency check)
+    console.log('[Webhook] Checking if event already processed:', event.id);
     const { data: existingEvent } = await supabase
       .from('stripe_webhook_audit')
       .select('status')
@@ -615,6 +719,7 @@ export async function POST(request: NextRequest) {
     }
 
     await upsertWebhookAudit(supabase, event, { status: 'received' });
+
 
     // Handle different event types
     switch (event.type) {
@@ -671,11 +776,12 @@ export async function POST(request: NextRequest) {
       type: (error as Record<string, unknown>)?.type,
     };
 
-    console.error('Webhook error:', {
+    console.error('[Webhook] ERROR:', {
       ...errorDetails,
       statusCode,
       eventType: event?.type,
       eventId: event?.id,
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
     Sentry.captureException(error, {

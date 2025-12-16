@@ -390,9 +390,10 @@ export async function syncSubscriptionToDatabase(
 
   // Then update plan using RPC function that does explicit type casting to plan_type
   // This bypasses Supabase client's type validation that references user_plan
+  const dbPlanValue = planId === 'starter' ? 'started' : planId;
   const { error: planError, data: rpcData } = await (supabase as any).rpc('update_user_plan', {
     p_user_id: userId,
-    p_plan: planId,
+    p_plan: dbPlanValue,
     p_plan_updated_at: updateData.plan_updated_at,
   });
 

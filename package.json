@@ -13,7 +13,9 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "validate:plans": "node scripts/validate-plan-limits.js"
+    "validate:plans": "node scripts/validate-plan-limits.js",
+    "email:preview": "pnpm exec email dev",
+    "email:dev": "pnpm exec email dev"
   },
   "dependencies": {
     "@arcjet/inspect": "1.0.0-beta.15",
@@ -44,6 +46,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-email/components": "^1.0.1",
     "@sentry/nextjs": "^8.0.0",
     "@stripe/stripe-js": "^8.5.3",
     "@supabase/ssr": "^0.7.0",
@@ -85,6 +88,7 @@
     "react-markdown": "^9.0.0",
     "react-simple-code-editor": "^0.13.1",
     "remixicon": "^3.5.0",
+    "resend": "^6.6.0",
     "schema-dts": "^1.1.5",
     "sonner": "^1.0.3",
     "stripe": "^20.0.0",
@@ -95,6 +99,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@react-email/preview-server": "5.0.8",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/diff": "^7.0.2",
     "@types/gif.js": "^0.2.5",
@@ -109,8 +114,10 @@
     "eslint-config-next": "16.0.7",
     "eslint-config-prettier": "^10.1.8",
     "postcss": "^8.4.31",
+    "react-email": "^5.0.8",
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4.1.17",
     "typescript": "5.9.3"
-  }
+  },
+  "packageManager": "pnpm@10.26.0+sha512.3b3f6c725ebe712506c0ab1ad4133cf86b1f4b687effce62a9b38b4d72e3954242e643190fc51fa1642949c735f403debd44f5cb0edd657abe63a8b6a7e1e402"
 }

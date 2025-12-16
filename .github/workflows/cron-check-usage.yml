@@ -1,0 +1,37 @@
+name: Check Usage Limits
+
+on:
+  schedule:
+    # Runs daily at midnight UTC
+    - cron: '0 0 * * *'
+  # Allow manual triggering from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  check-usage:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Invoke Usage Check API
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://jollycode.dev' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Error: CRON_SECRET secret is not set in GitHub Secrets"
+            exit 1
+          fi
+          
+          response=$(curl -s -w "\n%{http_code}" -X GET "${APP_URL}/api/cron/check-usage?secret=${CRON_SECRET}")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Usage check completed successfully"
+            echo "$body" | jq '.' || echo "$body"
+          else
+            echo "❌ Usage check failed with HTTP $http_code"
+            echo "$body"
+            exit 1
+          fi
+
