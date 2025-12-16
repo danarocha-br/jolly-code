@@ -152,6 +152,11 @@ export function useAnimationPersistence({
 
   useEffect(() => {
     if (isAnimationSaved && animationId && user_id) {
+      // Skip auto-save if there are empty slides - validation should only happen on explicit save
+      const emptySlides = slides.filter(s => !s.code || s.code.trim() === '');
+      if (emptySlides.length > 0) {
+        return;
+      }
       debouncedUpdateAnimation.current?.(animationId, slides, animationSettings);
     }
   }, [animationId, animationSettings, isAnimationSaved, slides, user_id]);
