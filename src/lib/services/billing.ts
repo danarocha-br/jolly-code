@@ -253,14 +253,16 @@ export async function getBillingInfo(
     );
 
     // Fire-and-forget async sync (does not block this request)
-    backfillSubscriptionPeriodEnd(supabase, userId, data.stripe_subscription_id).catch(
-      (error) => {
-        console.error(
-          `Failed to backfill subscription_period_end for user ${userId}:`,
-          error
-        );
-      }
-    );
+    if (data.stripe_subscription_id) {
+      backfillSubscriptionPeriodEnd(supabase, userId, data.stripe_subscription_id).catch(
+        (error) => {
+          console.error(
+            `Failed to backfill subscription_period_end for user ${userId}:`,
+            error
+          );
+        }
+      );
+    }
   }
 
   const billingInfoResult = {

@@ -165,7 +165,7 @@ async function upsertWebhookAudit(
   }: { status: string; errorMessage?: string; userId?: string | null }
 ) {
   // Try to extract customer ID from any Stripe event object
-  const stripeObject = event.data?.object as Record<string, unknown>;
+  const stripeObject = event.data?.object as unknown as Record<string, unknown>;
   const stripeCustomerId = stripeObject ? getStripeCustomerId(stripeObject) : null;
   
   // If we have a customer ID but no user ID, try to resolve it
@@ -460,18 +460,6 @@ async function handleCheckoutSessionCompleted(
       // If existing subscription ID is different from the new one, user had a previous subscription
       // If they match (or existing is null), this is a new subscription
       hadExistingSubscription = !!existingSubscriptionId && existingSubscriptionId !== subscriptionId;
-      
-      
-      console.log(`[Welcome Email Check] User ${userId}:`, {
-        existingSubscriptionId,
-        newSubscriptionId: subscriptionId,
-        hadExistingSubscription,
-        isNewSubscription: !hadExistingSubscription,
-        hasEmail: !!profile?.email,
-        email: profile?.email || 'none',
-        willSendEmail: !hadExistingSubscription && !!profile?.email,
-      });
-      
 
       const customerId = getStripeCustomerId(fullSession);
       if (customerId && !profile?.stripe_customer_id) {

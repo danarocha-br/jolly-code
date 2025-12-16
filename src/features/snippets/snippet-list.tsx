@@ -427,12 +427,10 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      console.log('=== DRAG END TRIGGERED ===');
       const data = event.active.data.current as
         | { snippet?: Snippet; collectionId?: string }
         | undefined;
       const targetCollectionId = event.over?.id?.toString();
-      console.log('Drag data:', { targetCollectionId, snippetId: data?.snippet?.id, sourceCollectionId: data?.collectionId });
 
       // Prevent concurrent moves for the same snippet while a move is pending
       if (data?.snippet && pendingMove?.snippetId === data.snippet.id) {

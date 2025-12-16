@@ -442,7 +442,6 @@ export async function createSnippet({
 
     return { error: "Failed to create snippet" };
   } catch (error) {
-    console.log(error);
     return { error: "Failed to save the snippet." };
   }
 }

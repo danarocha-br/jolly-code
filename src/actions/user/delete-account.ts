@@ -131,17 +131,14 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
 
     // Manually delete waitlist entries (user_id is nullable, may not cascade)
     try {
-      const { error: waitlistError, count: waitlistCount } = await adminSupabase
+      const { error: waitlistError } = await adminSupabase
         .from('waitlist')
         .delete()
         .eq('user_id', user.id)
-        .select('*', { count: 'exact', head: true })
 
       if (waitlistError) {
         console.warn('[deleteAccount] Failed to delete waitlist entries:', waitlistError)
         // Non-critical, continue with deletion
-      } else {
-        console.log(`[deleteAccount] Deleted ${waitlistCount ?? 0} waitlist entries`)
       }
     } catch (waitlistError) {
       console.warn('[deleteAccount] Error deleting waitlist entries:', waitlistError)
@@ -151,17 +148,14 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
     // Manually delete stripe_webhook_audit entries (user_id is nullable, uses ON DELETE SET NULL)
     // We delete these for GDPR compliance and complete account cleanup
     try {
-      const { error: auditError, count: auditCount } = await adminSupabase
+      const { error: auditError } = await adminSupabase
         .from('stripe_webhook_audit')
         .delete()
         .eq('user_id', user.id)
-        .select('*', { count: 'exact', head: true })
 
       if (auditError) {
         console.warn('[deleteAccount] Failed to delete webhook audit entries:', auditError)
         // Non-critical, continue with deletion
-      } else {
-        console.log(`[deleteAccount] Deleted ${auditCount ?? 0} webhook audit entries`)
       }
     } catch (auditError) {
       console.warn('[deleteAccount] Error deleting webhook audit entries:', auditError)

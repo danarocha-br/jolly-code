@@ -116,8 +116,9 @@ export async function syncSubscriptionToDatabase(
   // According to Stripe docs, current_period_start and current_period_end are always present
   // For flexible billing mode subscriptions, these fields are on subscription items, not the subscription itself
   // Try subscription object first, then check subscription items
-  let currentPeriodEnd = subscription.current_period_end ?? (subscription as any).current_period_end;
-  let currentPeriodStart = subscription.current_period_start ?? (subscription as any).current_period_start;
+  const subscriptionAny = subscription as any;
+  let currentPeriodEnd = subscriptionAny.current_period_end;
+  let currentPeriodStart = subscriptionAny.current_period_start;
 
   // If missing on subscription object, check subscription items (for flexible billing mode)
   if (!currentPeriodEnd || !currentPeriodStart) {
@@ -253,7 +254,7 @@ export async function syncSubscriptionToDatabase(
 
     // This fallback should rarely be needed since we calculate from current_period_start above
     // But keep it as a safety net for edge cases
-    const fallbackCurrentPeriodStart = subscription.current_period_start ?? (subscription as any).current_period_start;
+    const fallbackCurrentPeriodStart = subscriptionAny.current_period_start;
 
     if (fallbackCurrentPeriodStart && priceInterval && !periodEndTimestamp) {
       const currentPeriodStart = fallbackCurrentPeriodStart;
