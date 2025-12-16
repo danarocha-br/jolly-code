@@ -7,7 +7,7 @@ type SettingsPanelItemProps = {
   onClick?: () => void;
   role?: string;
   "aria-expanded"?: boolean;
-  "aria-haspopup"?: boolean | string;
+  "aria-haspopup"?: boolean | "dialog" | "menu" | "listbox" | "tree" | "grid" | "true" | "false";
   tabIndex?: number;
 };
 

@@ -79,8 +79,8 @@ export async function createSnippet(
 
         if (plan === 'free') {
           return error(`You have ${current} snippets but the Free plan allows ${max}. Delete items or upgrade to save again. Over limit: ${overLimit}.`)
-        } else if (plan === 'started') {
-          return error(`You've reached your Started limit (${current}/${max}). Upgrade to Pro for unlimited snippets!`)
+        } else if (plan === 'starter') {
+          return error(`You've reached your Starter limit (${current}/${max}). Upgrade to Pro for unlimited snippets!`)
         }
         return error('Snippet limit reached. Please upgrade your plan.')
       }

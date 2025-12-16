@@ -3,6 +3,7 @@ import type { PlanId } from '@/lib/config/plans';
 import type Stripe from 'stripe';
 import { setCachedBillingInterval } from '@/lib/services/billing';
 import { getStripeClient } from './stripe';
+import { getStripeCustomerId, resolveUserIdFromSubscription, getPlanIdFromPriceId, getPriceIdMap } from './stripe-helpers';
 
 type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
 
@@ -112,8 +113,29 @@ export async function syncSubscriptionToDatabase(
   let planId: PlanId | null = null;
 
   // Access current_period_end - Stripe returns it as a Unix timestamp (seconds)
-  // Cast to any to avoid type issues with potentially outdated Stripe types
-  const currentPeriodEnd = (subscription as any).current_period_end;
+  // According to Stripe docs, current_period_start and current_period_end are always present
+  // For flexible billing mode subscriptions, these fields are on subscription items, not the subscription itself
+  // Try subscription object first, then check subscription items
+  let currentPeriodEnd = subscription.current_period_end ?? (subscription as any).current_period_end;
+  let currentPeriodStart = subscription.current_period_start ?? (subscription as any).current_period_start;
+  
+  // If missing on subscription object, check subscription items (for flexible billing mode)
+  if (!currentPeriodEnd || !currentPeriodStart) {
+    const firstItem = subscription.items?.data?.[0];
+    if (firstItem) {
+      // For flexible billing, period dates are on the subscription item
+      const itemPeriodEnd = (firstItem as any).current_period_end;
+      const itemPeriodStart = (firstItem as any).current_period_start;
+      
+      if (!currentPeriodEnd && itemPeriodEnd) {
+        currentPeriodEnd = itemPeriodEnd;
+      }
+      if (!currentPeriodStart && itemPeriodStart) {
+        currentPeriodStart = itemPeriodStart;
+      }
+    }
+  }
+  
   const periodEndDate = currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null;
   const now = new Date();
   // If we can't determine period end, assume period is still active (conservative approach)
@@ -175,51 +197,164 @@ export async function syncSubscriptionToDatabase(
 
   // LOGIC FIX: Prioritize cancel_at if set, as that represents the true end of service for scheduled cancellations
   // In Stripe Test Clock scenarios or specific scheduling, cancel_at might differ or be the source of truth
+  // According to Stripe docs, current_period_end should always be present for active subscriptions
+  // If it's missing, try to get from latest_invoice, then calculate from current_period_start + interval
   const cancelAtCallback = subscription.cancel_at;
   let periodEndTimestamp = cancelAtCallback || currentPeriodEnd;
+  
+  // If current_period_end is missing, try latest_invoice.period_end
+  if (!periodEndTimestamp && subscription.latest_invoice) {
+    const latestInvoice = typeof subscription.latest_invoice === 'string' 
+      ? null 
+      : subscription.latest_invoice;
+    if (latestInvoice && (latestInvoice as any).period_end) {
+      periodEndTimestamp = (latestInvoice as any).period_end;
+    }
+  }
+  
+  // If still missing but current_period_start exists, calculate it
+  if (!periodEndTimestamp && currentPeriodStart && priceInterval) {
+    const periodStartDate = new Date(currentPeriodStart * 1000);
+    const calculatedEndDate = new Date(periodStartDate);
+    
+    if (priceInterval === 'month') {
+      calculatedEndDate.setMonth(calculatedEndDate.getMonth() + 1);
+    } else if (priceInterval === 'year') {
+      calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
+    }
+    
+    periodEndTimestamp = Math.floor(calculatedEndDate.getTime() / 1000);
+  }
+  
+  // Also try to get current_period_start from latest_invoice if missing
+  if (!currentPeriodStart && subscription.latest_invoice && priceInterval) {
+    const latestInvoice = typeof subscription.latest_invoice === 'string' 
+      ? null 
+      : subscription.latest_invoice;
+    if (latestInvoice && (latestInvoice as any).period_start) {
+      const invoicePeriodStart = (latestInvoice as any).period_start;
+      const invoicePeriodStartDate = new Date(invoicePeriodStart * 1000);
+      const calculatedEndDate = new Date(invoicePeriodStartDate);
+      
+      if (priceInterval === 'month') {
+        calculatedEndDate.setMonth(calculatedEndDate.getMonth() + 1);
+      } else if (priceInterval === 'year') {
+        calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
+      }
+      
+      if (!periodEndTimestamp) {
+        periodEndTimestamp = Math.floor(calculatedEndDate.getTime() / 1000);
+      }
+    }
+  }
 
   if (!periodEndTimestamp && customerId) {
     const stripe = getStripeClient();
 
-    // Try getting from upcoming invoices
-    try {
-      const upcomingInvoices = await stripe.invoices.list({
-        customer: customerId,
-        subscription: subscription.id,
-        status: 'draft',
-        limit: 1,
-      });
-
-      if (upcomingInvoices.data.length > 0) {
-        const upcomingInvoice = upcomingInvoices.data[0];
-        periodEndTimestamp = (upcomingInvoice as any).period_end;
+    // This fallback should rarely be needed since we calculate from current_period_start above
+    // But keep it as a safety net for edge cases
+    const fallbackCurrentPeriodStart = subscription.current_period_start ?? (subscription as any).current_period_start;
+    
+    if (fallbackCurrentPeriodStart && priceInterval && !periodEndTimestamp) {
+      const currentPeriodStart = fallbackCurrentPeriodStart;
+      const periodStartDate = new Date(currentPeriodStart * 1000);
+      const periodEndDate = new Date(periodStartDate);
+      
+      if (priceInterval === 'month') {
+        periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+      } else if (priceInterval === 'year') {
+        periodEndDate.setFullYear(periodEndDate.getFullYear() + 1);
       }
-    } catch (invoiceError) {
-      // Silently fail - will try calculation fallback
+      
+      periodEndTimestamp = Math.floor(periodEndDate.getTime() / 1000);
     }
 
-    // If still no period end, try calculating from billing cycle anchor
+    // If still no period end, try getting from upcoming invoices
     if (!periodEndTimestamp) {
+      try {
+        const upcomingInvoices = await stripe.invoices.list({
+          customer: customerId,
+          subscription: subscription.id,
+          status: 'draft',
+          limit: 1,
+        });
+
+        if (upcomingInvoices.data.length > 0) {
+          const upcomingInvoice = upcomingInvoices.data[0];
+          periodEndTimestamp = (upcomingInvoice as any).period_end;
+        }
+      } catch (invoiceError) {
+        // Silently fail - will try calculation fallback
+      }
+    }
+
+    // If still no period end, try calculating from billing cycle anchor or subscription created date
+    // This is a fallback - calculate the next period end from the anchor or created date
+    if (!periodEndTimestamp) {
+      const currentPeriodStart = (subscription as any).current_period_start;
       const billingCycleAnchor = (subscription as any).billing_cycle_anchor;
+      const subscriptionCreated = (subscription as any).created;
       const interval = priceInterval; // 'month' or 'year'
-      if (billingCycleAnchor && interval) {
+      
+      let baseDate: Date | null = null;
+      
+      // Priority 1: Use current_period_start if available
+      if (currentPeriodStart) {
+        baseDate = new Date(currentPeriodStart * 1000);
+      } 
+      // Priority 2: Use billing cycle anchor if it's in the past (not a future date)
+      else if (billingCycleAnchor && interval) {
         const anchorDate = new Date(billingCycleAnchor * 1000);
         const nowDate = new Date();
-        // Calculate how many periods have passed since anchor
+        
+        // Only use anchor if it's in the past (future anchors are likely wrong)
+        if (anchorDate <= nowDate) {
+          // Find the current period start by calculating how many periods have passed
+          let periodsPassed = 0;
+          if (interval === 'month') {
+            const monthsDiff = (nowDate.getFullYear() - anchorDate.getFullYear()) * 12 +
+              (nowDate.getMonth() - anchorDate.getMonth());
+            periodsPassed = Math.floor(monthsDiff);
+          } else if (interval === 'year') {
+            periodsPassed = nowDate.getFullYear() - anchorDate.getFullYear();
+          }
+          baseDate = new Date(anchorDate);
+          if (interval === 'month') {
+            baseDate.setMonth(baseDate.getMonth() + periodsPassed);
+          } else if (interval === 'year') {
+            baseDate.setFullYear(baseDate.getFullYear() + periodsPassed);
+          }
+        }
+      }
+      // Priority 3: Use subscription created date as last resort
+      if (!baseDate && subscriptionCreated && interval) {
+        const createdDate = new Date(subscriptionCreated * 1000);
+        const nowDate = new Date();
+        
+        // Find the current period start by calculating how many periods have passed since creation
         let periodsPassed = 0;
         if (interval === 'month') {
-          const monthsDiff = (nowDate.getFullYear() - anchorDate.getFullYear()) * 12 +
-            (nowDate.getMonth() - anchorDate.getMonth());
+          const monthsDiff = (nowDate.getFullYear() - createdDate.getFullYear()) * 12 +
+            (nowDate.getMonth() - createdDate.getMonth());
           periodsPassed = Math.floor(monthsDiff);
         } else if (interval === 'year') {
-          periodsPassed = nowDate.getFullYear() - anchorDate.getFullYear();
+          periodsPassed = nowDate.getFullYear() - createdDate.getFullYear();
         }
-        // Calculate next period end
-        const nextPeriodEnd = new Date(anchorDate);
+        baseDate = new Date(createdDate);
         if (interval === 'month') {
-          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + periodsPassed + 1);
+          baseDate.setMonth(baseDate.getMonth() + periodsPassed);
         } else if (interval === 'year') {
-          nextPeriodEnd.setFullYear(nextPeriodEnd.getFullYear() + periodsPassed + 1);
+          baseDate.setFullYear(baseDate.getFullYear() + periodsPassed);
+        }
+      }
+      
+      // Calculate next period end (current period start + 1 interval)
+      if (baseDate && interval) {
+        const nextPeriodEnd = new Date(baseDate);
+        if (interval === 'month') {
+          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
+        } else if (interval === 'year') {
+          nextPeriodEnd.setFullYear(nextPeriodEnd.getFullYear() + 1);
         }
         periodEndTimestamp = Math.floor(nextPeriodEnd.getTime() / 1000);
       }
@@ -306,37 +441,7 @@ export async function syncSubscriptionToDatabase(
   return { userId, planId };
 }
 
-function getStripeCustomerId(
-  stripeObject: Stripe.Subscription | Stripe.Invoice | Stripe.Checkout.Session
-): string | null {
-  const customer = (stripeObject as { customer?: string | Stripe.Customer | null }).customer;
-  if (!customer) return null;
-  return typeof customer === 'string' ? customer : customer.id;
-}
 
-async function resolveUserIdFromSubscription(
-  subscription: Stripe.Subscription,
-  supabase: ServiceRoleClient
-): Promise<string | null> {
-  if (subscription.metadata?.userId) {
-    return subscription.metadata.userId;
-  }
-
-  const customerId = getStripeCustomerId(subscription);
-  if (!customerId) return null;
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to resolve user by stripe_customer_id: ${error.message}`);
-  }
-
-  return data?.id ?? null;
-}
 
 function resolvePlanFromSubscription(subscription: Stripe.Subscription): PlanId | null {
   // Try to resolve from Price ID first as it is the source of truth
@@ -350,8 +455,8 @@ function resolvePlanFromSubscription(subscription: Stripe.Subscription): PlanId 
 
   // Fallback to metadata if price ID resolution fails (e.g. unknown price)
   const metadataPlan = subscription.metadata?.plan;
-  if (metadataPlan === 'started' || metadataPlan === 'pro') {
-    return metadataPlan;
+  if (metadataPlan === 'starter' || metadataPlan === 'started' || metadataPlan === 'pro') {
+    return metadataPlan === 'started' ? 'starter' : (metadataPlan as PlanId);
   }
 
   // Log error if neither worked
@@ -361,8 +466,8 @@ function resolvePlanFromSubscription(subscription: Stripe.Subscription): PlanId 
       availableMap: JSON.stringify(getPriceIdMap()),
       // Check env vars presence (without leaking values)
       envVars: {
-        startedMonthly: !!process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
-        startedYearly: !!process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID,
+        starterMonthly: !!process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
+        starterYearly: !!process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID,
         proMonthly: !!process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
         proYearly: !!process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
       }
@@ -372,23 +477,3 @@ function resolvePlanFromSubscription(subscription: Stripe.Subscription): PlanId 
   return null;
 }
 
-function getPriceIdMap(): Record<string, PlanId> {
-  const priceIdMap: Record<string, PlanId> = {};
-
-  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID?.trim();
-  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID?.trim();
-  const proMonthly = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID?.trim();
-  const proYearly = process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID?.trim();
-
-  if (startedMonthly) priceIdMap[startedMonthly] = 'started';
-  if (startedYearly) priceIdMap[startedYearly] = 'started';
-  if (proMonthly) priceIdMap[proMonthly] = 'pro';
-  if (proYearly) priceIdMap[proYearly] = 'pro';
-
-  return priceIdMap;
-}
-
-function getPlanIdFromPriceId(priceId: string): PlanId | null {
-  const priceIdMap = getPriceIdMap();
-  return priceIdMap[priceId] || null;
-}

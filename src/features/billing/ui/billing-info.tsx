@@ -97,8 +97,12 @@ export function BillingInfoView({
   }
 
   // Validate plan type
-  const planId = billingInfo.plan as PlanId;
-  if (!["free", "started", "pro"].includes(planId)) {
+  let planId = billingInfo.plan as PlanId | string;
+  if (planId === "started") {
+    planId = "starter";
+  }
+
+  if (!["free", "starter", "pro"].includes(planId)) {
     const invalidPlan = billingInfo.plan;
     console.error("Invalid plan type:", invalidPlan);
 

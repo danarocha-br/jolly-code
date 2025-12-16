@@ -44,7 +44,7 @@ export async function createAnimationCollection(
       if (plan === 'free') {
         return error('Free plan does not include folders. Upgrade to Started to organize your animations.')
       }
-      if (plan === 'started') {
+      if (plan === 'starter') {
         return error('You have reached your 10 folder limit. Upgrade to Pro for unlimited folders.')
       }
       return error('Folder limit reached. Please upgrade your plan.')

@@ -34,7 +34,7 @@ export async function createCheckoutSession({
       return { error: 'Cannot create checkout session for free plan' };
     }
 
-    if (!['started', 'pro'].includes(plan)) {
+    if (!['starter', 'pro'].includes(plan)) {
       return { error: 'Invalid plan' };
     }
 
@@ -189,7 +189,7 @@ export async function createPortalSession({
     const appUrl = resolveBaseUrl(headers);
     const portalSession = await createCustomerPortalSession({
       customerId: stripeCustomerId,
-      returnUrl: `${appUrl}/`,
+      returnUrl: `${appUrl}/?stripe_action=portal_return`,
     });
 
     return { url: portalSession.url || undefined };

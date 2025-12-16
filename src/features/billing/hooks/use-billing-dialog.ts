@@ -15,7 +15,7 @@ export const useBillingDialog = () => {
 
   const { data: planData } = useUserPlan(userId);
   const currentPlan: PlanId | undefined =
-    planData && ["free", "started", "pro"].includes(planData as string)
+    planData && ["free", "starter", "pro"].includes(planData as string)
       ? (planData as PlanId)
       : undefined;
 
@@ -54,3 +54,4 @@ export const useBillingDialog = () => {
     handleOpenPortal,
   };
 };
+

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
+  getPlanConfig,
   PLANS,
   type BillingInterval,
   type PlanConfig,
@@ -86,7 +87,7 @@ const intervalLabel: Record<BillingInterval, string> = {
   yearly: "/month • billed yearly",
 };
 
-const PLAN_ORDER: PlanId[] = ["free", "started", "pro"];
+const PLAN_ORDER: PlanId[] = ["free", "starter", "pro"];
 
 const CheckItem = ({ children }: { children: ReactNode }) => (
   <li className="flex items-start gap-2 text-sm text-foreground">
@@ -112,9 +113,9 @@ export function UpgradeDialog({
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
     currentPlan === "pro"
       ? "pro"
-      : currentPlan === "started"
+      : currentPlan === "starter"
         ? "pro"
-        : "started"
+        : "starter"
   );
   const [isPending, startTransition] = useTransition();
 
@@ -132,7 +133,7 @@ export function UpgradeDialog({
   const upgradeTitle =
     currentPlan === "free" ? "Upgrade plan" : "Change your plan";
 
-  const currentPlanLimit = getLimitForPlan(PLANS[currentPlan], limitType);
+  const currentPlanLimit = getLimitForPlan(getPlanConfig(currentPlan), limitType);
 
   const redirectToCustomerPortal = async () => {
     try {
@@ -163,7 +164,7 @@ export function UpgradeDialog({
 
     startTransition(async () => {
       try {
-        // If updating from a paid plan (started/pro) to another paid plan,
+        // If updating from a paid plan (starter/pro) to another paid plan,
         // redirect to customer portal instead of creating a new checkout session.
         // This prevents duplicate subscriptions.
         if (currentPlan !== "free") {
@@ -201,6 +202,8 @@ export function UpgradeDialog({
       }
     });
   };
+
+  const selectedPlanConfig = getPlanConfig(selectedPlan);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -266,7 +269,7 @@ export function UpgradeDialog({
                       <Badge variant="outline" className="bg-background/60">
                         {plan.name}
                       </Badge>
-                      {plan.id === "started" && (
+                      {plan.id === "starter" && (
                         <Badge variant="success">Most popular</Badge>
                       )}
                       {isCurrent && <Badge>Current</Badge>}
@@ -331,9 +334,9 @@ export function UpgradeDialog({
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Selected plan</p>
               <p className="text-base font-semibold text-foreground">
-                {PLANS[selectedPlan].name} •{" "}
-                {formatPrice(PLANS[selectedPlan], billingInterval)}{" "}
-                {PLANS[selectedPlan].pricing
+                {selectedPlanConfig.name} •{" "}
+                {formatPrice(selectedPlanConfig, billingInterval)}{" "}
+                {selectedPlanConfig.pricing
                   ? intervalLabel[billingInterval]
                   : ""}
               </p>

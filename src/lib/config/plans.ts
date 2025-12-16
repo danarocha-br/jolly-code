@@ -5,14 +5,14 @@
  * as the validation script uses regex extraction. Changes to the structure
  * or formatting may break the extractor.
  */
-export type PlanId = 'free' | 'started' | 'pro';
+export type PlanId = 'free' | 'starter' | 'pro';
 export type BillingInterval = 'monthly' | 'yearly';
 
 /**
  * Plan order from lowest to highest tier
  * Used for comparing plan tiers and determining upgrade/downgrade paths
  */
-export const planOrder: PlanId[] = ['free', 'started', 'pro'];
+export const planOrder: PlanId[] = ['free', 'starter', 'pro'];
 
 /**
  * Validates and returns a Stripe price ID from environment variables.
@@ -22,7 +22,7 @@ export const planOrder: PlanId[] = ['free', 'started', 'pro'];
  */
 function getStripePriceIdFromEnv(envVarName: string, plan: string, interval: string): string {
   const value = process.env[envVarName];
-  
+
   if (!value || value.trim() === '') {
     // Return empty string instead of throwing error to prevent app crash
     // Validation will happen at checkout time in API routes
@@ -32,7 +32,7 @@ function getStripePriceIdFromEnv(envVarName: string, plan: string, interval: str
     );
     return '';
   }
-  
+
   return value;
 }
 
@@ -82,9 +82,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     ],
     pricing: null, // Free has no pricing
   },
-  started: {
-    id: 'started',
-    name: 'Started',
+  starter: {
+    id: 'starter',
+    name: 'Starter',
     description: 'For individuals and small teams',
     maxSnippets: 50,
     maxAnimations: 50,
@@ -107,7 +107,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
         displayAmount: '$5',
         stripePriceId: getStripePriceIdFromEnv(
           'NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID',
-          'started',
+          'starter',
           'monthly'
         ),
       },
@@ -116,7 +116,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
         displayAmount: '$3',
         stripePriceId: getStripePriceIdFromEnv(
           'NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID',
-          'started',
+          'starter',
           'yearly'
         ),
       },
@@ -167,8 +167,11 @@ export const PLANS: Record<PlanId, PlanConfig> = {
 };
 
 // Helper to get plan config by ID
-export function getPlanConfig(planId: PlanId): PlanConfig {
-  return PLANS[planId];
+export function getPlanConfig(planId: PlanId | string): PlanConfig {
+  if (planId === 'started') {
+    return PLANS['starter'];
+  }
+  return PLANS[planId as PlanId] || PLANS['free'];
 }
 
 // Helper to check if a feature is available for a plan
@@ -182,9 +185,10 @@ export function canUsePlanFeature(
 }
 
 // Helper to get upgrade target (next plan tier)
+// Helper to get upgrade target (next plan tier)
 export function getUpgradeTarget(currentPlan: PlanId): PlanId | null {
-  if (currentPlan === 'free') return 'started';
-  if (currentPlan === 'started') return 'pro';
+  if (currentPlan === 'free') return 'starter';
+  if (currentPlan === 'starter') return 'pro';
   return null; // Pro has no upgrade target
 }
 

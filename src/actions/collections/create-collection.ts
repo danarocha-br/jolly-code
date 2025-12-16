@@ -48,9 +48,9 @@ export async function createCollection(
         if (!canCreateFolder) {
             const plan = (folderLimit?.plan as PlanId | undefined) ?? 'free'
             if (plan === 'free') {
-                return error('Free plan does not include folders. Upgrade to Started to organize your snippets.')
+                return error('Free plan does not include folders. Upgrade to Starter to organize your snippets.')
             }
-            if (plan === 'started') {
+            if (plan === 'starter') {
                 return error('You have reached your 10 folder limit. Upgrade to Pro for unlimited folders.')
             }
             return error('Folder limit reached. Please upgrade your plan.')

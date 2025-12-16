@@ -221,11 +221,38 @@ export async function getBillingInfo(
     }
   }
 
-  // Automatic background sync for missing subscription_period_end
-  // This ensures production reliability - webhooks should handle this, but we backfill if missing
-  if (!data.subscription_period_end && data.stripe_subscription_id && data.stripe_subscription_status === 'active') {
+  // Automatic background sync for missing or invalid subscription_period_end
+  // This ensures production reliability - webhooks should handle this, but we backfill if missing or wrong
+  const hasSubscriptionId = !!data.stripe_subscription_id;
+  const isActive = data.stripe_subscription_status === 'active';
+  const hasPeriodEnd = !!data.subscription_period_end;
+
+  const shouldBackfillPeriodEnd = 
+    hasSubscriptionId && 
+    isActive &&
+    (!hasPeriodEnd || (() => {
+      // Validate the date - if it's more than 1.5 billing periods in the future from now, it's likely wrong
+      // This catches cases where the date was calculated incorrectly
+      if (!data.subscription_period_end) return true;
+      const periodEndDate = new Date(data.subscription_period_end);
+      const now = new Date();
+      const interval = billingInterval || 'monthly'; // Default to monthly if unknown
+      const maxValidDate = new Date(now);
+      // Allow up to 1.5 periods in the future (to account for timing differences)
+      if (interval === 'yearly') {
+        maxValidDate.setFullYear(maxValidDate.getFullYear() + 1);
+        maxValidDate.setMonth(maxValidDate.getMonth() + 6); // 1.5 years
+      } else {
+        maxValidDate.setMonth(maxValidDate.getMonth() + 1);
+        maxValidDate.setDate(maxValidDate.getDate() + 15); // 1.5 months
+      }
+      const isInvalid = periodEndDate > maxValidDate;
+      return isInvalid;
+    })());
+
+  if (shouldBackfillPeriodEnd) {
     console.warn(
-      `[SUBSCRIPTION_PERIOD_END_MISSING] User ${userId} has active subscription ${data.stripe_subscription_id} but subscription_period_end is missing. ` +
+      `[SUBSCRIPTION_PERIOD_END_INVALID] User ${userId} has active subscription ${data.stripe_subscription_id} but subscription_period_end is missing or invalid. ` +
       `This should be set via webhook. Triggering async sync.`
     );
 
@@ -240,7 +267,7 @@ export async function getBillingInfo(
     );
   }
 
-  return {
+  const billingInfoResult = {
     plan: data.plan,
     stripeCustomerId: data.stripe_customer_id,
     stripeSubscriptionId: data.stripe_subscription_id,
@@ -250,6 +277,8 @@ export async function getBillingInfo(
     stripePriceId: data.stripe_price_id,
     billingInterval,
   };
+
+  return billingInfoResult;
 }
 
 /**

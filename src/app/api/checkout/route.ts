@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['started', 'pro'].includes(plan)) {
+    if (!['starter', 'pro'].includes(plan)) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 

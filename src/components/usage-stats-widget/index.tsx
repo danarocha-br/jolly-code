@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PLANS } from "@/lib/config/plans";
+import { getPlanConfig } from "@/lib/config/plans";
 import { cn } from "@/lib/utils";
 import type { UsageSummary } from "@/lib/services/usage-limits";
 
@@ -82,7 +82,7 @@ export function UsageStatsWidget({
 
   if (!usage) return null;
 
-  const planName = PLANS[usage.plan].name;
+  const planName = getPlanConfig(usage.plan).name;
 
   return (
     <Card className={cn("w-full shadow-none", className)}>
@@ -122,7 +122,7 @@ export function UsageStatsWidget({
 
         {usage.plan !== "pro" && onUpgrade && (
           <Button size="sm" className="w-full mt-3" onClick={onUpgrade} variant="default">
-            Upgrade to {usage.plan === "free" ? "Started" : "Pro"}
+            Upgrade to {usage.plan === "free" ? "Starter" : "Pro"}
           </Button>
         )}
       </CardContent>

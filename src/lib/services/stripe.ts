@@ -96,7 +96,7 @@ export async function getOrCreateStripeCustomer({
  */
 export function getStripePriceId(plan: PlanId, interval: 'monthly' | 'yearly'): string {
   const envVarMap = {
-    started: {
+    starter: {
       monthly: {
         value: process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID,
         envVar: 'NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID',

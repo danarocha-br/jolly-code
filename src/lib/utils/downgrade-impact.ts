@@ -120,8 +120,8 @@ export function calculateDowngradeImpact(
  * Get the next lower plan tier
  */
 export function getDowngradeTarget(currentPlan: PlanId): PlanId | null {
-  if (currentPlan === "pro") return "started";
-  if (currentPlan === "started") return "free";
+  if (currentPlan === "pro") return "starter";
+  if (currentPlan === "starter") return "free";
   return null; // Free has no downgrade target
 }
 

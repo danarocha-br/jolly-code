@@ -74,8 +74,8 @@ export async function createAnimation(
 
         if (plan === 'free') {
           return error(`You have ${current} animations but the Free plan allows ${max}. Delete items or upgrade to save again. Over limit: ${overLimit}.`)
-        } else if (plan === 'started') {
-          return error(`You\'ve reached your Started limit (${current}/${max}). Upgrade to Pro for unlimited animations!`)
+        } else if (plan === 'starter') {
+          return error(`You\'ve reached your Starter limit (${current}/${max}). Upgrade to Pro for unlimited animations!`)
         }
         return error('Animation limit reached. Please upgrade your plan.')
       }
@@ -89,8 +89,8 @@ export async function createAnimation(
       if (!canAdd) {
         if (plan === 'free') {
           return error('Free users can add up to 3 slides. Upgrade to Started for 10 slides per animation!')
-        } else if (plan === 'started') {
-          return error('Started users can add up to 10 slides. Upgrade to Pro for unlimited slides!')
+        } else if (plan === 'starter') {
+          return error('Starter users can add up to 10 slides. Upgrade to Pro for unlimited slides!')
         }
         return error('Slide limit exceeded. Please upgrade your plan.')
       }

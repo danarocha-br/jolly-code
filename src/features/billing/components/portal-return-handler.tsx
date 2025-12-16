@@ -7,41 +7,62 @@ import { toast } from "sonner";
 import { USAGE_QUERY_KEY } from "@/features/user/queries";
 
 export function PortalReturnHandler() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
-    const queryClient = useQueryClient();
-    // Ref to prevent double-firing in strict mode
-    const handledRef = useRef(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  // Ref to prevent double-firing in strict mode
+  const handledRef = useRef(false);
 
-    useEffect(() => {
-        const action = searchParams?.get("stripe_action");
+  useEffect(() => {
+    const action = searchParams?.get("stripe_action");
 
-        if (action === "portal_return" && !handledRef.current) {
-            handledRef.current = true;
-            console.log("[PortalReturnHandler] Detected return from Stripe Portal, refreshing data...");
+    if (action === "portal_return" && !handledRef.current) {
+      handledRef.current = true;
+      console.log(
+        "[PortalReturnHandler] Detected return from Stripe Portal, refreshing data..."
+      );
 
-            // Invalidate queries to ensure fresh data
-            queryClient.invalidateQueries({ queryKey: ["billing-info"] });
-            queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY] });
-            queryClient.invalidateQueries({ queryKey: ["user"] }); // Refresh user menu/avatar if needed
+      // Sync subscription data directly from Stripe first to ensure we have the latest data
+      // This is important because webhooks might not have processed yet when user returns
+      const syncSubscription = async () => {
+        try {
+          const { syncSubscription: syncSub } = await import(
+            "@/actions/stripe/checkout"
+          );
+          await syncSub({});
 
-            // Show feedback
-            toast.success("Subscription updated", {
-                description: "Your billing information has been refreshed.",
-            });
-
-            // Remove query param from URL without refreshing
-            const params = new URLSearchParams(searchParams.toString());
-            params.delete("stripe_action");
-
-            const newUrl = params.toString()
-                ? `${pathname}?${params.toString()}`
-                : pathname;
-
-            router.replace(newUrl, { scroll: false });
+          // After syncing with Stripe, refetch queries to get the updated data
+          queryClient.refetchQueries({ queryKey: ["billing-info"] });
+          queryClient.refetchQueries({ queryKey: [USAGE_QUERY_KEY] });
+          queryClient.refetchQueries({ queryKey: ["user"] }); // Refresh user menu/avatar if needed
+        } catch (error) {
+          console.error("Failed to sync subscription:", error);
+          // Fallback to just refetching if sync fails
+          queryClient.refetchQueries({ queryKey: ["billing-info"] });
+          queryClient.refetchQueries({ queryKey: [USAGE_QUERY_KEY] });
+          queryClient.refetchQueries({ queryKey: ["user"] });
         }
-    }, [searchParams, router, pathname, queryClient]);
+      };
 
-    return null;
+      syncSubscription();
+
+      // Show feedback
+      toast.success("Subscription updated", {
+        description: "Your billing information has been refreshed.",
+      });
+
+      // Remove query param from URL without refreshing
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("stripe_action");
+
+      const newUrl = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [searchParams, router, pathname, queryClient]);
+
+  return null;
 }

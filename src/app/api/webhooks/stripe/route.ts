@@ -9,32 +9,16 @@ import type { Json } from '@/types/database';
 import { captureServerEvent } from '@/lib/services/tracking/server';
 import { invalidateUserUsageCache } from '@/lib/services/usage-limits-cache';
 import { syncSubscriptionToDatabase } from '@/lib/services/subscription-sync';
+import { getPlanIdFromPriceId, getStripeCustomerId, resolveUserIdFromSubscription } from '@/lib/services/stripe-helpers';
 
 export const dynamic = 'force-dynamic';
 type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
 
-// Map Stripe price IDs to plan IDs
-function getPlanIdFromPriceId(priceId: string): PlanId | null {
-  // Build map only from non-empty environment variables to prevent collisions
-  const priceIdMap: Record<string, PlanId> = {};
-
-  const startedMonthly = process.env.NEXT_PUBLIC_STRIPE_STARTER_MONTHLY_PRICE_ID;
-  const startedYearly = process.env.NEXT_PUBLIC_STRIPE_STARTER_YEARLY_PRICE_ID;
-  const proMonthly = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID;
-  const proYearly = process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID;
-
-  if (startedMonthly) priceIdMap[startedMonthly] = 'started';
-  if (startedYearly) priceIdMap[startedYearly] = 'started';
-  if (proMonthly) priceIdMap[proMonthly] = 'pro';
-  if (proYearly) priceIdMap[proYearly] = 'pro';
-
-  return priceIdMap[priceId] || null;
-}
 
 function resolvePlan(subscription: Stripe.Subscription): PlanId | null {
   const metadataPlan = subscription.metadata?.plan;
-  if (metadataPlan === 'started' || metadataPlan === 'pro') {
-    return metadataPlan;
+  if (metadataPlan === 'starter' || metadataPlan === 'started' || metadataPlan === 'pro') {
+    return metadataPlan === 'started' ? 'starter' : (metadataPlan as PlanId);
   }
 
   const priceId = subscription.items.data[0]?.price.id;
@@ -44,38 +28,7 @@ function resolvePlan(subscription: Stripe.Subscription): PlanId | null {
   return planFromPrice;
 }
 
-function getStripeCustomerId(
-  stripeObject: Stripe.Subscription | Stripe.Invoice | Stripe.Checkout.Session
-): string | null {
-  const customer = (stripeObject as { customer?: string | Stripe.Customer | null }).customer;
-  if (!customer) return null;
 
-  return typeof customer === 'string' ? customer : customer.id;
-}
-
-async function resolveUserIdFromSubscription(
-  subscription: Stripe.Subscription,
-  supabase: ServiceRoleClient
-): Promise<string | null> {
-  if (subscription.metadata?.userId) {
-    return subscription.metadata.userId;
-  }
-
-  const customerId = getStripeCustomerId(subscription);
-  if (!customerId) return null;
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to resolve user by stripe_customer_id: ${error.message}`);
-  }
-
-  return data?.id ?? null;
-}
 
 async function resolveUserIdFromCheckoutSession(
   session: Stripe.Checkout.Session,
@@ -215,9 +168,10 @@ async function handleSubscriptionChange(
 ) {
   // Retrieve the latest subscription state from Stripe to ensure we have the most up-to-date data
   // This prevents race conditions or stale data issues from the webhook payload
+  // Expand latest_invoice to get period_start and period_end as fallback if subscription fields are missing
   const stripeSubscription = event.data.object as Stripe.Subscription;
   const subscription = await getStripeClient().subscriptions.retrieve(stripeSubscription.id, {
-    expand: ['items.data.price'],
+    expand: ['items.data.price', 'latest_invoice'],
   });
 
   const result = await syncSubscriptionToDatabase(subscription);
