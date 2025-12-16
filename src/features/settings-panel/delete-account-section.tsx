@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { useUserStore, useEditorStore } from "@/app/store";
+import { useUserStore, useEditorStore, useAnimationStore } from "@/app/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,10 @@ export function DeleteAccountSection() {
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
-    
+
     try {
       const result = await deleteAccount();
-      
+
       if (result.error) {
         toast.error(result.error);
         setIsDeleting(false);
@@ -39,18 +39,37 @@ export function DeleteAccountSection() {
       try {
         const { error: signOutError } = await supabase.auth.signOut();
         if (signOutError) {
-          console.warn("Failed to sign out after account deletion:", signOutError);
+          console.warn(
+            "Failed to sign out after account deletion:",
+            signOutError
+          );
         }
-        
+
         // Clear all user-related state
         useUserStore.setState({ user: null });
         useEditorStore.getState().resetIsSnippetSaved();
         useEditorStore.getState().resetEditors();
-        
+        useAnimationStore.getState().resetAllAnimationSavedStates();
+
+        // Explicitly clear persisted store data from localStorage to ensure clean state
+        // This ensures bookmarks/saved states don't persist after account deletion
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('animation-store');
+            localStorage.removeItem('code-store');
+            localStorage.removeItem('user-store');
+          } catch (error) {
+            console.warn('Failed to clear localStorage after account deletion:', error);
+          }
+        }
+
         // Invalidate all queries to clear cached data
         queryClient.invalidateQueries();
       } catch (signOutError) {
-        console.warn("Error during sign out after account deletion:", signOutError);
+        console.warn(
+          "Error during sign out after account deletion:",
+          signOutError
+        );
         // Continue anyway - the user is deleted, so the session will be invalid
       }
 
@@ -58,7 +77,7 @@ export function DeleteAccountSection() {
       toast.success("Your account has been deleted successfully");
       setIsDeleting(false);
       setIsDialogOpen(false);
-      
+
       // Use React transition for better UX (Next.js best practice)
       startTransition(() => {
         // Redirect to home page and force a hard reload to clear any cached user data
@@ -83,20 +102,19 @@ export function DeleteAccountSection() {
         <Alert variant="destructive">
           <RiAlertLine className="h-5 w-5" />
           <AlertTitle>Danger Zone</AlertTitle>
-          <AlertDescription>
+
+          <AlertDescription className="w-full">
             Once you delete your account, there is no going back. All your data,
-            including snippets, animations, collections, and subscription information,
-            will be permanently deleted.
+            including snippets, animations, collections, and subscription
+            information, will be permanently deleted.
           </AlertDescription>
         </Alert>
-
         <Button
-          variant="destructive"
+          variant="ghost"
           onClick={() => setIsDialogOpen(true)}
-          className="w-full"
-          size="lg"
+          className="text-destructive w-full"
         >
-          <i className="ri-delete-bin-line text-lg mr-2" />
+          <i className="ri-delete-bin-line text-lg mr-2 text-destructive" />
           Delete Account
         </Button>
       </div>
@@ -106,7 +124,9 @@ export function DeleteAccountSection() {
         onOpenChange={setIsDialogOpen}
         title="Delete Your Account"
         description="Are you absolutely sure? This action cannot be undone. This will permanently delete your account, all your snippets, animations, collections, and cancel your subscription if you have one."
-        confirmLabel={isDeleting || isPending ? "Deleting..." : "Yes, delete my account"}
+        confirmLabel={
+          isDeleting || isPending ? "Deleting..." : "Yes, delete my account"
+        }
         cancelLabel="Cancel"
         isLoading={isDeleting || isPending}
         onConfirm={handleDeleteAccount}
@@ -114,4 +134,3 @@ export function DeleteAccountSection() {
     </>
   );
 }
-

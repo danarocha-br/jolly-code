@@ -51,6 +51,7 @@ export type AnimationStoreState = {
   closeTab: (tabId: string) => void;
   removeAnimationFromTabs: (animationId: string) => void;
   resetActiveAnimation: () => void;
+  resetAllAnimationSavedStates: () => void;
 };
 
 const createSlide = (index: number, code = "", title?: string): AnimationSlide => ({
@@ -565,7 +566,26 @@ export const useAnimationStore = create<AnimationStoreState>()(
         );
 
         set({ tabs: updatedTabs });
-      }
+      },
+
+      resetAllAnimationSavedStates: () => {
+        const { tabs } = get();
+        
+        // Clear all saved states: remove animation IDs and mark all tabs as unsaved
+        const updatedTabs = sanitizeTabs(
+          tabs.map((tab) => ({
+            ...tab,
+            animationId: undefined,
+            saved: false,
+          }))
+        );
+        
+        set({
+          animationId: undefined,
+          isAnimationSaved: false,
+          tabs: updatedTabs,
+        });
+      },
     }),
     {
       name: "animation-store",

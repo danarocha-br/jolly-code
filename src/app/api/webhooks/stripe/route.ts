@@ -174,6 +174,29 @@ async function upsertWebhookAudit(
     resolvedUserId = await resolveUserIdFromCustomerId(stripeCustomerId, supabase);
   }
   
+  // Verify user still exists before inserting (user might have been deleted)
+  // This prevents foreign key constraint violations when webhooks arrive after account deletion
+  let finalUserId: string | null = resolvedUserId ?? null;
+  if (finalUserId) {
+    try {
+      const { data: profileCheck } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', finalUserId)
+        .maybeSingle();
+      
+      if (!profileCheck) {
+        // User no longer exists (likely deleted), set to null
+        console.warn(`[upsertWebhookAudit] User ${finalUserId} no longer exists, setting user_id to null for event ${event.id}`);
+        finalUserId = null;
+      }
+    } catch (verifyError) {
+      // If verification fails, set to null to avoid foreign key constraint violation
+      console.warn(`[upsertWebhookAudit] Failed to verify user ${finalUserId}, setting user_id to null:`, verifyError);
+      finalUserId = null;
+    }
+  }
+  
   const payload = JSON.parse(JSON.stringify(event)) as Json;
 
   const { error } = await supabase.from('stripe_webhook_audit').upsert(
@@ -184,13 +207,32 @@ async function upsertWebhookAudit(
       status,
       error_message: errorMessage ?? null,
       stripe_customer_id: stripeCustomerId,
-      user_id: resolvedUserId ?? null,
+      user_id: finalUserId,
     },
     { onConflict: 'event_id' }
   );
 
   if (error) {
     console.error('Failed to log Stripe webhook audit event', error);
+    // If it's a foreign key constraint error, try again with user_id set to null
+    if (error.code === '23503' && finalUserId) {
+      console.warn(`[upsertWebhookAudit] Retrying with user_id=null due to foreign key constraint violation for event ${event.id}`);
+      const { error: retryError } = await supabase.from('stripe_webhook_audit').upsert(
+        {
+          event_id: event.id,
+          event_type: event.type,
+          payload,
+          status,
+          error_message: errorMessage ?? null,
+          stripe_customer_id: stripeCustomerId,
+          user_id: null,
+        },
+        { onConflict: 'event_id' }
+      );
+      if (retryError) {
+        console.error('Failed to log Stripe webhook audit event (retry with null user_id):', retryError);
+      }
+    }
   }
 }
 
@@ -286,10 +328,25 @@ async function handleSubscriptionChange(
 async function handleSubscriptionDeleted(
   subscription: Stripe.Subscription,
   supabase: ServiceRoleClient
-) {
+): Promise<string | null> {
   const userId = await resolveUserIdFromSubscription(subscription, supabase);
   if (!userId) {
-    throw new Error('No user found for subscription deletion (missing metadata and lookup failed)');
+    // User might have been deleted - this is okay, just log and return null
+    console.warn('[handleSubscriptionDeleted] No user found for subscription deletion - user may have been deleted');
+    return null;
+  }
+
+  // Verify user still exists before trying to update
+  const { data: profileCheck } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!profileCheck) {
+    // User no longer exists (likely deleted) - this is okay, just log and return null
+    console.warn(`[handleSubscriptionDeleted] User ${userId} no longer exists - account may have been deleted`);
+    return null;
   }
 
   const { error } = await supabase
@@ -304,22 +361,33 @@ async function handleSubscriptionDeleted(
     .eq('id', userId);
 
   if (error) {
+    // If user was deleted between check and update, that's okay
+    if (error.code === 'PGRST116') {
+      console.warn(`[handleSubscriptionDeleted] User ${userId} was deleted during update - this is expected`);
+      return null;
+    }
     throw error;
   }
 
+  // Only reconcile if user still exists (user might have been deleted)
   const { error: reconcileError } = await (supabase as any).rpc('reconcile_over_limit_content', {
     p_user_id: userId,
   });
 
   if (reconcileError) {
-    console.error('Failed to reconcile over-limit content after cancellation', reconcileError);
-    Sentry.captureException(reconcileError, {
-      level: 'error',
-      tags: {
-        action: 'reconcile_over_limit_content',
-      },
-      extra: { userId },
-    });
+    // If user was deleted, this is expected - don't log as error
+    if (reconcileError.message?.includes('User not found') || reconcileError.code === 'P0001') {
+      console.warn(`[handleSubscriptionDeleted] User ${userId} not found for reconciliation - account may have been deleted`);
+    } else {
+      console.error('Failed to reconcile over-limit content after cancellation', reconcileError);
+      Sentry.captureException(reconcileError, {
+        level: 'error',
+        tags: {
+          action: 'reconcile_over_limit_content',
+        },
+        extra: { userId },
+      });
+    }
   }
 
   console.log(`Downgraded user ${userId} to free plan`);
