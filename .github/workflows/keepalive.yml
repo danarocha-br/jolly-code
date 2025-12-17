@@ -2,8 +2,8 @@ name: Keepalive
 
 on:
   schedule:
-    # Runs every Monday at midnight UTC
-    - cron: '0 0 * * 0'
+    # Runs every Monday at 00:00 UTC (day 1 = Monday)
+    - cron: '0 0 * * 1'
   # Allow manual triggering from the Actions tab
   workflow_dispatch:
 
@@ -13,6 +13,26 @@ jobs:
     
     steps:
       - name: Ping Keepalive Endpoint
+        env:
+          KEEPALIVE_URL: ${{ secrets.KEEPALIVE_ENDPOINT }}
         run: |
-          curl -X GET "${{ secrets.KEEPALIVE_ENDPOINT}}" \
-            -H "Authorization: Bearer ${{ secrets.KEEPALIVE_API_KEY }}"
+          if [ -z "$KEEPALIVE_URL" ]; then
+            echo "::error::KEEPALIVE_ENDPOINT secret is not set"
+            echo "Please set it in repository settings to your production URL"
+            echo "Example: https://your-domain.com/api/keepalive"
+            exit 1
+          fi
+          
+          response=$(curl -s -w "\n%{http_code}" "$KEEPALIVE_URL")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response body: $body"
+          echo "HTTP Status: $http_code"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "::error::Keepalive ping failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Keepalive ping successful!"
