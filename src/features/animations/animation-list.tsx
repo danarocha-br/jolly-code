@@ -184,17 +184,15 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
 
     if (animationIds.length) {
       // Remove from tabs (already updates saved flag in tabs)
-      useAnimationStore.setState((state) => {
-        animationIds.forEach((id) => {
-          if (id) {
-            state.removeAnimationFromTabs(id);
-          }
-        });
-        return state;
-      });
+      const store = useAnimationStore.getState();
+      for (const id of animationIds) {
+        if (id) {
+          store.removeAnimationFromTabs(id);
+        }
+      }
 
       // If active animation is being removed, clear active state and reset editor
-      const { animationId: currentAnimationId, resetActiveAnimation } = useAnimationStore.getState();
+      const { animationId: currentAnimationId, resetActiveAnimation } = store;
       if (currentAnimationId && animationIds.includes(currentAnimationId)) {
         resetActiveAnimation();
       }

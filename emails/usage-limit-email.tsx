@@ -11,7 +11,7 @@ import {
   Text,
   Tailwind,
 } from "@react-email/components";
-import { Logo } from "@/components/ui/logo";
+import { Logo } from "../src/components/ui/logo";
 
 interface UsageLimitWarningEmailProps {
   usagePercent?: number;
@@ -57,7 +57,7 @@ export default function UsageLimitWarningEmail({
               <Link
                 className="bg-[#000000] rounded text-white text-[12px] font-semibold no-underline text-center px-5 py-3"
                 href={
-                  `${process.env.NEXT_PUBLIC_APP_URL}` ||
+                  process.env.NEXT_PUBLIC_APP_URL ??
                   "https://jollycode.dev/"
                 }
               >

@@ -102,6 +102,12 @@ export const generatePlatformUrl = (
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
 
+  // #region agent log
+  if (typeof fetch !== 'undefined') {
+    fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'share-utils.ts:102',message:'generatePlatformUrl - entry',data:{platform,url,title,encodedUrl,encodedTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  }
+  // #endregion
+
   switch (platform) {
     case "hashnode":
       // Hashnode supports HTML embeds - return iframe code
@@ -114,7 +120,13 @@ export const generatePlatformUrl = (
       return url;
     case "notion":
       // Notion requires the embed URL format
-      return `https://www.notion.so/embed?url=${encodedUrl}&title=${encodedTitle}`;
+      const notionUrl = `https://www.notion.so/embed?url=${encodedUrl}&title=${encodedTitle}`;
+      // #region agent log
+      if (typeof fetch !== 'undefined') {
+        fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'share-utils.ts:117',message:'generatePlatformUrl - Notion URL generated',data:{notionUrl,originalUrl:url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      }
+      // #endregion
+      return notionUrl;
     default:
       return url;
   }

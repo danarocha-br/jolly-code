@@ -60,11 +60,11 @@ export function reportBillingIssue(
       if (context) {
         scope.setContext("billing_issue", {
           message,
+          ...context,
           user_id: context.userId,
           stripe_customer_id: context.stripeCustomerId,
           stripe_subscription_id: context.stripeSubscriptionId,
           plan: context.plan,
-          ...context,
         });
       }
       

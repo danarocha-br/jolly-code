@@ -114,6 +114,29 @@ function isUpgradeError(error: unknown): boolean {
   return upgradeKeywords.some((keyword) => errorLower.includes(keyword));
 }
 
+/**
+ * Reverts the editor state to a previous state by updating the editor store.
+ * Checks for previousState and editorId, maps/replaces the matching editor,
+ * filters nulls, and updates the store with the new editors array.
+ */
+function revertEditorState(previousState: EditorState | null, editorId?: string): void {
+  if (!previousState || !editorId) {
+    return;
+  }
+
+  const currentEditors = useEditorStore.getState().editors;
+  useEditorStore.setState({
+    editors: currentEditors
+      .map((editor) => {
+        if (editor.id === editorId) {
+          return previousState;
+        }
+        return editor;
+      })
+      .filter((editor): editor is EditorState => editor !== null),
+  });
+}
+
 export const Editor = forwardRef<any, EditorProps>(
   (
     {
@@ -367,18 +390,7 @@ export const Editor = forwardRef<any, EditorProps>(
         if (context) {
           queryClient.setQueryData(queryKey, context.previousSnippets);
           // Revert optimistic editor state update using stored editor ID
-          if (context.previousEditorState && context.editorId) {
-            const currentEditors = useEditorStore.getState().editors;
-            const previousState = context.previousEditorState;
-            useEditorStore.setState({
-              editors: currentEditors.map((editor) => {
-                if (editor.id === context.editorId) {
-                  return previousState;
-                }
-                return editor;
-              }),
-            });
-          }
+          revertEditorState(context.previousEditorState, context.editorId);
         }
         // Only open upgrade dialog if error indicates upgrade/limit condition
         if (isUpgradeError(err)) {
@@ -392,19 +404,7 @@ export const Editor = forwardRef<any, EditorProps>(
         if (actionResult?.error) {
           toast.error(actionResult.error);
           // Revert optimistic editor state update on error using stored editor ID
-          if (context?.previousEditorState && context?.editorId) {
-            const currentEditors = useEditorStore.getState().editors;
-            const previousState = context.previousEditorState;
-            const editorId = context.editorId;
-            useEditorStore.setState({
-              editors: currentEditors.map((editor) => {
-                if (editor.id === editorId) {
-                  return previousState;
-                }
-                return editor;
-              }).filter((editor): editor is EditorState => editor !== null),
-            });
-          }
+          revertEditorState(context?.previousEditorState ?? null, context?.editorId);
           // Only open upgrade dialog if error indicates upgrade/limit condition
           if (isUpgradeError(actionResult.error)) {
             setIsUpgradeOpen(true);

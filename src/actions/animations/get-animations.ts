@@ -5,6 +5,19 @@ import { success, error, type ActionResult } from '@/actions/utils/action-result
 import { getUsersAnimationsList } from '@/lib/services/database/animations'
 import type { Animation } from '@/features/animations/dtos'
 
+/**
+ * Shared error handler for animation actions
+ */
+function handleActionError(err: unknown, context: string): ActionResult<never> {
+	console.error(context, err)
+
+	if (err instanceof Error && err.message.includes('authenticated')) {
+		return error('User must be authenticated')
+	}
+
+	return error('Failed to fetch animations. Please try again later.')
+}
+
 export async function getAnimations(): Promise<ActionResult<Animation[]>> {
 	try {
 		const { user, supabase } = await requireAuth()
@@ -14,19 +27,9 @@ export async function getAnimations(): Promise<ActionResult<Animation[]>> {
 			supabase
 		})
 
-		if (!data) {
-			return error('No animations found')
-		}
-
 		return success(data as Animation[])
 	} catch (err) {
-		console.error('Error fetching animations:', err)
-
-		if (err instanceof Error && err.message.includes('authenticated')) {
-			return error('User must be authenticated')
-		}
-
-		return error('Failed to fetch animations. Please try again later.')
+		return handleActionError(err, 'Error fetching animations:')
 	}
 }
 
@@ -44,18 +47,8 @@ export async function getAnimationsMetadata(): Promise<ActionResult<Pick<Animati
 			columns: 'id, title, created_at'
 		})
 
-		if (!data) {
-			return error('No animations found')
-		}
-
 		return success(data)
 	} catch (err) {
-		console.error('Error fetching animations metadata:', err)
-
-		if (err instanceof Error && err.message.includes('authenticated')) {
-			return error('User must be authenticated')
-		}
-
-		return error('Failed to fetch animations. Please try again later.')
+		return handleActionError(err, 'Error fetching animations metadata:')
 	}
 }

@@ -16,6 +16,115 @@ import { toast } from "sonner";
 import { useAnimationLimits } from "./use-animation-limits";
 import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 
+/**
+ * Type guard to check if an error has a response property with status
+ */
+function hasResponseStatus(error: unknown): error is { response: { status: number } } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof (error as { response: unknown }).response === "object" &&
+    (error as { response: unknown }).response !== null &&
+    "status" in ((error as { response: unknown }).response as object) &&
+    typeof ((error as { response: unknown }).response as { status: unknown }).status === "number"
+  );
+}
+
+/**
+ * Type guard to check if an error has a status property
+ */
+function hasStatus(error: unknown): error is { status: number } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as { status: unknown }).status === "number"
+  );
+}
+
+/**
+ * Type guard to check if an error has a code property
+ */
+function hasCode(error: unknown): error is { code: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { code: unknown }).code === "string"
+  );
+}
+
+/**
+ * Type guard to check if an error has a message property
+ */
+function hasMessage(error: unknown): error is { message: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  );
+}
+
+/**
+ * Extracts a user-friendly error message from various error types
+ */
+function getErrorMessage(error: unknown): string {
+  if (hasMessage(error)) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Failed to save animation.";
+}
+
+/**
+ * Determines if an error indicates a limit/usage/quota-related condition.
+ * Checks HTTP status codes (402, 429), error codes, and message content.
+ */
+function isLimitError(error: unknown): boolean {
+  if (!error) return false;
+
+  // Check HTTP status codes (402 Payment Required, 429 Too Many Requests)
+  if (hasResponseStatus(error)) {
+    const status = error.response.status;
+    if (status === 402 || status === 429) {
+      return true;
+    }
+  }
+
+  if (hasStatus(error)) {
+    const status = error.status;
+    if (status === 402 || status === 429) {
+      return true;
+    }
+  }
+
+  // Check for limit-related error codes
+  if (hasCode(error)) {
+    const code = error.code.toUpperCase();
+    if (
+      code === "LIMIT_EXCEEDED" ||
+      code === "UPGRADE_REQUIRED" ||
+      code === "PLAN_LIMIT_EXCEEDED" ||
+      code === "QUOTA_EXCEEDED"
+    ) {
+      return true;
+    }
+  }
+
+  // Check error message for limit-related keywords
+  const errorMessage = getErrorMessage(error).toLowerCase();
+  const limitKeywords = ["limit", "quota", "upgrade", "exceeded", "reached your", "over limit"];
+
+  return limitKeywords.some((keyword) => errorMessage.includes(keyword));
+}
+
 type UseAnimationPersistenceProps = {
   user: User | null;
   slides: AnimationSlide[];
@@ -77,9 +186,14 @@ export function useAnimationPersistence({
         queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
       }
     },
-    onError: (err: any) => {
-      toast.error(err?.message ?? "Failed to save animation.");
-      setIsUpgradeOpen(true);
+    onError: (err: unknown) => {
+      const errorMessage = getErrorMessage(err);
+      toast.error(errorMessage);
+
+      // Only open upgrade dialog for limit-related errors
+      if (isLimitError(err)) {
+        setIsUpgradeOpen(true);
+      }
     },
   });
 

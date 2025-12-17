@@ -52,10 +52,26 @@ export function CSPostHogProvider({ children, user }: { children: ReactNode, use
       return
     }
 
-    // Fetch user profile to get plan and signup date
+    // Fetch user profile to get plan and signup date (only if we have a numeric ID)
     let cancelled = false
     const fetchUserProperties = async () => {
       try {
+        // Only fetch profile if we have a numeric user ID (not just email)
+        if (!user.id) {
+          // Skip profile fetch when userId is derived from email
+          posthog.identify(userId, {
+            email: email || undefined,
+            name: user.user_metadata?.full_name || undefined,
+          })
+          if (posthog.setPersonPropertiesForFlags) {
+            posthog.setPersonPropertiesForFlags({
+              email: email || undefined,
+              name: user.user_metadata?.full_name || undefined,
+            })
+          }
+          return
+        }
+
         const { createClient } = await import('@/utils/supabase/client')
         const supabase = createClient()
         const { data: profile } = await supabase

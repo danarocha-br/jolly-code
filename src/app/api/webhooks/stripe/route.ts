@@ -21,8 +21,15 @@ type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
 
 function resolvePlan(subscription: Stripe.Subscription): PlanId | null {
   const metadataPlan = subscription.metadata?.plan;
-  if (metadataPlan === 'starter' || metadataPlan === 'started' || metadataPlan === 'pro') {
-    return metadataPlan === 'started' ? 'starter' : (metadataPlan as PlanId);
+  
+  // Handle valid plan IDs
+  if (metadataPlan === 'starter' || metadataPlan === 'pro') {
+    return metadataPlan as PlanId;
+  }
+  
+  // Handle legacy typo in metadata where 'started' was used instead of 'starter'
+  if (metadataPlan === 'started') {
+    return 'starter';
   }
 
   const priceId = subscription.items.data[0]?.price.id;

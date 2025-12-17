@@ -1,5 +1,3 @@
-import type { Snippet } from "@/features/snippets/dtos";
-import type { Animation } from "@/features/animations/dtos";
 import { USAGE_QUERY_KEY } from "@/features/user/queries";
 
 export const formatLimit = (count: number | null) => {
@@ -26,29 +24,21 @@ export const selectOldestItems = <T extends { id: string; created_at?: string | 
   return sortedItems.slice(0, Math.min(count, sortedItems.length)).map(item => item.id);
 };
 
-export const selectOldestSnippetItems = (
-  items: { id: string; created_at?: string | number }[],
+// Re-export generic function with semantic names
+export const selectOldestSnippetItems = <T extends { id: string; created_at?: string | number }>(
+  items: T[],
   count: number
-): string[] => {
-  const sortedItems = sortItemsByDate(items);
-  return sortedItems.slice(0, Math.min(count, sortedItems.length)).map(item => item.id);
-};
+): string[] => selectOldestItems(items, count);
 
-export const selectOldestAnimationItems = (
-  items: { id: string; created_at?: string | number }[],
+export const selectOldestAnimationItems = <T extends { id: string; created_at?: string | number }>(
+  items: T[],
   count: number
-): string[] => {
-  const sortedItems = sortItemsByDate(items);
-  return sortedItems.slice(0, Math.min(count, sortedItems.length)).map(item => item.id);
-};
+): string[] => selectOldestItems(items, count);
 
-export const selectOldestFolderItems = (
-  items: { id: string; created_at?: string | number }[],
+export const selectOldestFolderItems = <T extends { id: string; created_at?: string | number }>(
+  items: T[],
   count: number
-): string[] => {
-  const sortedItems = sortItemsByDate(items);
-  return sortedItems.slice(0, Math.min(count, sortedItems.length)).map(item => item.id);
-};
+): string[] => selectOldestItems(items, count);
 
 export const getQueryInvalidationKeys = (userId?: string) => [
   [USAGE_QUERY_KEY, userId],

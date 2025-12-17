@@ -32,8 +32,9 @@ export async function requireAuth(): Promise<AuthResult> {
 		
 		// If user was deleted (user_not_found), attempt to clear the session
 		// This helps prevent repeated errors from invalid JWTs
-		if (error.message?.includes('User from sub claim in JWT does not exist') || 
-		    error.code === 'user_not_found') {
+		if (error.code === 'user_not_found' || 
+		    // Best-effort fallback: tolerate false negatives, don't depend on exact message text
+		    error.message?.includes('User from sub claim in JWT does not exist')) {
 			try {
 				await supabase.auth.signOut()
 			} catch (signOutError) {
@@ -66,8 +67,7 @@ export async function getAuthUser(): Promise<AuthResult | null> {
 	} catch (e) {
 		// Log errors in non-production environments for debugging
 		if (process.env.NODE_ENV !== 'production') {
-			const logger = console.error
-			logger('[getAuthUser] Authentication check failed:', e)
+			console.debug('[getAuthUser] Authentication check failed:', e)
 		}
 		return null
 	}

@@ -12,10 +12,16 @@ const UsersPresence = () => {
     const currentUserId = currentUser?.id;
 
     // Filter out duplicate connections from the same user (whether authenticated or anonymous)
-    const uniqueUsers = users.filter((user, index, arr) => {
-      // Keep the first occurrence of each user ID
-      return arr.findIndex(u => u.id === user.id) === index;
-    });
+    // Using Set-based approach for O(n) time complexity instead of O(n²)
+    const seenIds = new Set<string>();
+    const uniqueUsers: typeof users = [];
+    
+    for (const user of users) {
+      if (!seenIds.has(user.id)) {
+        seenIds.add(user.id);
+        uniqueUsers.push(user);
+      }
+    }
 
     // If current user is authenticated, also filter out their own connections
     if (currentUserId && currentUserId !== "anonymous") {

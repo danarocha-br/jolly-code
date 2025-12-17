@@ -363,6 +363,12 @@ export async function getPaymentMethod(
       }
     } catch (pmListError: any) {
       // Payment methods listing failed, continue to subscription check
+      console.debug("paymentMethods.list failed", {
+        error: pmListError,
+        errorMessage: pmListError?.message,
+        errorCode: pmListError?.code,
+        customerId,
+      });
     }
 
     // Fallback: Check subscription's payment method if subscription ID is provided

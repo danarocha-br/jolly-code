@@ -4,6 +4,7 @@ import { toBlob, toJpeg, toPng, toSvg } from "html-to-image";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useShallow } from "zustand/shallow";
+import * as Sentry from "@sentry/nextjs";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,7 @@ import {
   DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useEditorStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { analytics } from "@/lib/services/tracking";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
@@ -37,6 +38,7 @@ const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
 
 export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
   const editors = React.useRef<{ [key: string]: HTMLElement | null }>({});
+  const { user } = useUserStore();
 
   const currentEditorState = useEditorStore(
     (state) => state.currentEditorState
@@ -128,7 +130,29 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
         toast.error("Code was not copied! Please try again.");
       }
     } catch (err) {
-
+      // Capture and report error with contextual metadata
+      const error = err instanceof Error ? err : new Error(String(err));
+      
+      if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+        Sentry.withScope((scope) => {
+          scope.setTag("export_type", "copy_code");
+          scope.setTag("user_id", user?.id || "unknown");
+          scope.setContext("export_error", {
+            export_type: "copy_code",
+            user_id: user?.id,
+            editor_id: currentEditorState?.id,
+            editor_title: title,
+            code_length: code?.length || 0,
+            error_message: error.message,
+            error_name: error.name,
+          });
+          Sentry.captureException(error);
+          Sentry.flush(2000).catch((flushError) => {
+            console.warn("[Export] Sentry flush failed:", flushError);
+          });
+        });
+      }
+      
       toast.error("Something went wrong!");
     }
   }
@@ -150,22 +174,24 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
 
     try {
       switch (format) {
-        case "PNG":
+        case "PNG": {
           imageURL = await toPng(freshEditor!, {
             pixelRatio: 2,
           });
           fileName = `${name}.png`;
           break;
+        }
 
-        case "JPG":
+        case "JPG": {
           imageURL = await toJpeg(freshEditor!, {
             pixelRatio: 2,
             backgroundColor: "#fff",
           });
           fileName = `${name}.jpg`;
           break;
+        }
 
-        case "SVG":
+        case "SVG": {
           // Convert to PNG first (which works reliably), then wrap in SVG
           // This avoids the known issues with html-to-image's toSvg function
           const pngDataUrl = await toPng(freshEditor!, {
@@ -187,10 +213,12 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
           imageURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
           fileName = `${name}.svg`;
           break;
+        }
 
-        default:
+        default: {
           // If the provided format is not supported, return without doing anything
           return;
+        }
       }
 
       const link = document.createElement("a");

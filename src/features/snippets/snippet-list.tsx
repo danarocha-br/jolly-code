@@ -361,14 +361,6 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       moveLockRef.current = null;
     },
     onSuccess: (data, variables, context) => {
-
-      console.error('[handleMoveSnippet] onSuccess - returned data:', {
-        id: data?.id,
-        title: data?.title,
-        hasTitle: !!data?.title,
-        titleLength: data?.title?.length
-      });
-
       // Update the query cache with the returned collection data
       // This prevents needing to refetch all collections, which could return stale/corrupted data
       if (data) {
@@ -379,11 +371,6 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
               return data;
             }
             return collection;
-          });
-          console.error('[handleMoveSnippet] Updating cache with returned collection:', {
-            collectionId: data.id,
-            collectionTitle: data.title,
-            allTitles: updatedCollections.map(c => ({ id: c.id, title: c.title }))
           });
           queryClient.setQueryData(queryKey, updatedCollections);
         }
@@ -396,10 +383,6 @@ export function SnippetsList({ collections, isRefetching }: SnippetsListProps) {
       });
     },
     onSettled: () => {
-      const collectionsAfterSettle = queryClient.getQueryData<Collection[]>(queryKey);
-      console.error('[handleMoveSnippet] onSettled - collections before invalidate:',
-        collectionsAfterSettle?.map(c => ({ id: c.id, title: c.title }))
-      );
       // Only invalidate queries if we didn't successfully update the cache in onSuccess
       // This prevents unnecessary refetches that might return stale/corrupted data
       queryClient.invalidateQueries({ queryKey });

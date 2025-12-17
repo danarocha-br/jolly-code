@@ -14,8 +14,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "validate:plans": "node scripts/validate-plan-limits.js",
-    "email:preview": "pnpm exec email dev",
-    "email:dev": "pnpm exec email dev"
+    "email:preview": "pnpm exec email dev"
   },
   "dependencies": {
     "@arcjet/inspect": "1.0.0-beta.15",

@@ -54,8 +54,17 @@ export function ConfirmDeleteDialog({
             variant="destructive"
             onClick={onConfirm}
             disabled={isLoading}
+            aria-busy={isLoading}
+            aria-live="polite"
           >
-            {confirmLabel}
+            {isLoading ? (
+              <>
+                <i className="ri-loader-4-fill animate-spin mr-2" aria-hidden="true" />
+                Deleting…
+              </>
+            ) : (
+              confirmLabel
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -14,6 +14,34 @@ import { captureServerEvent } from '@/lib/services/tracking/server'
 import { ACCOUNT_EVENTS } from '@/lib/services/tracking/events'
 
 /**
+ * Masks an email address for privacy-safe logging
+ * Shows first character of local part, asterisks, and full domain
+ * Example: "user@example.com" -> "u***@example.com"
+ */
+function maskEmail(email: string): string {
+  const [localPart, domain] = email.split('@')
+  if (!domain || localPart.length === 0) {
+    return '***@***'
+  }
+  const maskedLocal = localPart[0] + '*'.repeat(Math.min(localPart.length - 1, 3))
+  return `${maskedLocal}@${domain}`
+}
+
+/**
+ * Creates an irreversible hash of an email for non-identifying tracking
+ * Uses a simple hash function (not cryptographically secure, but sufficient for anonymization)
+ */
+function hashEmail(email: string): string {
+  let hash = 0
+  for (let i = 0; i < email.length; i++) {
+    const char = email.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  return `email_hash_${Math.abs(hash).toString(16)}`
+}
+
+/**
  * Server Action: Delete user account
  * 
  * This action:
@@ -93,14 +121,14 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
           react: React.createElement(AccountDeletedEmail, { name: userName }),
           idempotencyKey: `account-deleted-${user.id}-${Date.now()}`,
         })
-        console.log(`[deleteAccount] Sent deletion confirmation email to ${userEmail}`)
+        console.log(`[deleteAccount] Sent deletion confirmation email to ${maskEmail(userEmail)}`)
       } catch (emailError) {
         // Log email error but don't fail deletion (non-critical)
         console.error('[deleteAccount] Failed to send confirmation email:', emailError)
         Sentry.captureException(emailError, {
           level: 'warning',
           tags: { operation: 'delete_account_send_email' },
-          extra: { userId: user.id, email: userEmail },
+          extra: { userId: user.id },
         })
       }
     }
@@ -263,7 +291,6 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
       tags: { operation: 'delete_account_success' },
       extra: {
         userId: user.id,
-        email: userEmail,
         hadStripeCustomer: !!stripeCustomerId,
       },
     })

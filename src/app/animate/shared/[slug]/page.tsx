@@ -13,6 +13,8 @@ import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createHash } from "crypto";
 import { FriendlyError } from "@/components/errors/friendly-error";
+import { promises as fs } from "fs";
+import { join } from "path";
 
 type SharedAnimationPageProps = {
   params: Promise<{
@@ -42,11 +44,33 @@ export async function generateMetadata({ params }: SharedAnimationPageProps): Pr
     "View animated code snippets from Jolly Code.";
 
   const ogImage = `/api/og-image?slug=${slug}`;
+  const headerStoreForMetadata = await headers();
+  const host = headerStoreForMetadata.get("host") || "";
+  const protocol = headerStoreForMetadata.get("x-forwarded-proto") || "https";
+  const actualUrl = `${protocol}://${host}/animate/shared/${slug}`;
+  const oembedUrl = `${protocol}://${host}/api/oembed?url=${encodeURIComponent(actualUrl)}`;
+
+  // #region agent log
+  try {
+    const logPath = join(process.cwd(), ".cursor", "debug.log");
+    const logEntry = JSON.stringify({
+      location: "page.tsx:46",
+      message: "generateMetadata - URLs",
+      data: { slug, siteConfigUrl: siteConfig.url, actualUrl, host, protocol, oembedUrl, canonical: `/animate/shared/${slug}` },
+      timestamp: Date.now(),
+      sessionId: "debug-session",
+      runId: "run1",
+      hypothesisId: "B",
+    }) + "\n";
+    await fs.appendFile(logPath, logEntry).catch(() => {});
+  } catch {}
+  // #endregion
 
   return {
     title,
     description,
     openGraph: {
+      url: actualUrl,
       images: [ogImage],
       title,
       description,
@@ -59,17 +83,17 @@ export async function generateMetadata({ params }: SharedAnimationPageProps): Pr
       images: [ogImage],
       players: [
         {
-          playerUrl: `${siteConfig.url}/animate/embed/${slug}`,
-          streamUrl: `${siteConfig.url}/animate/embed/${slug}`,
+          playerUrl: `${protocol}://${host}/animate/embed/${slug}`,
+          streamUrl: `${protocol}://${host}/animate/embed/${slug}`,
           width: 800,
           height: 450,
         },
       ],
     },
     alternates: {
-      canonical: `/animate/shared/${slug}`,
+      canonical: actualUrl,
       types: {
-        "application/json+oembed": `/api/oembed?url=${encodeURIComponent(`${siteConfig.url}/animate/shared/${slug}`)}`,
+        "application/json+oembed": oembedUrl,
       },
     },
   };
