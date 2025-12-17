@@ -36,9 +36,11 @@ import { AnimationCollection, Animation } from "./dtos";
 import { AnimationCollectionItem } from "./ui/collection-item";
 import { AnimationCollectionTrigger } from "./ui/collection-trigger";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { cn } from "@/lib/utils";
 import * as AnimationStyles from "./ui/styles";
 import { USAGE_QUERY_KEY } from "@/features/user/queries";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 import { trackAnimationEvent } from "@/features/animation/analytics";
 
 type CollectionDroppableProps = {
@@ -78,6 +80,11 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
     animationId: string;
     toCollectionId: string;
   } | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    collection: AnimationCollection;
+    animationIds: string[];
+  } | null>(null);
+  const moveLockRef = useRef<string | null>(null);
 
   const collectionTitleInputRef = useRef<HTMLInputElement>(null);
   const lastUpdateTime = useRef(0);
@@ -149,8 +156,54 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+      // This must happen synchronously before invalidateQueries triggers refetch
+      if (user?.id) {
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user.id);
+      }
+      if (user?.id) {
+        // Invalidate after cache is cleared to ensure fresh data
+        queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user.id] });
+      }
     },
   });
+
+  const openDeleteDialog = useCallback((collection: AnimationCollection) => {
+    const animationIds =
+      collection.animations
+        ?.map((animation: any) => (typeof animation === "string" ? animation : animation?.id))
+        .filter(Boolean) ?? [];
+    setDeleteDialog({ collection, animationIds });
+  }, []);
+
+  const handleConfirmDeleteCollection = useCallback(() => {
+    if (!deleteDialog) return;
+
+    const { collection, animationIds } = deleteDialog;
+
+    if (animationIds.length) {
+      // Remove from tabs (already updates saved flag in tabs)
+      const store = useAnimationStore.getState();
+      for (const id of animationIds) {
+        if (id) {
+          store.removeAnimationFromTabs(id);
+        }
+      }
+
+      // If active animation is being removed, clear active state and reset editor
+      const { animationId: currentAnimationId, resetActiveAnimation } = store;
+      if (currentAnimationId && animationIds.includes(currentAnimationId)) {
+        resetActiveAnimation();
+      }
+    }
+
+    handleDeleteCollection({
+      collection_id: collection.id,
+      user_id: collection.user_id,
+    });
+    setDeleteDialog(null);
+  }, [deleteDialog, handleDeleteCollection]);
 
   const { mutate: handleUpdateCollection } = useMutation({
     mutationFn: updateAnimationCollectionTitle,
@@ -281,6 +334,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
       setDraggedAnimationId(null);
       setDragSourceCollectionId(null);
       setPendingMove(null);
+      moveLockRef.current = null;
     },
     onSuccess: (data, variables) => {
       trackAnimationEvent("move_animation", user, {
@@ -299,6 +353,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
       setDraggedAnimationId(null);
       setDragSourceCollectionId(null);
       setPendingMove(null);
+      moveLockRef.current = null;
     },
   });
 
@@ -324,12 +379,29 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
         | undefined;
       const targetCollectionId = event.over?.id?.toString();
 
+      // Prevent concurrent moves for the same animation while a move is pending
+      if (data?.animation && pendingMove?.animationId === data.animation.id) {
+        return;
+      }
+
+      // Block moves if any animation move is currently locked (guard against rapid re-entrancy before state updates)
+      if (moveLockRef.current) {
+        return;
+      }
+
       if (
         data?.animation &&
         data?.collectionId &&
         targetCollectionId &&
         targetCollectionId !== data.collectionId
       ) {
+        // Optimistically lock this animation move immediately
+        moveLockRef.current = data.animation.id;
+        setPendingMove({
+          animationId: data.animation.id,
+          toCollectionId: targetCollectionId,
+        });
+
         handleMoveAnimation({
           id: targetCollectionId,
           previous_collection_id: data.collectionId,
@@ -352,19 +424,46 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
   }, []);
 
   const sortedCollections = useMemo(() => {
-    return collections.sort((a, b) =>
-      a.title === "Home" ? -1 : b.title === "Home" ? 1 : 0
-    );
+    if (!collections) return [];
+    const list = [...collections];
+    const homeIndex = list.findIndex((c) => c.title === "Home");
+    if (homeIndex > 0) {
+      const [home] = list.splice(homeIndex, 1);
+      list.unshift(home);
+    }
+    return list;
   }, [collections]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
+    <>
+      <ConfirmDeleteDialog
+        open={!!deleteDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialog(null);
+          }
+        }}
+        title="Are you sure you want to delete this folder?"
+        description={
+          deleteDialog
+            ? deleteDialog.animationIds.length > 0
+              ? `Deleting this folder will also delete ${deleteDialog.animationIds.length} animation${
+                  deleteDialog.animationIds.length === 1 ? "" : "s"
+                }. This cannot be undone.`
+              : "This action cannot be undone."
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmDeleteCollection}
+      />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
       {sortedCollections && (
         <div className="flex flex-col items-center justify-center">
           <Accordion
@@ -400,10 +499,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
                             isBusy={isMoveDestination}
                             isDropTarget={isDropTargetActive}
                             onRemove={() => {
-                              handleDeleteCollection({
-                                collection_id: collection.id,
-                                user_id: collection.user_id,
-                              });
+                              openDeleteDialog(collection);
                             }}
                             onUpdate={() => {
                               collectionTitleInputRef.current?.focus();
@@ -511,6 +607,7 @@ export function AnimationsList({ collections, isRefetching }: AnimationsListProp
           </div>
         ) : null}
       </DragOverlay>
-    </DndContext>
+      </DndContext>
+    </>
   );
 }

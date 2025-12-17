@@ -1,54 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useRouter, useSearchParams } from "next/navigation";
-
+import { useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { themes } from "@/lib/themes-options";
 import { fonts } from "@/lib/fonts-options";
 import { Nav } from "@/components/ui/nav";
 import { Sidebar } from "@/components/ui/sidebar";
-import { Logo } from "@/components/ui/logo";
 import { SettingsPanel } from "@/features/settings-panel";
 import { UserTools } from "@/features/user-tools";
 import { CodeEditor } from "@/features/code-editor";
-import { useEditorStore, useUserStore } from "@/app/store";
+import { useEditorStore } from "@/app/store";
 import { analytics } from "@/lib/services/tracking";
+import { useAuth } from "@/components/auth-provider";
 
 export const Home = () => {
-  const supabase = createClient();
+  const { isInitialized } = useAuth();
   const searchParams = useSearchParams();
   const shared = searchParams.get("shared");
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const isPresentational = useEditorStore((state) => state.presentational);
-
-  const { isLoading } = useQuery({
-    queryKey: ["user"],
-    queryFn: async () => {
-      try {
-        const { data } = await supabase.auth.getUser();
-
-        if (data?.user) {
-          useUserStore.setState({
-            user: data.user,
-          });
-        } else {
-          useUserStore.setState({ user: null });
-        }
-
-        return data.user;
-      } catch (error) {
-        toast.error("Sorry, something went wrong.");
-        useUserStore.setState({ user: null });
-      }
-    },
-  });
 
 
 
@@ -154,7 +128,7 @@ export const Home = () => {
 
         <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
           <main className="relative flex items-center justify-center lg:-ml-16">
-            <CodeEditor isLoading={isLoading} />
+            <CodeEditor isLoading={!isInitialized} />
 
             <SettingsPanel />
 

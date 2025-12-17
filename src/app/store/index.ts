@@ -75,7 +75,7 @@ export const useEditorStore = create<EditorStoreState>()(
         showBackground: true,
         fontSize: 15,
         fontFamily: "robotoMono",
-        padding: 60,
+        padding: 64,
         presentational: false,
         editor: "default",
         showLineNumbers: false,

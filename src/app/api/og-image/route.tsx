@@ -1,51 +1,21 @@
 import { ImageResponse } from "next/og";
+import { highlightCodeForOG, renderStyledSegments, truncateCodeForOG } from "@/lib/utils/og-syntax-highlight";
+import { getThemeColors } from "@/lib/og-theme-colors";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const contentType = "image/png";
-export const size = {
-  width: 1200,
-  height: 630,
-};
+export const size = { width: 1200, height: 630 };
 
-type Slide = {
-  title?: string;
-  code?: string;
-  language?: string;
-};
-
-type Payload = {
-  slides?: Slide[];
-  editor?: { fontFamily?: string };
-};
+type Slide = { title?: string; code?: string; language?: string };
+type Payload = { slides?: Slide[]; editor?: { fontFamily?: string; backgroundTheme?: string } };
 
 const safeDecodePayload = (raw: string | null): Payload | null => {
   if (!raw) return null;
-
-  const decode = (value: string) => {
-    try {
-      // Next.js automatically URL-decodes searchParams, so we just need to base64 decode
-      if (typeof atob === "function") {
-        const decoded = atob(value);
-        return decodeURIComponent(decoded);
-      }
-      if (typeof Buffer !== "undefined") {
-        const decoded = Buffer.from(value, "base64").toString("utf-8");
-        return decodeURIComponent(decoded);
-      }
-      return "";
-    } catch (error) {
-      console.error("Failed to decode base64:", error);
-      return "";
-    }
-  };
-
   try {
-    const json = decode(raw);
-    if (!json) return null;
-    return JSON.parse(json) as Payload;
-  } catch (error) {
-    console.error("Failed to parse JSON from decoded payload:", error);
+    const decoded = atob(raw);
+    return JSON.parse(decodeURIComponent(decoded)) as Payload;
+  } catch {
     return null;
   }
 };
@@ -55,9 +25,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const payloadParam = searchParams.get("payload");
     const slugParam = searchParams.get("slug");
-    const titleOverride = searchParams.get("title") ?? undefined;
-    const descriptionOverride = searchParams.get("description") ?? undefined;
-    const mode = searchParams.get("mode") ?? "social"; // "social" or "embed"
+    const titleOverride = searchParams.get("title");
+    const descriptionOverride = searchParams.get("description");
 
     let decodedPayload: Payload | null = null;
     let titleFromDb: string | undefined;
@@ -66,8 +35,13 @@ export async function GET(request: Request) {
     // If slug is provided, fetch from database
     if (slugParam) {
       try {
-        const { getSharedLink } = await import("@/lib/services/shared-link");
-        const { extractAnimationPayloadFromUrl, decodeAnimationSharePayload } = await import("@/features/animation/share-utils");
+        const [{ getSharedLink }, { extractAnimationPayloadFromUrl, decodeAnimationSharePayload }] = await Promise.all([
+          import("@/lib/services/shared-link").then(m => ({ getSharedLink: m.getSharedLink })),
+          import("@/features/animation/share-utils").then(m => ({ 
+            extractAnimationPayloadFromUrl: m.extractAnimationPayloadFromUrl,
+            decodeAnimationSharePayload: m.decodeAnimationSharePayload 
+          }))
+        ]);
 
         const data = await getSharedLink(slugParam);
         if (data?.url) {
@@ -78,152 +52,56 @@ export async function GET(request: Request) {
             descriptionFromDb = data.description ?? undefined;
           }
         }
-      } catch (error) {
-        console.error("Failed to fetch shared link:", error);
-      }
+      } catch {}
     } else if (payloadParam) {
-      // Otherwise use the payload parameter
       decodedPayload = safeDecodePayload(payloadParam);
-
-      if (!decodedPayload) {
-        console.error("Failed to decode payload parameter");
-      }
     }
 
-    const fallbackSlide: Slide = {
+    const firstSlide = decodedPayload?.slides?.[0] || { 
       title: titleOverride || "Shared animation",
-      code: "// No preview available. Generate a link to see your animation here.",
-      language: "typescript",
+      code: "// No preview",
+      language: "javascript",
     };
 
-    const firstSlide = decodedPayload?.slides?.[0] ?? fallbackSlide;
+    const title = titleFromDb || titleOverride || firstSlide.title || "Shared animation";
+    const rawCode = firstSlide.code || "// No code";
+    const language = firstSlide.language || "javascript";
+    const backgroundTheme = decodedPayload?.editor?.backgroundTheme || "sublime";
+    
+    // Truncate and highlight code
+    const codeSnippet = truncateCodeForOG(rawCode, 10, 80);
+    const styledSegments = highlightCodeForOG(codeSnippet, language, backgroundTheme);
+    const renderableSegments = renderStyledSegments(styledSegments);
+    const themeColors = getThemeColors(backgroundTheme);
+    const background = "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)";
 
-    const title = titleFromDb || titleOverride || firstSlide?.title || "Shared animation";
-    const description =
-      descriptionFromDb || descriptionOverride || decodedPayload?.editor?.fontFamily || "Bring your code to life with animated snippets.";
-
-    const codeSnippet =
-      (firstSlide?.code || fallbackSlide.code)?.split("\n").slice(0, 6).join("\n").slice(0, 200) ||
-      fallbackSlide.code;
-
-    // Get the background theme from payload
-    const backgroundTheme = (decodedPayload as any)?.editor?.backgroundTheme || "sublime";
-
-    // Theme background mapping (matching themes-options.ts)
-    const themeBackgrounds: Record<string, string> = {
-      sublime: "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)",
-      hyper: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)",
-      dracula: "linear-gradient(135deg, #ff79c6 0%, #bd93f9 50%, #6272a4 100%)",
-      monokai: "linear-gradient(135deg, #f92672 0%, #66d9ef 50%, #a6e22e 100%)",
-      nord: "linear-gradient(135deg, #88c0d0 0%, #81a1c1 50%, #5e81ac 100%)",
-      gotham: "linear-gradient(135deg, #2aa889 0%, #599cab 50%, #4e5165 100%)",
-      blue: "linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)",
-      nightOwl: "linear-gradient(135deg, #c792ea 0%, #7fdbca 50%, #82aaff 100%)",
-    };
-
-    // Choose background based on mode
-    const background = mode === "embed"
-      ? (themeBackgrounds[backgroundTheme] || themeBackgrounds.sublime) // Use theme gradient for embed
-      : "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)"; // Default gradient for social
-
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            height: "100%",
-            background,
-            fontFamily: '"Inter", sans-serif',
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              width: "85%",
-              borderRadius: "16px",
-              background: "#1e1e2e",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              overflow: "hidden",
-            }}
-          >
-            {/* Window Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 24px",
-                background: "rgba(255, 255, 255, 0.03)",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-              }}
-            >
-              {/* Window Controls */}
-              <div style={{ display: "flex", gap: "10px" }}>
-                <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ff5f56" }} />
-                <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ffbd2e" }} />
-                <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#27c93f" }} />
+    try {
+      return new ImageResponse(
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:"100%",height:"100%",background,position:"relative"}}>
+          <div style={{display:"flex",flexDirection:"column",width:"85%",borderRadius:"16px",background:themeColors.background,boxShadow:"0 25px 50px -12px rgba(0,0,0,0.5)",border:"1px solid rgba(255,255,255,0.1)",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 24px",background:"rgba(255,255,255,0.03)",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+              <div style={{display:"flex",gap:"10px"}}>
+                <div style={{width:"12px",height:"12px",borderRadius:"50%",background:"#ff5f56"}}/>
+                <div style={{width:"12px",height:"12px",borderRadius:"50%",background:"#ffbd2e"}}/>
+                <div style={{width:"12px",height:"12px",borderRadius:"50%",background:"#27c93f"}}/>
               </div>
-
-              {/* Title Pill */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "6px 16px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  borderRadius: "8px",
-                  color: "#9ca3af",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                }}
-              >
-                {title}
-              </div>
-
-              {/* Spacer for centering */}
-              <div style={{ width: "56px" }} />
+              <div style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 16px",background:"rgba(255,255,255,0.05)",borderRadius:"8px",color:"#9ca3af",fontSize:"14px",fontWeight:500}}>{title}</div>
+              <div style={{width:"56px"}}/>
             </div>
-
-            {/* Code Content */}
-            <div
-              style={{
-                display: "flex",
-                padding: "32px",
-                height: "280px",
-              }}
-            >
-              <pre
-                style={{
-                  margin: 0,
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                  fontSize: "20px",
-                  lineHeight: "1.5",
-                  color: "#e2e8f0",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {codeSnippet}
-              </pre>
+            <div style={{display:"flex",flexDirection:"column",padding:"32px",height:"280px",overflow:"hidden",fontFamily:"monospace",fontSize:"18px",lineHeight:"1.6"}}>
+              {renderableSegments.map((line,i)=><div key={i} style={{display:"flex",minHeight:"28.8px"}}>{line.segments.map((seg,j)=><span key={j} style={{color:seg.color}}>{seg.text}</span>)}{line.segments.length===0&&<span style={{color:"transparent"}}> </span>}</div>)}
             </div>
           </div>
-        </div>
-      ),
-      {
-        ...size,
-        headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-        },
-      }
-    );
+          <div style={{position:"absolute",bottom:32,right:40,color:"#f8fafc",fontSize:"20px",fontWeight:600}}>jollycode.dev</div>
+        </div>,
+        {...size,headers:{"Cache-Control":"public, s-maxage=3600, stale-while-revalidate=86400"}}
+      );
+    } catch {
+      return new ImageResponse(<div/>,size);
+    }
   } catch (error) {
     console.error("OG image generation failed", error);
     return new ImageResponse(<div />, size);
   }
 }
+

@@ -11,6 +11,8 @@ import {
 import { useAnimationStore, useUserStore } from "@/app/store";
 import { supportsWebCodecsEncoding } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
+import { analytics } from "@/lib/services/tracking";
+import { VIDEO_EXPORT_EVENTS } from "@/lib/services/tracking/events";
 import { AnimationSettings } from "@/types/animation";
 
 const exportFormatExperiment = process.env.NEXT_PUBLIC_EXPORT_EXPERIMENT ?? "control";
@@ -36,10 +38,20 @@ export const SettingsPanel = () => {
     });
 
     if (setting === "exportFormat") {
+      analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_FORMAT_SELECTED, user, {
+        format: value,
+        webcodecs_supported: webCodecsSupported,
+      });
       trackAnimationEvent("animation_export_format_selected", user, {
         format: value,
         webcodecs_supported: webCodecsSupported,
         export_format_experiment: exportFormatExperiment,
+      });
+    }
+
+    if (setting === "resolution") {
+      analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_RESOLUTION_SELECTED, user, {
+        resolution: value,
       });
     }
   };
@@ -51,6 +63,10 @@ export const SettingsPanel = () => {
         setting_name: "exportFormat",
         old_value: "mp4",
         new_value: "webm",
+      });
+      analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_FORMAT_SELECTED, user, {
+        format: "webm",
+        webcodecs_supported: webCodecsSupported,
       });
       trackAnimationEvent("animation_export_format_selected", user, {
         format: "webm",

@@ -154,6 +154,24 @@ export const AnimateSharedClient = ({ payload, slug }: AnimateSharedClientProps)
         href={fonts[fontFamily].src}
         crossOrigin="anonymous"
       />
+
+      {/* Aggressive letter-spacing reset for shared view */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            #shared-animation-container,
+            #shared-animation-container *,
+            #shared-animation-container span,
+            #shared-animation-container div {
+              letter-spacing: 0 !important;
+              font-feature-settings: "liga" 0, "calt" 0, "dlig" 0 !important;
+              font-variant-ligatures: none !important;
+              -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
+              -moz-font-feature-settings: "liga" 0, "calt" 0 !important;
+            }
+          `,
+        }}
+      />
       <Room user={null}>
         <div className="min-h-screen !bg-background flex flex-col lg:flex-row">
           <Sidebar />
@@ -163,7 +181,7 @@ export const AnimateSharedClient = ({ payload, slug }: AnimateSharedClientProps)
 
             <main className="flex-1 pt-16 flex flex-col pb-64">
               <div className="flex-1 flex items-center justify-center overflow-auto py-6 relative">
-                <div className="w-full max-w-6xl px-6">
+                <div id="shared-animation-container" className="w-full max-w-6xl px-6">
                   <UnifiedAnimationCanvas
                     ref={previewRef}
                     mode={mode}

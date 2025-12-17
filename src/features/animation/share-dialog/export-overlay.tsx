@@ -17,6 +17,7 @@ interface ExportOverlayProps {
   onComplete: (blob: Blob) => void;
   onError: (err: Error) => void;
   onCancelled: () => void;
+  hideWatermark?: boolean;
 }
 
 export const ExportOverlay = ({
@@ -30,6 +31,7 @@ export const ExportOverlay = ({
   onComplete,
   onError,
   onCancelled,
+  hideWatermark = false,
 }: ExportOverlayProps) => {
   return (
     <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
@@ -74,6 +76,7 @@ export const ExportOverlay = ({
         onError={onError}
         cancelled={cancelExport}
         onCancelled={onCancelled}
+        hideWatermark={hideWatermark}
       />
     </div>
   );

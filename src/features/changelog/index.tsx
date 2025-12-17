@@ -34,7 +34,7 @@ export const Changelog = ({ children }: ChangelogProps) => {
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
 
-      <PopoverContent side="right" sideOffset={12} className="p-0">
+      <PopoverContent side="right" sideOffset={12} className="p-0 max-h-[500px] overflow-y-auto">
         <div className={S.container()}>
           <h2 className={S.header()}>Latest updates</h2>
 
@@ -105,7 +105,7 @@ export const Changelog = ({ children }: ChangelogProps) => {
                   </div>
 
                   {index !== data.result.entries.length - 1 && (
-                    <Separator className="bg-background/50" />
+                    <Separator className="bg-background/50 mt-3" />
                   )}
                 </React.Fragment>
               ))}

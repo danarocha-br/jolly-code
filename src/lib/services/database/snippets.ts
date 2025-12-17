@@ -3,6 +3,72 @@ import { Database } from "@/types/database";
 import { Snippet } from "./types";
 
 /**
+ * Input type for updating a snippet in the database.
+ * All fields except id and user_id are optional for partial updates.
+ */
+export type UpdateSnippetDbInput = {
+	id: string;
+	user_id: string;
+	title?: string;
+	code?: string;
+	language?: string;
+	url?: string | null;
+	supabase: SupabaseClient<Database, "public", any>;
+};
+
+/**
+ * Finds or creates a "Home" collection for the given user.
+ *
+ * @param {Object} params - The parameters for finding or creating the Home collection.
+ * @param {string} params.user_id - The ID of the user.
+ * @param {SupabaseClient<Database, "public", any>} params.supabase - The Supabase client instance.
+ * @returns {Promise<string | undefined>} The collection ID if found or created, undefined if not found and creation failed, or throws on DB error.
+ * @throws {Error} If a database error occurs during the select or insert operation.
+ */
+export async function getOrCreateHomeCollection({
+	user_id,
+	supabase,
+}: {
+	user_id: string;
+	supabase: SupabaseClient<Database, "public", any>;
+}): Promise<string | undefined> {
+	// Check if a collection named "Home" exists for the user
+	const { data: collections, error: collectionsError } = await supabase
+		.from("collection")
+		.select("id")
+		.eq("user_id", user_id)
+		.eq("title", "Home");
+
+	if (collectionsError) {
+		throw collectionsError;
+	}
+
+	// If the collection exists, return its ID
+	if (collections && collections.length > 0) {
+		return collections[0].id;
+	}
+
+	// If the collection does not exist, create one
+	const { data: newCollection, error: createError } = await supabase
+		.from("collection")
+		.insert([
+			{
+				user_id,
+				title: "Home",
+				updated_at: new Date().toISOString(),
+			},
+		])
+		.select("id")
+		.single();
+
+	if (createError) {
+		throw createError;
+	}
+
+	return newCollection?.id;
+}
+
+/**
  * Inserts a snippet into the database.
  *
  * @param {Snippet} snippet - The snippet object containing the user ID, title, code, language, and URL.
@@ -10,111 +76,102 @@ import { Snippet } from "./types";
  * @return {Promise<any>} The result of the insert operation.
  */
 export async function insertSnippet({
-    id,
-    user_id,
-    title,
-    code,
-    language,
-    url,
-    supabase,
+	id,
+	user_id,
+	title,
+	code,
+	language,
+	url,
+	supabase,
 }: Snippet): Promise<any> {
-    let sanitizedTitle = null;
+	let sanitizedTitle = null;
 
-    if (title === "" || title === undefined) {
-        sanitizedTitle = "Untitled";
-    } else {
-        sanitizedTitle = title;
-    }
+	if (title === "" || title === undefined) {
+		sanitizedTitle = "Untitled";
+	} else {
+		sanitizedTitle = title;
+	}
 
-    // Create the snippet
+	// Create the snippet
 
-    try {
-        const { data: snippet, error } = await supabase
-            .from("snippet")
-            .insert([
-                {
-                    id,
-                    user_id,
-                    title: sanitizedTitle,
-                    code,
-                    language,
-                    url,
-                    updated_at: new Date().toISOString(),
-                },
-            ])
-            .select();
+	try {
+		const { data: snippet, error } = await supabase
+			.from("snippet")
+			.insert([
+				{
+					id,
+					user_id,
+					title: sanitizedTitle,
+					code,
+					language,
+					url,
+					updated_at: new Date().toISOString(),
+				},
+			])
+			.select();
 
-        if (snippet) {
-            // Check if a collection named "Home" exists for the user
-            let { data: collections }: { data: any[] | null; error: any } =
-                await supabase
-                    .from("collection")
-                    .select("id")
-                    .eq("user_id", user_id)
-                    .eq("title", "Home");
+		if (error) {
+			console.error('Error inserting snippet:', error);
+			throw error;
+		}
 
-            let collectionId: string | undefined;
+		if (!snippet || snippet.length === 0) {
+			throw new Error('Snippet insert returned no data');
+		}
 
-            // If the collection does not exist, create one
-            if (!collections || collections.length === 0) {
-                const { data: newCollection }: { data: any[] | null; error: any } =
-                    await supabase.from("collection").insert([
-                        {
-                            user_id,
-                            snippets: [snippet[0].id],
-                            title: "Home",
-                            updated_at: new Date().toISOString(),
-                        },
-                    ]);
+		if (snippet) {
+			// Get or create the "Home" collection for the user
+			const collectionId = await getOrCreateHomeCollection({
+				user_id,
+				supabase,
+			});
 
-                //@ts-ignore
-                if (newCollection && newCollection.length > 0) {
-                    //@ts-ignore
-                    collectionId = newCollection[0].id;
-                }
-            } else if (collections && collections.length > 0) {
-                collectionId = collections[0].id;
+			if (!collectionId) {
+				// If we cannot place the snippet into Home, clean up to avoid orphaned rows
+				await supabase.from("snippet").delete().eq("id", snippet[0].id).eq("user_id", user_id);
+				throw new Error("Failed to find or create the Home collection.");
+			}
 
-                // Fetch the current collection
-                const { data: currentCollection, error: currentCollectionError } =
-                    await supabase
-                        .from("collection")
-                        .select("snippets")
-                        .eq("user_id", user_id)
-                        .eq("id", collectionId)
-                        .single();
+			// Add snippet to "Home" collection via junction table
+			// Check if the snippet is already in the collection
+			const { data: existingJunction, error: checkError } = await supabase
+				.from("collection_snippets")
+				.select("snippet_id")
+				.eq("collection_id", collectionId)
+				.eq("snippet_id", snippet[0].id)
+				.maybeSingle();
 
-                if (currentCollectionError) {
-                    throw currentCollectionError;
-                }
+			if (checkError) {
+				// Clean up the orphaned snippet before propagating the error
+				await supabase.from("snippet").delete().eq("id", snippet[0].id).eq("user_id", user_id);
+				throw checkError;
+			}
 
-                // Check if the snippet id already exists in the collection
-                if (!currentCollection.snippets.includes(snippet[0].id)) {
-                    // Append the new snippet to the existing snippets array
-                    const updatedSnippets = [
-                        ...currentCollection.snippets,
-                        snippet[0].id,
-                    ];
-                    // Update the collection with the new snippets array
-                    const { error: updateError } = await supabase
-                        .from("collection")
-                        .update({ snippets: updatedSnippets, updated_at: new Date().toISOString() })
-                        .eq("user_id", user_id)
-                        .eq("id", collectionId);
+			// Only insert if not already in collection
+			if (existingJunction === null) {
+				const { error: insertJunctionError } = await supabase
+					.from("collection_snippets")
+					.insert([
+						{
+							collection_id: collectionId,
+							snippet_id: snippet[0].id,
+						},
+					]);
 
-                    if (updateError) {
-                        console.log(updateError);
-                        throw updateError;
-                    }
-                }
-            }
+				if (insertJunctionError) {
+					console.error(insertJunctionError);
+					// Clean up the orphaned snippet to keep counts accurate
+					await supabase.from("snippet").delete().eq("id", snippet[0].id).eq("user_id", user_id);
+					throw insertJunctionError;
+				}
+			}
 
-            return snippet;
-        }
-    } catch (error) {
-        console.error(error);
-        throw new Error("An error occurred. Please try again later.");
-    }
+			return snippet;
+		}
+	} catch (error) {
+		console.error(error);
+		throw new Error("An error occurred. Please try again later.");
+	}
 }
 
 /**
@@ -124,59 +181,29 @@ export async function insertSnippet({
  * @return {Promise<void>} - A promise that resolves when the snippet is successfully deleted.
  */
 export async function deleteSnippet({
-    snippet_id,
-    user_id,
-    supabase,
+	snippet_id,
+	user_id,
+	supabase,
 }: {
-    snippet_id: string;
-    user_id: string;
-    supabase: SupabaseClient<Database, "public", any>;
+	snippet_id: string;
+	user_id: string;
+	supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
-    try {
-        // Find collections that contain the snippet
-        const { data: collections, error: collectionError } = await supabase
-            .from("collection")
-            .select("*")
-            .eq("user_id", user_id);
+	try {
+		// Delete the snippet (CASCADE will automatically delete junction records)
+		const { error: deleteError } = await supabase
+			.from("snippet")
+			.delete()
+			.eq("id", snippet_id)
+			.eq("user_id", user_id);
 
-        if (collectionError) {
-            throw collectionError;
-        }
-
-        // Remove the snippet from each collection
-        if (collections) {
-            for (const collection of collections) {
-                if (collection.snippets) {
-                    const updatedSnippets = collection.snippets.filter(
-                        (id: string) => id !== snippet_id
-                    );
-
-                    const { error: updateError } = await supabase
-                        .from("collection")
-                        .update({ snippets: updatedSnippets })
-                        .eq("id", collection.id)
-                        .eq("user_id", user_id);
-
-                    if (updateError) {
-                        throw updateError;
-                    }
-                }
-            }
-        }
-
-        const { error: deleteError } = await supabase
-            .from("snippet")
-            .delete()
-            .eq("id", snippet_id)
-            .eq("user_id", user_id);
-
-        if (deleteError) {
-            throw deleteError;
-        }
-    } catch (error) {
-        console.error(error);
-        throw new Error("An error occurred. Please try again later.");
-    }
+		if (deleteError) {
+			throw deleteError;
+		}
+	} catch (error) {
+		console.error(error);
+		throw new Error("An error occurred. Please try again later.");
+	}
 }
 
 /**
@@ -188,32 +215,32 @@ export async function deleteSnippet({
  * @throws If the snippet is not found or an error occurs.
  */
 export async function getSnippetById({
-    user_id,
-    snippet_id,
-    supabase,
+	user_id,
+	snippet_id,
+	supabase,
 }: {
-    user_id: string;
-    snippet_id: string;
-    supabase: SupabaseClient<Database, "public", any>;
+	user_id: string;
+	snippet_id: string;
+	supabase: SupabaseClient<Database, "public", any>;
 }): Promise<Snippet[]> {
-    try {
-        const { data } = await supabase
-            .from("snippet")
-            .select()
-            .eq("id", snippet_id)
-            .eq("user_id", user_id);
+	try {
+		const { data } = await supabase
+			.from("snippet")
+			.select()
+			.eq("id", snippet_id)
+			.eq("user_id", user_id);
 
-        if (data && data.length > 0) {
-            return data;
-        } else {
-            throw new Error("Snippet not found.");
-        }
-    } catch (error) {
-        console.error(error);
-        return Promise.reject(
-            new Error("An error occurred. Please try again later.")
-        );
-    }
+		if (data && data.length > 0) {
+			return data;
+		} else {
+			throw new Error("Snippet not found.");
+		}
+	} catch (error) {
+		console.error(error);
+		return Promise.reject(
+			new Error("An error occurred. Please try again later.")
+		);
+	}
 }
 
 /**
@@ -223,79 +250,89 @@ export async function getSnippetById({
  * @param {SupabaseClient<Database, "public", any>} supabase - The Supabase client.
  * @return {Promise<Snippet[]>} - A promise that resolves to an array of snippets.
  */
-export async function getUsersSnippetsList({
-    user_id,
-    supabase,
+export async function getUsersSnippetsList<T = Snippet>({
+	user_id,
+	supabase,
+	columns,
 }: {
-    user_id: string;
-    supabase: SupabaseClient<Database, "public", any>;
-}): Promise<Snippet[]> {
-    try {
-        const { data } = await supabase
-            .from("snippet")
-            .select("*")
-            .eq("user_id", user_id);
+	user_id: string;
+	supabase: SupabaseClient<Database, "public", any>;
+	columns?: string;
+}): Promise<T[]> {
+	try {
+		const { data } = await supabase
+			.from("snippet")
+			.select(columns || "*")
+			.eq("user_id", user_id);
 
-        if (data) {
-            return data;
-        } else {
-            throw new Error("No snippets found.");
-        }
-    } catch (error) {
-        console.error(error);
-        return Promise.reject(
-            new Error("An error occurred. Please try again later.")
-        );
-    }
+		if (data) {
+			return data as T[];
+		} else {
+			throw new Error("No snippets found.");
+		}
+	} catch (error) {
+		console.error(error);
+		return Promise.reject(
+			new Error("An error occurred. Please try again later.")
+		);
+	}
 }
 
 /**
  * Updates a snippet in the database.
  *
- * @param {Snippet} snippet - The snippet object containing the snippet information.
+ * @param {UpdateSnippetDbInput} input - The snippet update input containing id, user_id, and optional fields to update.
  * @return {Promise<Snippet[]>} - A promise that resolves to the updated snippet data.
  */
 export async function updateSnippet({
-    id,
-    user_id,
-    title,
-    code,
-    language,
-    url,
-    supabase,
-}: Snippet): Promise<Snippet[]> {
-    let sanitizedTitle = null;
+	id,
+	user_id,
+	title,
+	code,
+	language,
+	url,
+	supabase,
+}: UpdateSnippetDbInput): Promise<Snippet[]> {
+	// Build update object with only provided fields
+	const updateData: {
+		title?: string;
+		code?: string;
+		language?: string;
+		url?: string | null;
+		updated_at: string;
+	} = {
+		updated_at: new Date().toISOString(),
+	};
 
-    if (title === "" || title === undefined) {
-        sanitizedTitle = "Untitled";
-    } else {
-        sanitizedTitle = title;
-    }
+	// Only include fields that are provided (not undefined)
+	if (title !== undefined) {
+		updateData.title = title === "" ? "Untitled" : title;
+	}
+	if (code !== undefined) {
+		updateData.code = code;
+	}
+	if (language !== undefined) {
+		updateData.language = language;
+	}
+	if (url !== undefined) {
+		updateData.url = url;
+	}
 
-    try {
-        const { data, error } = await supabase
-            .from("snippet")
-            .update([
-                {
-                    user_id,
-                    title: sanitizedTitle,
-                    code,
-                    language,
-                    url,
-                    updated_at: new Date().toISOString(),
-                },
-            ])
-            .eq("id", id)
-            .eq("user_id", user_id)
-            .select();
+	try {
+		const { data, error } = await supabase
+			.from("snippet")
+			.update(updateData)
+			.eq("id", id)
+			.eq("user_id", user_id)
+			.select();
 
-        if (error) {
-            throw error;
-        }
+		if (error) {
+			throw error;
+		}
 
-        return data;
-    } catch (error) {
-        console.error(error);
-        throw new Error("An error occurred. Please try again later.");
-    }
+		return data;
+	} catch (error) {
+		console.error(error);
+		throw new Error("An error occurred. Please try again later.");
+	}
 }

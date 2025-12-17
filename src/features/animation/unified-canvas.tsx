@@ -259,6 +259,7 @@ export const UnifiedAnimationCanvas = React.forwardRef<HTMLDivElement, UnifiedAn
                 fontFamily: fonts[fontFamily || "robotoMono"].name,
                 fontSize: fontSize,
                 lineHeight: (fontSize || 14) * 1.7 + "px",
+                letterSpacing: 0,
               }}
               textareaClassName="focus:outline-none"
               placeholder="Write your code here..."

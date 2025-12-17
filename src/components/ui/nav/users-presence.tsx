@@ -11,13 +11,25 @@ const UsersPresence = () => {
   const filteredUsers = useMemo(() => {
     const currentUserId = currentUser?.id;
 
-    // Keep showing all users when the viewer is anonymous so we don't hide others
-    if (!currentUserId || currentUserId === "anonymous") {
-      return users;
+    // Filter out duplicate connections from the same user (whether authenticated or anonymous)
+    // Using Set-based approach for O(n) time complexity instead of O(n²)
+    const seenIds = new Set<string>();
+    const uniqueUsers: Array<typeof users[number]> = [];
+    
+    for (const user of users) {
+      if (!seenIds.has(user.id)) {
+        seenIds.add(user.id);
+        uniqueUsers.push(user);
+      }
     }
 
-    // Avoid rendering the logged-in user twice when they have multiple connections open
-    return users.filter((user) => user.id !== currentUserId);
+    // If current user is authenticated, also filter out their own connections
+    if (currentUserId && currentUserId !== "anonymous") {
+      return uniqueUsers.filter((user) => user.id !== currentUserId);
+    }
+
+    // For anonymous users, just return the unique users (no self-filtering needed)
+    return uniqueUsers;
   }, [currentUser?.id, users]);
 
   const userCount = filteredUsers.length;

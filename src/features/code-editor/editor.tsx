@@ -21,17 +21,22 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoginDialog } from "@/features/login";
+import { Logo } from "@/components/ui/logo";
 import {
   createSnippet,
   removeSnippet,
   updateSnippet,
+  type CreateSnippetProps,
+  type RemoveSnippetProps,
 } from "@/features/snippets/queries";
-import { Collection } from "@/features/snippets/dtos";
+import { Collection, Snippet } from "@/features/snippets/dtos";
 import { TitleInput } from "./title-input";
 import { WidthMeasurement } from "./width-measurement";
 import { analytics } from "@/lib/services/tracking";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
+import { ActionResult } from "@/actions/utils/action-result";
+import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -60,6 +65,78 @@ const unfocusEditor = hotKeyList.filter(
   (item) => item.label === "Unfocus code editor"
 );
 
+/**
+ * Determines if an error indicates an upgrade/plan limit condition.
+ * Checks for explicit error codes and upgrade-related keywords in the error message.
+ */
+function isUpgradeError(error: unknown): boolean {
+  if (!error) return false;
+
+  // Handle error objects with code or type properties
+  if (typeof error === "object" && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+
+    // Check for explicit error codes
+    if (errorObj.code === "UPGRADE_REQUIRED" || errorObj.code === "PLAN_LIMIT_EXCEEDED") {
+      return true;
+    }
+
+    // Check error.type for upgrade markers
+    if (typeof errorObj.type === "string" && errorObj.type.toLowerCase().includes("upgrade")) {
+      return true;
+    }
+
+    // Extract message from error object if available
+    if (typeof errorObj.message === "string") {
+      error = errorObj.message;
+    } else if (typeof errorObj.error === "string") {
+      error = errorObj.error;
+    }
+  }
+
+  // Handle string errors
+  if (typeof error !== "string") {
+    return false;
+  }
+
+  const errorLower = error.toLowerCase();
+
+  // Check for explicit upgrade-related keywords
+  const upgradeKeywords = [
+    "upgrade",
+    "limit reached",
+    "plan limit",
+    "reached your",
+    "exceeded",
+    "over limit",
+  ];
+
+  return upgradeKeywords.some((keyword) => errorLower.includes(keyword));
+}
+
+/**
+ * Reverts the editor state to a previous state by updating the editor store.
+ * Checks for previousState and editorId, maps/replaces the matching editor,
+ * filters nulls, and updates the store with the new editors array.
+ */
+function revertEditorState(previousState: EditorState | null, editorId?: string): void {
+  if (!previousState || !editorId) {
+    return;
+  }
+
+  const currentEditors = useEditorStore.getState().editors;
+  useEditorStore.setState({
+    editors: currentEditors
+      .map((editor) => {
+        if (editor.id === editorId) {
+          return previousState;
+        }
+        return editor;
+      })
+      .filter((editor): editor is EditorState => editor !== null),
+  });
+}
+
 export const Editor = forwardRef<any, EditorProps>(
   (
     {
@@ -74,6 +151,7 @@ export const Editor = forwardRef<any, EditorProps>(
     ref
   ) => {
     const editorRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const { theme } = useTheme();
     const memoizedTheme = useMemo(() => theme, [theme]);
@@ -199,12 +277,22 @@ export const Editor = forwardRef<any, EditorProps>(
         return user?.id;
       }
     }, [user]);
-    const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
+    const { data: usage, isLoading: isUsageLoading, refetch: refetchUsage } = useUserUsage(user_id);
     const snippetLimit = usage?.snippets;
+    
+    // Refetch usage data when user logs in
+    useEffect(() => {
+      if (user_id && !isUsageLoading) {
+        refetchUsage();
+      }
+    }, [user_id]); // Only depend on user_id to trigger on user change
+    // Check if limit is reached: current >= max (can't save if at or over limit)
+    // Also check overLimit flag which indicates existing over-limit content
     const snippetLimitReached =
-      snippetLimit?.max !== null &&
-      typeof snippetLimit?.max !== "undefined" &&
-      snippetLimit.current >= snippetLimit.max;
+      (snippetLimit?.max !== null &&
+        typeof snippetLimit?.max !== "undefined" &&
+        snippetLimit.current >= snippetLimit.max) ||
+      (snippetLimit?.overLimit ?? 0) > 0;
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
     useHotkeys(focusEditor[0].hotKey, () => {
@@ -223,50 +311,96 @@ export const Editor = forwardRef<any, EditorProps>(
       }
     });
 
-    const { mutate: handleCreateSnippet } = useMutation({
+    const { mutate: handleCreateSnippet } = useMutation<
+      ActionResult<Snippet>,
+      Error,
+      CreateSnippetProps,
+      { previousSnippets: unknown; previousEditorState: EditorState | null; editorId: string | undefined }
+    >({
       mutationFn: createSnippet,
 
-      onMutate: async () => {
+      onMutate: async (variables) => {
         await queryClient.cancelQueries({ queryKey });
+        // Also cancel usage queries to ensure fresh data for limit check
+        if (user_id) {
+          await queryClient.cancelQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
+        }
 
         const previousSnippets = queryClient.getQueryData(queryKey);
 
-        useEditorStore.setState({
-          editors: editors.map((editor) => {
-            if (editor.id === currentEditor?.id) {
-              return {
-                ...editor,
-                isSnippetSaved: true,
-              };
-            }
-            return editor;
-          }),
-        });
+        // Store editor ID and previous state for rollback
+        const editorId = currentEditor?.id;
+        const previousEditorState = currentEditor ? { ...currentEditor } : null;
 
-        return { previousSnippets };
+        // Optimistically update UI (will be reverted if save fails)
+        if (editorId) {
+          useEditorStore.setState({
+            editors: editors.map((editor) => {
+              if (editor.id === editorId) {
+                return {
+                  ...editor,
+                  isSnippetSaved: true,
+                };
+              }
+              return editor;
+            }),
+          });
+        }
+
+        return { previousSnippets, previousEditorState, editorId };
       },
 
       onError: (err, newSnippet, context) => {
         if (context) {
           queryClient.setQueryData(queryKey, context.previousSnippets);
+          // Revert optimistic editor state update using stored editor ID
+          revertEditorState(context.previousEditorState, context.editorId);
+        }
+        // Only open upgrade dialog if error indicates upgrade/limit condition
+        if (isUpgradeError(err)) {
+          setIsUpgradeOpen(true);
         }
       },
 
       onSettled: (data, error, variables, context) => {
-        if (data) {
+        const actionResult: ActionResult<Snippet> | undefined = data;
+
+        if (actionResult?.error) {
+          toast.error(actionResult.error);
+          // Revert optimistic editor state update on error using stored editor ID
+          revertEditorState(context?.previousEditorState ?? null, context?.editorId);
+          // Only open upgrade dialog if error indicates upgrade/limit condition
+          if (isUpgradeError(actionResult.error)) {
+            setIsUpgradeOpen(true);
+          }
+        }
+
+        if (actionResult && !actionResult.error && actionResult.data) {
           analytics.track("create_snippet", {
-            snippet_id: data.data.id,
+            snippet_id: actionResult.data.id,
             language: variables.language,
           });
         }
+        // Clear the usage limits cache BEFORE any query invalidation to prevent race condition
+        // This must happen synchronously before invalidateQueries triggers refetch
+        if (user_id) {
+          const cacheProvider = getUsageLimitsCacheProvider();
+          cacheProvider.delete(user_id);
+        }
         queryClient.invalidateQueries({ queryKey });
         if (user_id) {
+          // Invalidate after cache is cleared to ensure fresh data
           queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY, user_id] });
         }
       },
     });
 
-    const { mutate: handleRemoveSnippet } = useMutation({
+    const { mutate: handleRemoveSnippet } = useMutation<
+      void,
+      Error,
+      RemoveSnippetProps,
+      { previousSnippets: unknown }
+    >({
       mutationFn: removeSnippet,
       onMutate: async () => {
         await queryClient.cancelQueries({ queryKey: queryKey });
@@ -359,7 +493,7 @@ export const Editor = forwardRef<any, EditorProps>(
             currentUrl: string | null
           ) => {
             if (id) {
-              console.log(" hey");
+
 
               handleUpdateSnippet({
                 id: currentEditor?.id!,
@@ -378,15 +512,19 @@ export const Editor = forwardRef<any, EditorProps>(
     );
 
     const handleSaveSnippet = () => {
-      if (snippetLimitReached) {
-        const limitLabel =
-          snippetLimit?.max !== null && typeof snippetLimit?.max !== "undefined"
-            ? `${snippetLimit.current}/${snippetLimit.max}`
-            : `${snippetLimit?.current ?? 0}`;
+      // Validate user session
+      if (!user || !user_id) {
+        toast.error("Please log in to save snippets.");
+        return;
+      }
 
-        toast.error(
-          `You've reached the free plan limit (${limitLabel} snippets). Upgrade to Pro for unlimited snippets!`
-        );
+      // Wait for usage data to load before allowing save
+      if (isUsageLoading || !usage) {
+        toast.error("Loading your account limits. Please try again in a moment.");
+        return;
+      }
+
+      if (snippetLimitReached) {
         analytics.track("limit_reached", {
           limit_type: "snippets",
           current: snippetLimit?.current ?? 0,
@@ -425,10 +563,19 @@ export const Editor = forwardRef<any, EditorProps>(
             S.background(),
             showBackground &&
             !presentational &&
-            themes[backgroundTheme!].background
+            themes[backgroundTheme!].background,
+            "relative overflow-hidden group/export"
           )}
           style={{ padding }}
-          ref={ref}
+          ref={(node) => {
+            // Merge refs: forwardRef and containerRef
+            if (typeof ref === "function") {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+            containerRef.current = node;
+          }}
           id={currentEditor?.id || "editor"}
         >
           {!user ? (

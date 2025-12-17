@@ -113,8 +113,9 @@ export const generatePlatformUrl = (
       // Medium auto-generates preview cards when you paste the URL
       return url;
     case "notion":
-      // Notion requires the embed URL format
-      return `https://www.notion.so/embed?url=${encodedUrl}&title=${encodedTitle}`;
+      // Notion automatically embeds URLs when pasted - just return the direct URL
+      // Notion will fetch the page and use oEmbed or Open Graph meta tags
+      return url;
     default:
       return url;
   }

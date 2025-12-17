@@ -18,7 +18,7 @@ export const AddSlideCard = React.memo(
         "bg-card dark:bg-muted/20 hover:border-brand/40 dark:hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/5 transition-colors",
         "flex items-center justify-center text-sm text-muted-foreground",
         "focus-visible:outline-none focus-visible:border-2 focus-visible:border-brand/40 dark:focus-visible:border-primary",
-        disabled && "opacity-50 cursor-not-allowed"
+        "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card"
       )}
       aria-label="Add slide"
     >
