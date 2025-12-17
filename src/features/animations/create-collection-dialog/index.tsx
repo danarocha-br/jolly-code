@@ -98,8 +98,8 @@ export function CreateAnimationCollectionDialog({
     if (folderLimitReached) {
       trackAnimationEvent("limit_reached", user, {
         limit_type: "folders",
-        current: folderLimit.current,
-        max: folderLimit.max,
+        current: folderLimit?.current ?? 0,
+        max: folderLimit?.max ?? 0,
       });
       setIsDialogOpen(false);
       setIsUpgradeOpen(true);
@@ -139,8 +139,8 @@ export function CreateAnimationCollectionDialog({
         open={isUpgradeOpen}
         onOpenChange={setIsUpgradeOpen}
         limitType="folders"
-        currentCount={usage?.folders.current ?? 0}
-        maxCount={usage?.folders.max ?? null}
+        currentCount={usage?.folders?.current ?? 0}
+        maxCount={usage?.folders?.max ?? null}
         currentPlan={usage?.plan ?? "free"}
       />
       <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>

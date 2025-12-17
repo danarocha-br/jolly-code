@@ -31,7 +31,7 @@ export type DowngradeState = {
 
 export type DowngradeActions = {
   handleDeleteSelected: (callback?: () => void | Promise<void>) => void;
-  handleRefreshImpact: () => Promise<void>;
+  handleRefreshImpact: (callback?: () => void | Promise<void>) => Promise<void>;
   handleProceedToDowngrade: (callback?: () => void | Promise<void>) => void;
   toggleSnippetSelection: (snippetId: string) => void;
   toggleAnimationSelection: (animationId: string) => void;

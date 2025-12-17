@@ -3,19 +3,15 @@ name: Plan Limits
 on:
   pull_request:
     paths:
-      - '**/*.tf'
-      - 'terraform/**'
-      - 'infrastructure/**'
-      - 'plans/**'
+      - 'src/lib/config/plans.ts'
+      - 'supabase/migrations/**'
       - '.github/workflows/plan-validation.yml'
   push:
     branches:
       - main
     paths:
-      - '**/*.tf'
-      - 'terraform/**'
-      - 'infrastructure/**'
-      - 'plans/**'
+      - 'src/lib/config/plans.ts'
+      - 'supabase/migrations/**'
       - '.github/workflows/plan-validation.yml'
 
 jobs:

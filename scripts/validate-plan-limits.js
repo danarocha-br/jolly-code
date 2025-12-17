@@ -7,7 +7,41 @@ const projectRoot = path.join(__dirname, '..');
 const plansPath = path.join(projectRoot, 'src/lib/config/plans.ts');
 const migrationsDir = path.join(projectRoot, 'supabase', 'migrations');
 
-const planIds = ['free', 'starter', 'pro'];
+/**
+ * Extract plan IDs from the canonical source: src/lib/config/plans.ts
+ * This reads the planOrder export to automatically stay in sync with plan additions/removals.
+ * Falls back to parsing the PlanId type if planOrder is not found.
+ */
+function extractPlanIdsFromSource() {
+  const content = fs.readFileSync(plansPath, 'utf8');
+  
+  // Try to extract from planOrder array (preferred)
+  const planOrderMatch = content.match(/export\s+const\s+planOrder:\s*PlanId\[\]\s*=\s*\[(.*?)\]/s);
+  if (planOrderMatch) {
+    const planOrderContent = planOrderMatch[1];
+    const plans = planOrderContent.match(/'([^']+)'/g) || [];
+    if (plans.length > 0) {
+      return plans.map(p => p.replace(/'/g, ''));
+    }
+  }
+  
+  // Fallback: extract from PlanId type definition
+  const planIdMatch = content.match(/export\s+type\s+PlanId\s*=\s*([^;]+);/);
+  if (planIdMatch) {
+    const typeContent = planIdMatch[1];
+    const plans = typeContent.match(/'([^']+)'/g) || [];
+    if (plans.length > 0) {
+      return plans.map(p => p.replace(/'/g, ''));
+    }
+  }
+  
+  throw new Error(
+    `Could not extract plan IDs from ${plansPath}. ` +
+    `Expected to find either 'export const planOrder' or 'export type PlanId'.`
+  );
+}
+
+const planIds = extractPlanIdsFromSource();
 
 // Set USE_AST_EXTRACTION=true to use AST-based extraction instead of regex
 const USE_AST_EXTRACTION = process.env.USE_AST_EXTRACTION === 'true';

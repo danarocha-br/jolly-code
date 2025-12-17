@@ -13,8 +13,6 @@ import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createHash } from "crypto";
 import { FriendlyError } from "@/components/errors/friendly-error";
-import { promises as fs } from "fs";
-import { join } from "path";
 
 type SharedAnimationPageProps = {
   params: Promise<{
@@ -50,22 +48,6 @@ export async function generateMetadata({ params }: SharedAnimationPageProps): Pr
   const actualUrl = `${baseUrl}/animate/shared/${slug}`;
   const ogImage = `${baseUrl}/api/og-image?slug=${slug}`;
   const oembedUrl = `${baseUrl}/api/oembed?url=${encodeURIComponent(actualUrl)}`;
-
-  // #region agent log
-  try {
-    const logPath = join(process.cwd(), ".cursor", "debug.log");
-    const logEntry = JSON.stringify({
-      location: "page.tsx:46",
-      message: "generateMetadata - URLs",
-      data: { slug, siteConfigUrl: siteConfig.url, actualUrl, host, protocol, oembedUrl, canonical: `/animate/shared/${slug}` },
-      timestamp: Date.now(),
-      sessionId: "debug-session",
-      runId: "run1",
-      hypothesisId: "B",
-    }) + "\n";
-    await fs.appendFile(logPath, logEntry).catch(() => {});
-  } catch {}
-  // #endregion
 
   return {
     title,

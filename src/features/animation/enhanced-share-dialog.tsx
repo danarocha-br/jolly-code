@@ -447,13 +447,6 @@ export const EnhancedAnimationShareDialog = () => {
     const contentToCopy =
       platformSnippet === "iframe" ? embedCode : platformSnippet;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'enhanced-share-dialog.tsx:444',message:'Platform copy - inputs',data:{platform,shareUrl,title,windowOrigin:typeof window!=='undefined'?window.location.origin:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'enhanced-share-dialog.tsx:448',message:'Platform copy - generated snippet',data:{platformSnippet,contentToCopy,isIframe:platformSnippet==='iframe'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-
     void copySnippet(contentToCopy);
 
     analytics.trackWithUser(SHARING_EVENTS.SHARE_PLATFORM_CLICKED, user, {

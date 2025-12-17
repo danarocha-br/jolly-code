@@ -244,7 +244,7 @@ export async function syncSubscription({
 
     if (subscriptionId) {
       // If subscriptionId is provided, verify it belongs to the user
-      if (profile?.stripe_subscription_id !== subscriptionId) {
+      if (!profile?.stripe_subscription_id || profile.stripe_subscription_id !== subscriptionId) {
         return { success: false, error: 'Subscription does not belong to user' };
       }
 

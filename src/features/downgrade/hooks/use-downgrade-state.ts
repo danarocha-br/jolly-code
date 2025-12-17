@@ -1,9 +1,6 @@
-import { useState, useRef, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import type { DowngradeState, DowngradeActions } from "../dtos";
-import type { Snippet } from "@/features/snippets/dtos";
-import type { Animation } from "@/features/animations/dtos";
 import type { DowngradeImpact } from "@/lib/utils/downgrade-impact";
-import { selectOldestSnippetItems, selectOldestAnimationItems } from "../utils";
 
 export const useDowngradeState = (
   open: boolean
@@ -15,10 +12,6 @@ export const useDowngradeState = (
   const [isProceeding, startProceedTransition] = useTransition();
   const [deletionCompleted, setDeletionCompleted] = useState(false);
   const [impactStale, setImpactStale] = useState(false);
-  const [isLoadingImpactTransition, startLoadingImpactTransition] = useTransition();
-
-  const hasAutoSelectedSnippets = useRef(false);
-  const hasAutoSelectedAnimations = useRef(false);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -28,37 +21,8 @@ export const useDowngradeState = (
       setSelectedAnimations(new Set());
       setDeletionCompleted(false);
       setImpactStale(false);
-      hasAutoSelectedSnippets.current = false;
-      hasAutoSelectedAnimations.current = false;
     }
   }, [open]);
-
-  // Auto-select oldest items when data loads
-  const autoSelectItems = (
-    items: Snippet[] | Animation[],
-    impact: DowngradeImpact,
-    type: 'snippets' | 'animations',
-    hasAutoSelected: React.MutableRefObject<boolean>
-  ) => {
-    if (hasAutoSelected.current) return;
-
-    const impactData = type === 'snippets' ? impact.snippets : impact.animations;
-    if (!impactData.willBeOverLimit) return;
-
-    const toSelect = type === 'snippets'
-      ? selectOldestSnippetItems(items as Snippet[], impactData.overLimit)
-      : selectOldestAnimationItems(items as Animation[], impactData.overLimit);
-
-    startLoadingImpactTransition(() => {
-      if (type === 'snippets') {
-        setSelectedSnippets(new Set(toSelect));
-      } else {
-        setSelectedAnimations(new Set(toSelect));
-      }
-    });
-
-    hasAutoSelected.current = true;
-  };
 
   const toggleSnippetSelection = (snippetId: string) => {
     const newSet = new Set(selectedSnippets);
@@ -103,8 +67,14 @@ export const useDowngradeState = (
         });
       }
     },
-    handleRefreshImpact: async () => {
-      // This will be implemented in the main component
+    handleRefreshImpact: async (callback?: () => void | Promise<void>) => {
+      if (callback) {
+        try {
+          await Promise.resolve(callback());
+        } catch (error) {
+          console.error("Error in refresh impact handler:", error);
+        }
+      }
     },
     handleProceedToDowngrade: (callback?: () => void | Promise<void>) => {
       if (callback) {
