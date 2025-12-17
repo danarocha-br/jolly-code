@@ -14,7 +14,7 @@ const UsersPresence = () => {
     // Filter out duplicate connections from the same user (whether authenticated or anonymous)
     // Using Set-based approach for O(n) time complexity instead of O(n²)
     const seenIds = new Set<string>();
-    const uniqueUsers: typeof users = [];
+    const uniqueUsers: Array<typeof users[number]> = [];
     
     for (const user of users) {
       if (!seenIds.has(user.id)) {

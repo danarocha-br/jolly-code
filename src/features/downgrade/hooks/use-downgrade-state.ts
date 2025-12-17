@@ -51,8 +51,8 @@ export const useDowngradeState = (
     if (!impactData.willBeOverLimit) return;
 
     const toSelect = type === 'snippets'
-      ? selectOldestSnippetItems(items, impactData.overLimit)
-      : selectOldestAnimationItems(items, impactData.overLimit);
+      ? selectOldestSnippetItems(items as Snippet[], impactData.overLimit)
+      : selectOldestAnimationItems(items as Animation[], impactData.overLimit);
 
     startLoadingImpactTransition(() => {
       if (type === 'snippets') {
