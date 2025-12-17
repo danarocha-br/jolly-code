@@ -22,7 +22,9 @@ jobs:
             exit 1
           fi
           
-          response=$(curl -s -w "\n%{http_code}" -X GET "${APP_URL}/api/cron/check-usage?secret=${CRON_SECRET}")
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/cron/check-usage")
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           
@@ -34,4 +36,3 @@ jobs:
             echo "$body"
             exit 1
           fi
-

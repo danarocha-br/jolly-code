@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import React from 'react';
+import { timingSafeEqual } from 'crypto';
 
 import { createServiceRoleClient } from '@/utils/supabase/admin';
 import { getUserUsage } from '@/lib/services/usage-limits';
@@ -26,16 +27,35 @@ interface UserWithUsage {
  * Protected cron endpoint that checks all users' usage and sends warning emails
  * to users exceeding 90% of their limits.
  * 
- * Secured with CRON_SECRET query parameter or Authorization header.
+ * Secured with CRON_SECRET via Authorization header.
  */
 export async function GET(request: NextRequest) {
 	try {
-		// Verify authentication via query param or header
-		const secretParam = request.nextUrl.searchParams.get('secret');
+		// Verify authentication via Authorization header only
 		const authHeader = request.headers.get('authorization');
-		const providedSecret = secretParam || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+		const providedSecret = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-		if (!providedSecret || providedSecret !== env.CRON_SECRET) {
+		// Fast-return if secret is missing
+		if (!providedSecret) {
+			return NextResponse.json(
+				{ error: 'Unauthorized' },
+				{ status: 401 }
+			);
+		}
+
+		// Use timing-safe comparison to prevent timing attacks
+		const expectedSecret = env.CRON_SECRET ?? '';
+		const providedBuffer = Buffer.from(providedSecret, 'utf8');
+		const expectedBuffer = Buffer.from(expectedSecret, 'utf8');
+
+		// Pad buffers to equal length for timing-safe comparison
+		const maxLength = Math.max(providedBuffer.length, expectedBuffer.length);
+		const paddedProvided = Buffer.alloc(maxLength);
+		const paddedExpected = Buffer.alloc(maxLength);
+		providedBuffer.copy(paddedProvided);
+		expectedBuffer.copy(paddedExpected);
+
+		if (!timingSafeEqual(paddedProvided, paddedExpected)) {
 			return NextResponse.json(
 				{ error: 'Unauthorized' },
 				{ status: 401 }
@@ -49,6 +69,7 @@ export async function GET(request: NextRequest) {
 		// For now, we'll fetch in batches to handle large user bases
 		const BATCH_SIZE = 100;
 		let offset = 0;
+		let totalProcessed = 0;
 		let hasMore = true;
 
 		while (hasMore) {
@@ -102,12 +123,15 @@ export async function GET(request: NextRequest) {
 				}
 			}
 
+			// Track actual number of users processed
+			totalProcessed += profiles.length;
+
 			// Check if we have more users to process
 			hasMore = profiles.length === BATCH_SIZE;
 			offset += BATCH_SIZE;
 
 			// Safety limit to prevent infinite loops
-			if (offset > 10000) {
+			if (totalProcessed > 10000) {
 				console.warn('[check-usage] Reached safety limit of 10,000 users');
 				break;
 			}
@@ -132,21 +156,21 @@ export async function GET(request: NextRequest) {
 					idempotencyKey: `usage-warning-${user.id}-${Math.floor(Date.now() / (1000 * 60 * 60 * 24))}`, // Daily idempotency
 				});
 				emailResults.success++;
-				console.log(`[check-usage] Sent usage warning email to user ${user.id} (${user.email})`);
+				console.log(`[check-usage] Sent usage warning email to user ${user.id}`);
 			} catch (emailError) {
 				emailResults.failed++;
 				console.error(`[check-usage] Failed to send email to user ${user.id}:`, emailError);
 				Sentry.captureException(emailError, {
 					level: 'error',
 					tags: { operation: 'check_usage_send_email' },
-					extra: { userId: user.id, email: user.email },
+					extra: { userId: user.id },
 				});
 			}
 		}
 
 		return NextResponse.json({
 			success: true,
-			usersChecked: offset,
+			usersChecked: totalProcessed,
 			usersNotified: usersToNotify.length,
 			emailsSent: emailResults.success,
 			emailsFailed: emailResults.failed,

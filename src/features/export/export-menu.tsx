@@ -147,9 +147,6 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
             error_name: error.name,
           });
           Sentry.captureException(error);
-          Sentry.flush(2000).catch((flushError) => {
-            console.warn("[Export] Sentry flush failed:", flushError);
-          });
         });
       }
       

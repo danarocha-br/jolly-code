@@ -9,7 +9,7 @@ import type { AnimationSettings, AnimationSlide } from '@/types/animation'
 import { createAnimationInputSchema, formatZodError } from '@/actions/utils/validation'
 import { withAuthAction } from '@/actions/utils/with-auth'
 import type { UsageLimitCheck } from '@/lib/services/usage-limits'
-import { getPlanConfig } from '@/lib/config/plans'
+import { getPlanConfig, getUpgradeTarget } from '@/lib/config/plans'
 
 export type CreateAnimationInput = {
   id: string
@@ -87,12 +87,22 @@ export async function createAnimation(
       const canAdd = maxSlides === null || slides.length <= maxSlides
 
       if (!canAdd) {
-        if (plan === 'free') {
-          return error('Free users can add up to 3 slides. Upgrade to Started for 10 slides per animation!')
-        } else if (plan === 'starter') {
-          return error('Starter users can add up to 10 slides. Upgrade to Pro for unlimited slides!')
+        // Format maxSlides for display (Infinity/null becomes "unlimited")
+        const maxSlidesDisplay = maxSlides === null || maxSlides === Infinity ? 'unlimited' : maxSlides.toString()
+        
+        // Get upgrade target and its maxSlides for upgrade messaging
+        const upgradeTarget = getUpgradeTarget(plan)
+        let upgradeMessage = ''
+        
+        if (upgradeTarget) {
+          const upgradeConfig = getPlanConfig(upgradeTarget)
+          const upgradeMaxSlides = upgradeConfig.maxSlidesPerAnimation === Infinity ? null : upgradeConfig.maxSlidesPerAnimation
+          const upgradeMaxSlidesDisplay = upgradeMaxSlides === null || upgradeMaxSlides === Infinity ? 'unlimited' : upgradeMaxSlides.toString()
+          const upgradePlanName = upgradeConfig.name
+          upgradeMessage = ` Upgrade to ${upgradePlanName} for ${upgradeMaxSlidesDisplay} slides per animation!`
         }
-        return error('Slide limit exceeded. Please upgrade your plan.')
+        
+        return error(`${planConfig.name} users can add up to ${maxSlidesDisplay} slides.${upgradeMessage}`)
       }
 
       const data = await insertAnimation({

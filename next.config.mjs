@@ -136,6 +136,19 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: "/animate/shared/:slug",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors *",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "ALLOWALL",
+          },
+        ],
+      },
     ];
   },
   turbopack: {},

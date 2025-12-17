@@ -1,9 +1,26 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import type { Snippet } from "@/features/snippets/dtos";
-import type { Animation } from "@/features/animations/dtos";
+import type { SnippetMetadata, AnimationMetadata } from "../queries";
 import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Formats a date value safely, returning "Unknown date" if the date is invalid or missing
+ */
+function formatDateSafely(createdAt: string | number | undefined): string {
+  if (!createdAt) {
+    return "Unknown date";
+  }
+  
+  const date = new Date(createdAt);
+  
+  // Check if the date is valid (not NaN and not epoch 0)
+  if (isNaN(date.getTime()) || date.getTime() === 0) {
+    return "Unknown date";
+  }
+  
+  return date.toLocaleDateString();
+}
 
 type BaseItem = {
   id: string;
@@ -115,7 +132,7 @@ export function SnippetSelector({
   onClearSelection,
   isLoading,
 }: {
-  snippets: Snippet[];
+  snippets: SnippetMetadata[];
   selectedSnippets: Set<string>;
   onToggleSelection: (id: string) => void;
   onClearSelection: () => void;
@@ -131,7 +148,7 @@ export function SnippetSelector({
       isLoading={isLoading}
       getItemTitle={(snippet) => snippet.title || "Untitled"}
       getItemSubtitle={(snippet) =>
-        `${snippet.language} • ${new Date(snippet.created_at || 0).toLocaleDateString()}`
+        `${snippet.language} • ${formatDateSafely(snippet.created_at)}`
       }
     />
   );
@@ -144,7 +161,7 @@ export function AnimationSelector({
   onClearSelection,
   isLoading,
 }: {
-  animations: Animation[];
+  animations: AnimationMetadata[];
   selectedAnimations: Set<string>;
   onToggleSelection: (id: string) => void;
   onClearSelection: () => void;
@@ -160,7 +177,7 @@ export function AnimationSelector({
       isLoading={isLoading}
       getItemTitle={(animation) => animation.title || "Untitled"}
       getItemSubtitle={(animation) =>
-        new Date(animation.created_at || 0).toLocaleDateString()
+        formatDateSafely(animation.created_at)
       }
     />
   );
@@ -189,7 +206,7 @@ export function FolderSelector({
       isLoading={isLoading}
       getItemTitle={(folder) => folder.title || "Untitled Folder"}
       getItemSubtitle={(folder) =>
-        new Date(folder.created_at || 0).toLocaleDateString()
+        formatDateSafely(folder.created_at)
       }
     />
   );

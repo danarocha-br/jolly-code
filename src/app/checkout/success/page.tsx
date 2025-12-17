@@ -94,6 +94,12 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         }
 
         const syncResult = await syncSubscriptionToDatabase(fullSubscription);
+        if (syncResult) {
+          console.log(
+            "[CheckoutSuccess] Fallback sync succeeded:",
+            { userId: syncResult.userId, planId: syncResult.planId }
+          );
+        }
       } catch (error) {
         // Log but don't fail the page - webhook will handle it eventually
         console.error(

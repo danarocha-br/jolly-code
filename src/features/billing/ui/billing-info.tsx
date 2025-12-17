@@ -197,7 +197,7 @@ export function BillingInfoView({
                 {isCanceling ? "Access until" : "Next billing date"}
               </p>
               <p className="text-sm font-medium text-right">
-                {nextBillingDate.toLocaleDateString("en-US", {
+                {nextBillingDate.toLocaleDateString(navigator.language, {
                   year: "numeric",
                   month: "long",
                   day: "numeric",

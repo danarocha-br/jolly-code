@@ -43,12 +43,13 @@ export async function generateMetadata({ params }: SharedAnimationPageProps): Pr
     firstSlide?.code?.slice(0, 120)?.replace(/\s+/g, " ") ||
     "View animated code snippets from Jolly Code.";
 
-  const ogImage = `/api/og-image?slug=${slug}`;
   const headerStoreForMetadata = await headers();
   const host = headerStoreForMetadata.get("host") || "";
   const protocol = headerStoreForMetadata.get("x-forwarded-proto") || "https";
-  const actualUrl = `${protocol}://${host}/animate/shared/${slug}`;
-  const oembedUrl = `${protocol}://${host}/api/oembed?url=${encodeURIComponent(actualUrl)}`;
+  const baseUrl = `${protocol}://${host}`;
+  const actualUrl = `${baseUrl}/animate/shared/${slug}`;
+  const ogImage = `${baseUrl}/api/og-image?slug=${slug}`;
+  const oembedUrl = `${baseUrl}/api/oembed?url=${encodeURIComponent(actualUrl)}`;
 
   // #region agent log
   try {

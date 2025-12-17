@@ -34,20 +34,21 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ id: string
 		const { data, error } = await resend.emails.send(emailPayload);
 
 		if (error) {
-			console.error('[sendEmail] Resend API error:', {
-				error,
-				message: error.message,
-				name: error.name,
-			});
+			// Rethrow the original error if it's an Error instance to preserve stack trace
+			if (error instanceof Error) {
+				throw error;
+			}
+			// Otherwise, create a new Error with the Resend error details
 			throw new Error(`Resend API error: ${error.message}${error.name ? ` (${error.name})` : ''}`);
 		}
 
 		return data;
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error sending email';
+		const recipientsCount = Array.isArray(to) ? to.length : 1;
 
 		console.error('[sendEmail] Failed to send email:', {
-			to: Array.isArray(to) ? to.join(', ') : to,
+			recipients_count: recipientsCount,
 			subject,
 			error: errorMessage,
 		});
@@ -58,7 +59,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ id: string
 				operation: 'send_email',
 			},
 			extra: {
-				to: Array.isArray(to) ? to.join(', ') : to,
+				recipients_count: recipientsCount,
 				subject,
 			},
 		});

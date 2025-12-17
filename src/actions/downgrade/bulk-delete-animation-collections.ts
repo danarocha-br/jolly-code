@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireAuth } from '@/actions/utils/auth'
+import { requireAuth, AuthError } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 
 /**
@@ -62,7 +62,7 @@ export async function bulkDeleteAnimationCollections(
     } catch (err) {
         console.error('Error bulk deleting animation collections:', err)
 
-        if (err instanceof Error && err.message.includes('authenticated')) {
+        if (err instanceof AuthError) {
             return error('User must be authenticated')
         }
 

@@ -23,7 +23,6 @@ export type DowngradeState = {
   impact: DowngradeImpact | null;
   selectedSnippets: Set<string>;
   selectedAnimations: Set<string>;
-  isLoadingImpact: boolean;
   isDeleting: boolean;
   isProceeding: boolean;
   deletionCompleted: boolean;
@@ -31,9 +30,9 @@ export type DowngradeState = {
 };
 
 export type DowngradeActions = {
-  handleDeleteSelected: () => void;
+  handleDeleteSelected: (callback?: () => void | Promise<void>) => void;
   handleRefreshImpact: () => Promise<void>;
-  handleProceedToDowngrade: () => void;
+  handleProceedToDowngrade: (callback?: () => void | Promise<void>) => void;
   toggleSnippetSelection: (snippetId: string) => void;
   toggleAnimationSelection: (animationId: string) => void;
   clearSnippetSelections: () => void;

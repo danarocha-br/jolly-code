@@ -55,7 +55,10 @@ export async function GET(request: NextRequest) {
 		}
 	}
 
-	const embedUrl = `${siteConfig.url}/animate/embed/${slug}`;
+	// Use the actual request URL to support Vercel previews and localhost
+	const requestUrl = new URL(request.url);
+	const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+	const embedUrl = `${baseUrl}/animate/embed/${slug}`;
 
 	// Return oEmbed JSON with CORS headers
 	return NextResponse.json(
@@ -64,7 +67,7 @@ export async function GET(request: NextRequest) {
 			version: "1.0",
 			title: title,
 			provider_name: siteConfig.title,
-			provider_url: siteConfig.url,
+			provider_url: baseUrl,
 			width: width,
 			height: height,
 			html: `<iframe src="${embedUrl}" width="${width}" height="${height}" style="border:0; border-radius: 12px; overflow: hidden;" loading="lazy" allowfullscreen></iframe>`,

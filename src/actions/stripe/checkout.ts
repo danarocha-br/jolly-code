@@ -10,6 +10,7 @@ import {
 } from '@/lib/services/stripe';
 import { syncSubscriptionById, syncActiveSubscriptionForCustomer } from '@/lib/services/subscription-sync';
 import { resolveBaseUrl } from '@/lib/utils/resolve-base-url';
+import { hasActiveSubscription, type BillingInfo } from '@/lib/services/billing';
 
 type CheckoutResponse = {
   url?: string;
@@ -88,11 +89,11 @@ export async function createCheckoutSession({
       .eq('id', user.id)
       .single();
 
-    const hasActiveSubscription =
-      subscriptionData?.stripe_subscription_status === 'active' ||
-      subscriptionData?.stripe_subscription_status === 'trialing';
-
-    if (hasActiveSubscription) {
+    if (
+      hasActiveSubscription({
+        stripeSubscriptionStatus: subscriptionData?.stripe_subscription_status ?? null,
+      } as Partial<BillingInfo>)
+    ) {
       return {
         error: 'You already have an active subscription. Please manage your plan in the customer portal.'
       };

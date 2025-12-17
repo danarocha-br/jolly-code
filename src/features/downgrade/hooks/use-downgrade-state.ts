@@ -13,7 +13,6 @@ export const useDowngradeState = (
   const [impact, setImpact] = useState<DowngradeImpact | null>(null);
   const [selectedSnippets, setSelectedSnippets] = useState<Set<string>>(new Set());
   const [selectedAnimations, setSelectedAnimations] = useState<Set<string>>(new Set());
-  const [isLoadingImpact, setIsLoadingImpact] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [isProceeding, startProceedTransition] = useTransition();
   const [deletionCompleted, setDeletionCompleted] = useState(false);
@@ -26,13 +25,11 @@ export const useDowngradeState = (
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      startLoadingImpactTransition(() => {
-        setImpact(null);
-        setSelectedSnippets(new Set());
-        setSelectedAnimations(new Set());
-        setDeletionCompleted(false);
-        setImpactStale(false);
-      });
+      setImpact(null);
+      setSelectedSnippets(new Set());
+      setSelectedAnimations(new Set());
+      setDeletionCompleted(false);
+      setImpactStale(false);
       hasAutoSelectedSnippets.current = false;
       hasAutoSelectedAnimations.current = false;
     }
@@ -93,22 +90,32 @@ export const useDowngradeState = (
     impact,
     selectedSnippets,
     selectedAnimations,
-    isLoadingImpact,
     isDeleting,
     isProceeding,
     deletionCompleted,
     impactStale,
 
     // Actions
-    handleDeleteSelected: () => {
-      // This will be implemented in the main component
-      // since it requires external dependencies (actions, queries, etc.)
+    handleDeleteSelected: (callback?: () => void | Promise<void>) => {
+      if (callback) {
+        startDeleteTransition(() => {
+          void Promise.resolve(callback()).catch((error) => {
+            console.error("Error in delete handler:", error);
+          });
+        });
+      }
     },
     handleRefreshImpact: async () => {
       // This will be implemented in the main component
     },
-    handleProceedToDowngrade: () => {
-      // This will be implemented in the main component
+    handleProceedToDowngrade: (callback?: () => void | Promise<void>) => {
+      if (callback) {
+        startProceedTransition(() => {
+          void Promise.resolve(callback()).catch((error) => {
+            console.error("Error in proceed handler:", error);
+          });
+        });
+      }
     },
     toggleSnippetSelection,
     toggleAnimationSelection,

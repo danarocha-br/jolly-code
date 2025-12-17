@@ -11,7 +11,7 @@ import {
   Text,
   Tailwind,
 } from "@react-email/components";
-import { Logo } from "@/components/ui/logo";
+import { Logo } from "../src/components/ui/logo";
 
 interface WelcomeEmailProps {
   name?: string;

@@ -7,6 +7,10 @@ import type { Animation } from "@/features/animations/dtos";
 import type { DowngradeImpact } from "@/lib/utils/downgrade-impact";
 import type { PlanId } from "@/lib/config/plans";
 
+// Metadata types matching the return types from getSnippetsMetadata/getAnimationsMetadata
+export type SnippetMetadata = Pick<Snippet, "id" | "title" | "created_at" | "language">;
+export type AnimationMetadata = Pick<Animation, "id" | "title" | "created_at">;
+
 // Query keys
 export const SNIPPETS_FOR_DOWNGRADE_KEY = "snippets-for-downgrade";
 export const ANIMATIONS_FOR_DOWNGRADE_KEY = "animations-for-downgrade";
@@ -19,30 +23,32 @@ import { getAnimationCollections } from "@/actions/animations/get-collections";
 import type { Collection } from "@/features/snippets/dtos";
 import type { AnimationCollection } from "@/features/animations/dtos";
 
-export const fetchSnippetsForDowngrade = async (userId?: string): Promise<Snippet[]> => {
+export const fetchSnippetsForDowngrade = async (): Promise<SnippetMetadata[]> => {
   const result = await getSnippetsMetadata();
   if (result.error || !result.data) return [];
-  // Cast to Snippet[] as we only need metadata for the selector
-  return result.data as unknown as Snippet[];
+  return result.data;
 };
 
-export const fetchAnimationsForDowngrade = async (userId?: string): Promise<Animation[]> => {
+export const fetchAnimationsForDowngrade = async (): Promise<AnimationMetadata[]> => {
   const result = await getAnimationsMetadata();
   if (result.error || !result.data) return [];
-  // Cast to Animation[] as we only need metadata for the selector
-  return result.data as unknown as Animation[];
+  return result.data;
 };
 
-export const fetchSnippetCollectionsForDowngrade = async (userId?: string): Promise<Collection[]> => {
+export const fetchSnippetCollectionsForDowngrade = async (): Promise<Collection[]> => {
   const result = await getCollections();
-  if (result.error || !result.data) return [];
-  return result.data;
+  if (result.error) {
+    throw new Error(result.error);
+  }
+  return result.data || [];
 };
 
-export const fetchAnimationCollectionsForDowngrade = async (userId?: string): Promise<AnimationCollection[]> => {
+export const fetchAnimationCollectionsForDowngrade = async (): Promise<AnimationCollection[]> => {
   const result = await getAnimationCollections();
-  if (result.error || !result.data) return [];
-  return result.data;
+  if (result.error) {
+    throw new Error(result.error);
+  }
+  return result.data || [];
 };
 
 export const fetchDowngradeImpact = async (targetPlan?: PlanId): Promise<DowngradeImpact | null> => {
@@ -57,9 +63,9 @@ export const fetchDowngradeImpact = async (targetPlan?: PlanId): Promise<Downgra
 
 // React Query hooks
 export const useSnippetsForDowngrade = (userId?: string, hasSnippetImpact?: boolean) => {
-  return useQuery<Snippet[]>({
+  return useQuery<SnippetMetadata[]>({
     queryKey: [SNIPPETS_FOR_DOWNGRADE_KEY, userId],
-    queryFn: () => fetchSnippetsForDowngrade(userId),
+    queryFn: () => fetchSnippetsForDowngrade(),
     enabled: !!userId && !!hasSnippetImpact,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
@@ -67,9 +73,9 @@ export const useSnippetsForDowngrade = (userId?: string, hasSnippetImpact?: bool
 };
 
 export const useAnimationsForDowngrade = (userId?: string, hasAnimationImpact?: boolean) => {
-  return useQuery<Animation[]>({
+  return useQuery<AnimationMetadata[]>({
     queryKey: [ANIMATIONS_FOR_DOWNGRADE_KEY, userId],
-    queryFn: () => fetchAnimationsForDowngrade(userId),
+    queryFn: () => fetchAnimationsForDowngrade(),
     enabled: !!userId && !!hasAnimationImpact,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
@@ -79,7 +85,7 @@ export const useAnimationsForDowngrade = (userId?: string, hasAnimationImpact?: 
 export const useSnippetCollectionsForDowngrade = (userId?: string, hasFolderImpact?: boolean) => {
   return useQuery<Collection[]>({
     queryKey: [SNIPPET_COLLECTIONS_FOR_DOWNGRADE_KEY, userId],
-    queryFn: () => fetchSnippetCollectionsForDowngrade(userId),
+    queryFn: () => fetchSnippetCollectionsForDowngrade(),
     enabled: !!userId && !!hasFolderImpact,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
@@ -89,7 +95,7 @@ export const useSnippetCollectionsForDowngrade = (userId?: string, hasFolderImpa
 export const useAnimationCollectionsForDowngrade = (userId?: string, hasFolderImpact?: boolean) => {
   return useQuery<AnimationCollection[]>({
     queryKey: [ANIMATION_COLLECTIONS_FOR_DOWNGRADE_KEY, userId],
-    queryFn: () => fetchAnimationCollectionsForDowngrade(userId),
+    queryFn: () => fetchAnimationCollectionsForDowngrade(),
     enabled: !!userId && !!hasFolderImpact,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
