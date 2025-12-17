@@ -1,5 +1,4 @@
 import { ImageResponse } from "next/og";
-import { Logo } from "@/components/ui/logo";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -127,7 +126,8 @@ export async function GET(request: Request) {
       ? (themeBackgrounds[backgroundTheme] || themeBackgrounds.sublime) // Use theme gradient for embed
       : "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)"; // Default gradient for social
 
-    return new ImageResponse(
+    try {
+      const imageResponse = new ImageResponse(
       (
         <div
           style={{
@@ -232,15 +232,6 @@ export async function GET(request: Request) {
             }}
           >
             <span>jollycode.dev</span>
-            <div
-              style={{
-                transform: "scale(0.65)",
-                transformOrigin: "bottom right",
-                filter: "grayscale(0.15) contrast(1.1)",
-              }}
-            >
-              <Logo variant="short" />
-            </div>
           </div>
         </div>
       ),
@@ -250,7 +241,12 @@ export async function GET(request: Request) {
           "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
         },
       }
-    );
+      );
+      return imageResponse;
+    } catch (error) {
+      console.error("OG image generation failed", error);
+      return new ImageResponse(<div />, size);
+    }
   } catch (error) {
     console.error("OG image generation failed", error);
     return new ImageResponse(<div />, size);
