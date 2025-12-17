@@ -28,6 +28,7 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
   const previewRef = useRef<HTMLDivElement>(null);
   const hasStartedPlayback = useRef(false);
   const hasTrackedView = useRef(false);
+  const isLoopingRef = useRef(false);
   const queryClient = getQueryClient();
 
   const {
@@ -56,7 +57,8 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
     "nord",
     "gotham",
     "blue",
-    "nightOwl",
+    "night-owl",
+    "nightOwl", // Backward compatibility
   ].includes(backgroundTheme);
 
   // Start with a clean store state for the embed
@@ -143,18 +145,28 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
   useEffect(() => {
     if (!isReady) return;
     if (!hasStartedPlayback.current) return;
+    if (isLoopingRef.current) return;
 
     // Check if animation has completed (progress >= 100 and not playing)
     if (progress >= 100 && !isPlaying) {
+      // Set guard before scheduling timeout to prevent re-entry
+      isLoopingRef.current = true;
+      
       // Small delay before restarting for smooth transition
       const timer = setTimeout(() => {
         handleReset({ track: false });
         handlePlayPause({ track: false });
+        // Reset guard after play begins
+        isLoopingRef.current = false;
       }, 300);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        // Reset guard on cleanup
+        isLoopingRef.current = false;
+      };
     }
-  }, [progress, isPlaying, handleReset, handlePlayPause, isReady]);
+  }, [progress, isPlaying, isReady]);
 
   const handleReplay = () => {
     handleReset({ track: true });

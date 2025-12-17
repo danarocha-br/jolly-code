@@ -2,7 +2,6 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { updateWatermarkPreference } from '@/lib/services/user-preferences';
-import type { PlanId } from '@/lib/config/plans';
 
 export type UpdateWatermarkPreferenceResult = {
   success: boolean;
@@ -30,33 +29,6 @@ export async function updateWatermarkPreferenceAction(
         success: false,
         error: 'You must be signed in to update preferences',
       };
-    }
-
-    // Verify user has PRO plan if trying to hide watermark
-    if (hideWatermark) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('[updateWatermarkPreferenceAction] Error fetching profile:', profileError);
-        return {
-          success: false,
-          error: 'Failed to verify your plan',
-        };
-      }
-
-      const plan = (profile?.plan as PlanId) || 'free';
-
-      if (plan !== 'pro') {
-        return {
-          success: false,
-          error: 'Upgrade to PRO to remove watermarks',
-          requiresUpgrade: true,
-        };
-      }
     }
 
     // Update preference

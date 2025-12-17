@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 import { createClient } from "@/utils/supabase/client";
 import { getUserUsage, type UsageSummary } from "@/lib/services/usage-limits";
@@ -11,19 +12,31 @@ import { updateWatermarkPreferenceAction } from "@/actions/user/update-watermark
 export const USAGE_QUERY_KEY = "user-usage";
 const USER_USAGE_STALE_TIME_MS = 5 * 60 * 1000;
 
-export const fetchUserUsage = async (userId?: string): Promise<UsageSummary> => {
+/**
+ * Resolves the user ID from the provided parameter or from the authenticated session.
+ * @param userId - Optional user ID. If not provided, will be resolved from auth session.
+ * @returns The resolved user ID as a string.
+ * @throws Error if no user is authenticated.
+ */
+async function resolveUserId(userId?: string): Promise<string> {
+  if (userId) {
+    return userId;
+  }
+
   const supabase = createClient();
-  const resolvedUserId =
-    userId ??
-    (
-      await supabase.auth.getUser().then(({ data }) => {
-        return data.user?.id;
-      })
-    );
+  const { data } = await supabase.auth.getUser();
+  const resolvedUserId = data.user?.id;
 
   if (!resolvedUserId) {
     throw new Error("User not authenticated");
   }
+
+  return resolvedUserId;
+}
+
+export const fetchUserUsage = async (userId?: string): Promise<UsageSummary> => {
+  const supabase = createClient();
+  const resolvedUserId = await resolveUserId(userId);
 
   return getUserUsage(supabase, resolvedUserId);
 };
@@ -84,17 +97,7 @@ export const fetchWatermarkPreference = async (
   userId?: string
 ): Promise<WatermarkPreference | null> => {
   const supabase = createClient();
-  const resolvedUserId =
-    userId ??
-    (
-      await supabase.auth.getUser().then(({ data }) => {
-        return data.user?.id;
-      })
-    );
-
-  if (!resolvedUserId) {
-    throw new Error("User not authenticated");
-  }
+  const resolvedUserId = await resolveUserId(userId);
 
   return getWatermarkPreference(supabase, resolvedUserId);
 };
@@ -165,6 +168,32 @@ export const useUpdateWatermarkPreference = (userId?: string) => {
           context.previousPreference
         );
       }
+
+      // Report error to Sentry with context
+      if (error instanceof Error) {
+        // Report with comprehensive context including queryKey and previousPreference
+        // Using Sentry directly to include all requested metadata
+        if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+          Sentry.withScope((scope) => {
+            scope.setTag("query_type", "watermark_preference_mutation");
+            scope.setTag("user_id", userId || "unknown");
+            scope.setContext("mutation_error", {
+              queryKey: [WATERMARK_PREFERENCE_QUERY_KEY, userId],
+              userId,
+              previousPreference: context?.previousPreference,
+              error_message: error.message,
+              error_name: error.name,
+            });
+            Sentry.captureException(error);
+            Sentry.flush(2000).catch((flushError) => {
+              console.warn("[watermark_preference_mutation] Sentry flush failed:", flushError);
+            });
+          });
+        }
+        // Also call reportQueryError for consistency with other hooks
+        reportQueryError(error, "watermark_preference_mutation", userId);
+      }
+      
       console.error('[useUpdateWatermarkPreference] Mutation error:', error);
     },
     onSuccess: () => {

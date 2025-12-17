@@ -8,7 +8,7 @@ export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
 
 type Slide = { title?: string; code?: string; language?: string };
-type Payload = { slides?: Slide[]; editor?: { fontFamily?: string } };
+type Payload = { slides?: Slide[]; editor?: { fontFamily?: string; backgroundTheme?: string } };
 
 const safeDecodePayload = (raw: string | null): Payload | null => {
   if (!raw) return null;
@@ -66,12 +66,13 @@ export async function GET(request: Request) {
     const title = titleFromDb || titleOverride || firstSlide.title || "Shared animation";
     const rawCode = firstSlide.code || "// No code";
     const language = firstSlide.language || "javascript";
+    const backgroundTheme = decodedPayload?.editor?.backgroundTheme || "sublime";
     
     // Truncate and highlight code
     const codeSnippet = truncateCodeForOG(rawCode, 10, 80);
-    const styledSegments = highlightCodeForOG(codeSnippet, language, "sublime");
+    const styledSegments = highlightCodeForOG(codeSnippet, language, backgroundTheme);
     const renderableSegments = renderStyledSegments(styledSegments);
-    const themeColors = getThemeColors("sublime");
+    const themeColors = getThemeColors(backgroundTheme);
     const background = "linear-gradient(135deg, #f472b6 0%, #a78bfa 50%, #60a5fa 100%)";
 
     try {

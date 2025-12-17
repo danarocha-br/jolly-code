@@ -60,10 +60,10 @@ export const EditorOptionsMenu = () => {
 
   // Watermark preference hooks
   const { data: watermarkPref, isLoading: isWatermarkLoading } = useWatermarkPreference(userId);
-  const { data: userPlan } = useUserPlan(userId);
+  const { data: userPlan, isLoading: isPlanLoading } = useUserPlan(userId);
   const updateWatermarkMutation = useUpdateWatermarkPreference(userId);
 
-  const isPro = userPlan === 'pro';
+  const isPro = !isPlanLoading && userPlan === 'pro';
   const hideWatermark = watermarkPref?.hideWatermark ?? false;
 
   function changeEditorViewPreference(value: EditorViewPreference) {
@@ -98,6 +98,10 @@ export const EditorOptionsMenu = () => {
   function handleHideWatermark(checked: boolean) {
     if (!userId) {
       toast.error("Please sign in to update preferences");
+      return;
+    }
+
+    if (isPlanLoading) {
       return;
     }
 
@@ -178,7 +182,7 @@ export const EditorOptionsMenu = () => {
               checked={hideWatermark}
               onSelect={keepMenuOpen}
               onCheckedChange={(checked: boolean) => handleHideWatermark(checked)}
-              disabled={isWatermarkLoading || updateWatermarkMutation.isPending}
+              disabled={isPlanLoading || isWatermarkLoading || updateWatermarkMutation.isPending}
             >
               <div className="flex items-center gap-2">
                 <span>Hide watermark</span>
