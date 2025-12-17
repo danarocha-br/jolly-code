@@ -119,14 +119,14 @@ export const generatePlatformUrl = (
       // Medium auto-generates preview cards when you paste the URL
       return url;
     case "notion":
-      // Notion requires the embed URL format
-      const notionUrl = `https://www.notion.so/embed?url=${encodedUrl}&title=${encodedTitle}`;
+      // Notion automatically embeds URLs when pasted - just return the direct URL
+      // Notion will fetch the page and use oEmbed or Open Graph meta tags
       // #region agent log
       if (typeof fetch !== 'undefined') {
-        fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'share-utils.ts:117',message:'generatePlatformUrl - Notion URL generated',data:{notionUrl,originalUrl:url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/17c92283-0a96-4e7e-a254-0870622a7b75',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'share-utils.ts:121',message:'generatePlatformUrl - Notion URL (direct)',data:{notionUrl:url,originalUrl:url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       }
       // #endregion
-      return notionUrl;
+      return url;
     default:
       return url;
   }
