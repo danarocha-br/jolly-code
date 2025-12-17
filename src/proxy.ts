@@ -98,7 +98,70 @@ const enforceCsrf = (request: NextRequest) => {
   return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
 };
 
+const getAllowedOriginForCors = (request: NextRequest): string => {
+  const requestOrigin = request.headers.get("origin");
+  
+  // Get current request origin
+  const host = request.headers.get("host");
+  const protocol = request.headers.get("x-forwarded-proto") || 
+                   (request.nextUrl.protocol === "https:" ? "https" : "http");
+  const currentOrigin = host ? normalizeOrigin(`${protocol}://${host}`) : null;
+  const normalizedRequestOrigin = requestOrigin ? normalizeOrigin(requestOrigin) : null;
+
+  // Allow same-origin requests
+  if (normalizedRequestOrigin && normalizedRequestOrigin === currentOrigin && requestOrigin) {
+    return requestOrigin;
+  }
+
+  // Check configured origins
+  const configuredOrigins = [
+    process.env.CORS_ALLOWED_ORIGIN,
+    process.env.NEXT_PUBLIC_APP_URL,
+  ]
+    .filter(Boolean)
+    .map(normalizeOrigin)
+    .filter((origin): origin is string => origin !== null);
+
+  if (normalizedRequestOrigin && configuredOrigins.includes(normalizedRequestOrigin) && requestOrigin) {
+    return requestOrigin;
+  }
+
+  // Allow Vercel preview URLs (same logic as CSRF check)
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL;
+  if (vercelUrl && normalizedRequestOrigin && requestOrigin) {
+    const normalizedVercelUrl = normalizeOrigin(`https://${vercelUrl}`);
+    if (normalizedVercelUrl && normalizedRequestOrigin === normalizedVercelUrl) {
+      return requestOrigin;
+    }
+    // Also allow branch/PR previews sharing the same project pattern
+    const projectSlug = vercelUrl.split("-").slice(-2).join("-");
+    if (normalizedRequestOrigin.includes(projectSlug) && normalizedRequestOrigin.endsWith(".vercel.app")) {
+      return requestOrigin;
+    }
+  }
+
+  // Default: return request origin (or current origin if no request origin)
+  // This allows same-origin requests even without origin header
+  return requestOrigin || (host ? `${protocol}://${host}` : "*");
+};
+
 export const proxy = wrapMiddlewareWithSentry(async function proxy(request: NextRequest) {
+  // Handle OPTIONS (CORS preflight) requests explicitly
+  if (request.method === "OPTIONS") {
+    const allowedOrigin = getAllowedOriginForCors(request);
+
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": allowedOrigin,
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
   const csrfResult = enforceCsrf(request);
   if (csrfResult) return csrfResult;
 

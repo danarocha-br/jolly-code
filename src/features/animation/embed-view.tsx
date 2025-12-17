@@ -197,7 +197,24 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
       />
 
       <div className="relative w-full h-screen overflow-hidden flex items-center justify-center bg-background">
-        <div className="w-full h-full max-w-[100vw] max-h-[100vh] flex items-center justify-center p-4">
+        {/* Aggressive letter-spacing reset for embed view */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              #embed-animation-container,
+              #embed-animation-container *,
+              #embed-animation-container span,
+              #embed-animation-container div {
+                letter-spacing: 0 !important;
+                font-feature-settings: "liga" 0, "calt" 0, "dlig" 0 !important;
+                font-variant-ligatures: none !important;
+                -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
+                -moz-font-feature-settings: "liga" 0, "calt" 0 !important;
+              }
+            `,
+          }}
+        />
+        <div id="embed-animation-container" className="w-full h-full max-w-[100vw] max-h-[100vh] flex items-center justify-center p-4">
           <UnifiedAnimationCanvas
             ref={previewRef}
             mode="preview"
