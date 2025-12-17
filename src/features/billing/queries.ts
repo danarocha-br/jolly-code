@@ -6,6 +6,7 @@ import {
   type PaymentMethodInfo,
   type InvoiceInfo,
 } from "@/lib/services/billing";
+import { BILLING_INFO_QUERY_KEY } from "@/features/user/queries";
 
 const BILLING_QUERY_STALE_TIME_MS = 5 * 60 * 1000;
 
@@ -30,7 +31,7 @@ export const fetchBillingInfo = async (
 
 export const useBillingInfo = (userId?: string) => {
   return useQuery<BillingInfo | null>({
-    queryKey: ["billing-info", userId ?? "current"],
+    queryKey: [BILLING_INFO_QUERY_KEY, userId ?? "current"],
     queryFn: () => fetchBillingInfo(userId),
     staleTime: BILLING_QUERY_STALE_TIME_MS,
   });

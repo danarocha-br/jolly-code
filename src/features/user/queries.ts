@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 
 import { createClient } from "@/utils/supabase/client";
 import { getUserUsage, type UsageSummary } from "@/lib/services/usage-limits";
@@ -10,6 +9,8 @@ import { getWatermarkPreference, type WatermarkPreference } from "@/lib/services
 import { updateWatermarkPreferenceAction } from "@/actions/user/update-watermark-preference";
 
 export const USAGE_QUERY_KEY = "user-usage";
+export const USER_PLAN_QUERY_KEY = "user-plan";
+export const BILLING_INFO_QUERY_KEY = "billing-info";
 const USER_USAGE_STALE_TIME_MS = 5 * 60 * 1000;
 
 /**
@@ -67,7 +68,7 @@ export const useUserUsage = (userId?: string) => {
 
 export const useUserPlan = (userId?: string) => {
   const queryResult = useQuery<PlanId>({
-    queryKey: ["user-plan", userId],
+    queryKey: [USER_PLAN_QUERY_KEY, userId],
     queryFn: async () => {
       const usage = await fetchUserUsage(userId);
       return usage.plan;
@@ -171,27 +172,10 @@ export const useUpdateWatermarkPreference = (userId?: string) => {
 
       // Report error to Sentry with context
       if (error instanceof Error) {
-        // Report with comprehensive context including queryKey and previousPreference
-        // Using Sentry directly to include all requested metadata
-        if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-          Sentry.withScope((scope) => {
-            scope.setTag("query_type", "watermark_preference_mutation");
-            scope.setTag("user_id", userId || "unknown");
-            scope.setContext("mutation_error", {
-              queryKey: [WATERMARK_PREFERENCE_QUERY_KEY, userId],
-              userId,
-              previousPreference: context?.previousPreference,
-              error_message: error.message,
-              error_name: error.name,
-            });
-            Sentry.captureException(error);
-            Sentry.flush(2000).catch((flushError) => {
-              console.warn("[watermark_preference_mutation] Sentry flush failed:", flushError);
-            });
-          });
-        }
-        // Also call reportQueryError for consistency with other hooks
-        reportQueryError(error, "watermark_preference_mutation", userId);
+        reportQueryError(error, "watermark_preference_mutation", userId, {
+          previousPreference: context?.previousPreference,
+          queryKey: [WATERMARK_PREFERENCE_QUERY_KEY, userId],
+        });
       }
       
       console.error('[useUpdateWatermarkPreference] Mutation error:', error);

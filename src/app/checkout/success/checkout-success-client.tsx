@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { USAGE_QUERY_KEY } from "@/features/user/queries";
+import {
+  USAGE_QUERY_KEY,
+  USER_PLAN_QUERY_KEY,
+  BILLING_INFO_QUERY_KEY,
+} from "@/features/user/queries";
 
 type CheckoutSuccessClientProps = {
   plan: string;
@@ -17,12 +21,18 @@ export function CheckoutSuccessClient({
 }: CheckoutSuccessClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const executedRef = useRef(false);
 
   useEffect(() => {
+    // Guard against multiple executions
+    if (executedRef.current) {
+      return;
+    }
+
     // Invalidate user usage cache to force refetch with new plan
     queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY] });
-    queryClient.invalidateQueries({ queryKey: ["user-plan"] });
-    queryClient.invalidateQueries({ queryKey: ["billing-info"] });
+    queryClient.invalidateQueries({ queryKey: [USER_PLAN_QUERY_KEY] });
+    queryClient.invalidateQueries({ queryKey: [BILLING_INFO_QUERY_KEY] });
 
     // Show success toast
     toast.success(`Subscription activated!`, {
@@ -34,6 +44,9 @@ export function CheckoutSuccessClient({
     const redirectTimer = setTimeout(() => {
       router.push("/");
     }, 1500);
+
+    // Mark as executed after running the logic
+    executedRef.current = true;
 
     return () => clearTimeout(redirectTimer);
   }, [plan, sessionId, router, queryClient]);

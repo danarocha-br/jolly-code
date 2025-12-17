@@ -36,10 +36,19 @@ export const Home = () => {
     }
   }, [shared]);
   const [hasMounted, setHasMounted] = useState(false);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasMounted(true);
+    
+    // Allow auth initialization to complete before showing content
+    // This ensures AuthProvider has time to validate the session
+    const timer = setTimeout(() => {
+      setIsAuthInitialized(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -126,7 +135,7 @@ export const Home = () => {
 
         <div className="w-full min-h-screen grid items-center justify-center py-6 relative bottom-7 2xl:bottom-4">
           <main className="relative flex items-center justify-center lg:-ml-16">
-            <CodeEditor isLoading={false} />
+            <CodeEditor isLoading={!isAuthInitialized} />
 
             <SettingsPanel />
 

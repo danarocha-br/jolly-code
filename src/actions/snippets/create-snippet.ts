@@ -36,7 +36,7 @@ export async function createSnippet(
     return withAuthAction(payload, async ({ id, title, code, language, url }, { user, supabase }) => {
       // Check snippet limit before allowing save
       const { data: limitCheckRaw, error: limitError } = await supabase.rpc('check_snippet_limit', {
-        p_user_id: user.id
+        target_user_id: user.id
       })
 
       if (limitError) {
@@ -61,11 +61,15 @@ export async function createSnippet(
         overLimit?: number | null
       }
 
+      // Normalize plan value from database ("started" -> "starter")
+      const rawPlan = rpcResponse.plan ?? 'free';
+      const normalizedPlan = rawPlan === 'started' ? 'starter' : rawPlan;
+
       const limitCheck: UsageLimitCheck = {
         canSave: Boolean(rpcResponse.canSave ?? rpcResponse.can_save ?? false),
         current: rpcResponse.current ?? 0,
         max: rpcResponse.max ?? null,
-        plan: (rpcResponse.plan as UsageLimitCheck['plan']) ?? 'free',
+        plan: (normalizedPlan as UsageLimitCheck['plan']) ?? 'free',
         overLimit: rpcResponse.overLimit ?? rpcResponse.over_limit ?? 0,
       }
 

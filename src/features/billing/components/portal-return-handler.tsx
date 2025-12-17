@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { USAGE_QUERY_KEY } from "@/features/user/queries";
+import {
+  USAGE_QUERY_KEY,
+  BILLING_INFO_QUERY_KEY,
+} from "@/features/user/queries";
 
 export function PortalReturnHandler() {
   const searchParams = useSearchParams();
@@ -30,13 +33,13 @@ export function PortalReturnHandler() {
           await syncSub({});
 
           // After syncing with Stripe, refetch queries to get the updated data
-          queryClient.refetchQueries({ queryKey: ["billing-info"] });
+          queryClient.refetchQueries({ queryKey: [BILLING_INFO_QUERY_KEY] });
           queryClient.refetchQueries({ queryKey: [USAGE_QUERY_KEY] });
           queryClient.refetchQueries({ queryKey: ["user"] }); // Refresh user menu/avatar if needed
         } catch (error) {
           console.error("Failed to sync subscription:", error);
           // Fallback to just refetching if sync fails
-          queryClient.refetchQueries({ queryKey: ["billing-info"] });
+          queryClient.refetchQueries({ queryKey: [BILLING_INFO_QUERY_KEY] });
           queryClient.refetchQueries({ queryKey: [USAGE_QUERY_KEY] });
           queryClient.refetchQueries({ queryKey: ["user"] });
         }
