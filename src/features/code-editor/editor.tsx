@@ -37,7 +37,6 @@ import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
 import { ActionResult } from "@/actions/utils/action-result";
 import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
-import { useWatermarkVisibility } from "@/features/animation/hooks/use-watermark-visibility";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -162,47 +161,10 @@ export const Editor = forwardRef<any, EditorProps>(
     const [currentUrlOrigin, setCurrentUrlOrigin] = useState<string | null>(
       null
     );
-    const [isExporting, setIsExporting] = useState(false);
     const queryClient = useQueryClient();
     const queryKey = ["collections"];
 
-    // Sync data-exporting attribute with DOM changes from export menu
-    // The export menu (src/features/export/export-menu.tsx) directly manipulates
-    // the DOM attribute, so we use MutationObserver to sync React state.
-    // This ensures the watermark visibility (group-data-[exporting=true]/export:flex)
-    // works correctly during exports.
-    useEffect(() => {
-      if (!containerRef.current) return;
-
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (
-            mutation.type === "attributes" &&
-            mutation.attributeName === "data-exporting"
-          ) {
-            const element = mutation.target as HTMLElement;
-            const exporting = element.dataset.exporting === "true";
-            setIsExporting(exporting);
-          }
-        });
-      });
-
-      observer.observe(containerRef.current, {
-        attributes: true,
-        attributeFilter: ["data-exporting"],
-      });
-
-      // Initial check
-      const initialValue = containerRef.current.dataset.exporting === "true";
-      setIsExporting(initialValue);
-
-      return () => {
-        observer.disconnect();
-      };
-    }, []);
-
     const user = useUserStore((state) => state.user);
-    const { shouldShowWatermark } = useWatermarkVisibility(user?.id);
 
     const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
     const showBackground = useEditorStore((state) => state.showBackground);
@@ -615,7 +577,6 @@ export const Editor = forwardRef<any, EditorProps>(
             containerRef.current = node;
           }}
           id={currentEditor?.id || "editor"}
-          data-exporting={isExporting ? "true" : "false"}
         >
           {!user ? (
             <LoginDialog>
@@ -789,26 +750,6 @@ export const Editor = forwardRef<any, EditorProps>(
           </div>
 
           <WidthMeasurement isVisible={isWidthVisible} width={width} />
-
-          {/* Watermark (included in exports) */}
-          {shouldShowWatermark && (
-            <div className="pointer-events-none select-none absolute bottom-0 right-0 hidden items-center gap-3 opacity-80 group-data-[exporting=true]/export:flex">
-              <span
-                className={cn(
-                  "text-xs font-medium tracking-wide",
-                  isDarkTheme ? "text-white/40" : "text-stone-800/40"
-                )}
-              >
-                jollycode.dev
-              </span>
-              <Logo
-                variant="short"
-                className={cn(
-                  "scale-[0.4] -ml-6 grayscale contrast-150 opacity-30",
-                )}
-              />
-            </div>
-          )}
         </div>
 
         <div
