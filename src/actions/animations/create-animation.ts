@@ -87,8 +87,8 @@ export async function createAnimation(
       const canAdd = maxSlides === null || slides.length <= maxSlides
 
       if (!canAdd) {
-        // Format maxSlides for display (Infinity/null becomes "unlimited")
-        const maxSlidesDisplay = maxSlides === null || maxSlides === Infinity ? 'unlimited' : maxSlides.toString()
+        // Format maxSlides for display (null becomes "unlimited")
+        const maxSlidesDisplay = maxSlides === null ? 'unlimited' : maxSlides.toString()
         
         // Get upgrade target and its maxSlides for upgrade messaging
         const upgradeTarget = getUpgradeTarget(plan)

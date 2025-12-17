@@ -2,9 +2,21 @@ name: Plan Limits
 
 on:
   pull_request:
+    paths:
+      - '**/*.tf'
+      - 'terraform/**'
+      - 'infrastructure/**'
+      - 'plans/**'
+      - '.github/workflows/plan-validation.yml'
   push:
     branches:
       - main
+    paths:
+      - '**/*.tf'
+      - 'terraform/**'
+      - 'infrastructure/**'
+      - 'plans/**'
+      - '.github/workflows/plan-validation.yml'
 
 jobs:
   validate-plan-limits:

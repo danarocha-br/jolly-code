@@ -168,9 +168,6 @@ export const PLANS: Record<PlanId, PlanConfig> = {
 
 // Helper to get plan config by ID
 export function getPlanConfig(planId: PlanId | string): PlanConfig {
-  if (planId === 'started') {
-    return PLANS['starter'];
-  }
   return PLANS[planId as PlanId] || PLANS['free'];
 }
 

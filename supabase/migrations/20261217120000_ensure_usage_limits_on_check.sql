@@ -34,7 +34,7 @@ BEGIN
     RAISE EXCEPTION 'User not found for limit check';
   END IF;
 
-  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'started' THEN 50 ELSE NULL END;
+  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'starter' THEN 50 ELSE NULL END;
 
   IF max_allowed IS NULL THEN
     can_save := TRUE;
@@ -86,7 +86,7 @@ BEGIN
     RAISE EXCEPTION 'User not found for limit check';
   END IF;
 
-  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'started' THEN 50 ELSE NULL END;
+  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'starter' THEN 50 ELSE NULL END;
 
   IF max_allowed IS NULL THEN
     can_save := TRUE;

@@ -37,7 +37,7 @@ BEGIN
 
   max_allowed := CASE user_plan 
     WHEN 'free' THEN 0 
-    WHEN 'started' THEN 10 
+    WHEN 'starter' THEN 10 
     ELSE NULL 
   END;
 

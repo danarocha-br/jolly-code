@@ -7,7 +7,7 @@ const projectRoot = path.join(__dirname, '..');
 const plansPath = path.join(projectRoot, 'src/lib/config/plans.ts');
 const migrationsDir = path.join(projectRoot, 'supabase', 'migrations');
 
-const planIds = ['free', 'started', 'pro'];
+const planIds = ['free', 'starter', 'pro'];
 
 // Set USE_AST_EXTRACTION=true to use AST-based extraction instead of regex
 const USE_AST_EXTRACTION = process.env.USE_AST_EXTRACTION === 'true';

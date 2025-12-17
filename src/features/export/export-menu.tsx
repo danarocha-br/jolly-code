@@ -225,6 +225,31 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
       link.download = fileName;
       // Programmatically trigger a click on the link element to initiate the file download
       link.click();
+    } catch (error) {
+      // Capture and report export error with contextual metadata
+      const exportError = error instanceof Error ? error : new Error(String(error));
+      
+      if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+        Sentry.withScope((scope) => {
+          scope.setTag("export_type", "save_image");
+          scope.setTag("export_format", format);
+          scope.setTag("user_id", user?.id || "unknown");
+          scope.setContext("export_error", {
+            export_type: "save_image",
+            export_format: format,
+            export_name: name,
+            user_id: user?.id,
+            editor_id: currentEditorState?.id,
+            editor_title: title,
+            error_message: exportError.message,
+            error_name: exportError.name,
+          });
+          Sentry.captureException(exportError);
+        });
+      }
+      
+      // Rethrow to maintain normal error propagation
+      throw error;
     } finally {
       if (freshEditor) {
         freshEditor.dataset.exporting = "false";

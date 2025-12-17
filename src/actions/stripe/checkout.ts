@@ -85,14 +85,25 @@ export async function createCheckoutSession({
     // Check if user already has an active subscription
     const { data: subscriptionData } = await supabase
       .from('profiles')
-      .select('stripe_subscription_status')
+      .select('plan, stripe_subscription_status')
       .eq('id', user.id)
       .single();
 
     if (
-      hasActiveSubscription({
-        stripeSubscriptionStatus: subscriptionData?.stripe_subscription_status ?? null,
-      } as Partial<BillingInfo>)
+      hasActiveSubscription(
+        subscriptionData
+          ? {
+              plan: subscriptionData.plan,
+              stripeCustomerId: null,
+              stripeSubscriptionId: null,
+              stripeSubscriptionStatus: subscriptionData.stripe_subscription_status,
+              subscriptionPeriodEnd: null,
+              subscriptionCancelAtPeriodEnd: null,
+              stripePriceId: null,
+              billingInterval: null,
+            }
+          : null
+      )
     ) {
       return {
         error: 'You already have an active subscription. Please manage your plan in the customer portal.'

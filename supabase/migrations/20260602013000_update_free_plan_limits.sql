@@ -20,7 +20,7 @@ BEGIN
 
   v_max_limit := CASE v_plan
     WHEN 'free' THEN 10
-    WHEN 'started' THEN 50
+    WHEN 'starter' THEN 50
     WHEN 'pro' THEN NULL
   END;
 
@@ -50,7 +50,7 @@ BEGIN
 
   v_max_limit := CASE v_plan
     WHEN 'free' THEN 10
-    WHEN 'started' THEN 50
+    WHEN 'starter' THEN 50
     WHEN 'pro' THEN NULL
   END;
 

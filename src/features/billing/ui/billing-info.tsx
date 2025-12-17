@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ export function BillingInfoView({
   isLoading,
   userId,
 }: BillingInfoProps) {
+  const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSyncSubscription = async () => {
@@ -44,7 +46,7 @@ export function BillingInfoView({
       if (result.success) {
         toast.success("Subscription data synced successfully");
         // Refresh the page to get updated data
-        window.location.reload();
+        router.refresh();
       } else {
         toast.error(result.error || "Failed to sync subscription data");
       }
@@ -138,9 +140,15 @@ export function BillingInfoView({
   const planConfig = getPlanConfig(planId);
   const hasSubscription = hasActiveSubscription(billingInfo);
   const isCanceling = billingInfo.subscriptionCancelAtPeriodEnd === true;
-  const nextBillingDate = billingInfo.subscriptionPeriodEnd
-    ? new Date(billingInfo.subscriptionPeriodEnd)
-    : null;
+  
+  // Parse and validate the billing date
+  let nextBillingDate: Date | null = null;
+  if (billingInfo.subscriptionPeriodEnd) {
+    const parsedDate = new Date(billingInfo.subscriptionPeriodEnd);
+    if (!isNaN(parsedDate.getTime())) {
+      nextBillingDate = parsedDate;
+    }
+  }
 
   // Determine pricing display
   let priceDisplay = "Free";
@@ -197,11 +205,13 @@ export function BillingInfoView({
                 {isCanceling ? "Access until" : "Next billing date"}
               </p>
               <p className="text-sm font-medium text-right">
-                {nextBillingDate.toLocaleDateString(navigator.language, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                {nextBillingDate && !isNaN(nextBillingDate.getTime())
+                  ? nextBillingDate.toLocaleDateString(navigator.language, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : null}
               </p>
             </div>
             {isCanceling && (

@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 
 import {
   Select,
@@ -15,6 +15,7 @@ import { SettingsPanelItem } from './ui/item';
 export const FontFamilySelector = () => {
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const selectRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
 
   const handleCardClick = () => {
     // Programmatically click the select trigger to open it
@@ -26,10 +27,12 @@ export const FontFamilySelector = () => {
       value={fontFamily}
       onClick={handleCardClick}
       role="combobox"
-      aria-expanded={false}
+      aria-expanded={open}
       aria-haspopup="listbox"
     >
       <Select
+        open={open}
+        onOpenChange={setOpen}
         value={fontFamily}
         onValueChange={(fontFamily: FontsProps) =>
           useEditorStore.setState({ fontFamily })

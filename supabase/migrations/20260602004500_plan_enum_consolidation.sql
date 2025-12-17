@@ -5,19 +5,19 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'started'
+    WHERE enumlabel = 'starter'
       AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'plan_type')
   ) THEN
-    ALTER TYPE plan_type ADD VALUE IF NOT EXISTS 'started';
+    ALTER TYPE plan_type ADD VALUE IF NOT EXISTS 'starter';
   END IF;
 
   IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_plan') THEN
     IF NOT EXISTS (
       SELECT 1 FROM pg_enum
-      WHERE enumlabel = 'started'
+      WHERE enumlabel = 'starter'
         AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'user_plan')
     ) THEN
-      ALTER TYPE user_plan ADD VALUE IF NOT EXISTS 'started';
+      ALTER TYPE user_plan ADD VALUE IF NOT EXISTS 'starter';
     END IF;
   END IF;
 END $$;
@@ -88,7 +88,7 @@ BEGIN
     RAISE EXCEPTION 'User not found for limit check';
   END IF;
 
-  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'started' THEN 50 ELSE NULL END;
+  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'starter' THEN 50 ELSE NULL END;
 
   IF max_allowed IS NULL THEN
     can_save := TRUE;
@@ -137,7 +137,7 @@ BEGIN
     RAISE EXCEPTION 'User not found for animation limit check';
   END IF;
 
-  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'started' THEN 50 ELSE NULL END;
+  max_allowed := CASE user_plan WHEN 'free' THEN 0 WHEN 'starter' THEN 50 ELSE NULL END;
 
   IF max_allowed IS NULL THEN
     can_save := TRUE;

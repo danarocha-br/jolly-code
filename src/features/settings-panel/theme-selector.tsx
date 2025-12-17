@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import {
   Select,
@@ -20,6 +20,7 @@ export const ThemeSelector = () => {
     (state) => state.backgroundTheme
   );
   const selectRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
 
   const handleCardClick = () => {
     // Programmatically click the select trigger to open it
@@ -31,10 +32,12 @@ export const ThemeSelector = () => {
       value={backgroundTheme}
       onClick={handleCardClick}
       role="combobox"
-      aria-expanded={false}
+      aria-expanded={open}
       aria-haspopup="listbox"
     >
       <Select
+        open={open}
+        onOpenChange={setOpen}
         value={backgroundTheme}
         onValueChange={(theme) => {
           useEditorStore.setState({

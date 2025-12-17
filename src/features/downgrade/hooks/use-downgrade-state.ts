@@ -6,9 +6,7 @@ import type { DowngradeImpact } from "@/lib/utils/downgrade-impact";
 import { selectOldestSnippetItems, selectOldestAnimationItems } from "../utils";
 
 export const useDowngradeState = (
-  open: boolean,
-  userId?: string,
-  targetPlan?: string
+  open: boolean
 ): DowngradeState & DowngradeActions => {
   const [impact, setImpact] = useState<DowngradeImpact | null>(null);
   const [selectedSnippets, setSelectedSnippets] = useState<Set<string>>(new Set());

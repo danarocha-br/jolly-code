@@ -22,7 +22,7 @@ begin
 
   v_max_limit := case v_plan
     when 'free' then 0
-    when 'started' then 50
+    when 'starter' then 50
     when 'pro' then null
   end;
 

@@ -92,7 +92,7 @@ export function CreateAnimationCollectionDialog({
 
   const folderLimit = usage?.folders;
   const folderLimitReached =
-    folderLimit?.max != null && folderLimit.current >= folderLimit.max;
+    folderLimit?.max != null && (folderLimit?.current ?? 0) >= folderLimit.max;
 
   function onSubmit(data: z.infer<typeof formSchema>) {
     if (folderLimitReached) {

@@ -61,7 +61,7 @@ begin
   end if;
 
   -- Convert user_plan enum to plan_type enum via text (profiles.plan is user_plan, get_plan_limits expects plan_type)
-  -- user_plan has ('free', 'pro'), plan_type has ('free', 'started', 'pro')
+  -- user_plan has ('free', 'pro'), plan_type has ('free', 'starter', 'pro')
   v_plan_limits := get_plan_limits(v_usage.plan::text::plan_type);
 
   if (v_plan_limits ->> 'maxSnippets') is not null then

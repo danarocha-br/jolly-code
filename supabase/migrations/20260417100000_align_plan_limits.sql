@@ -5,7 +5,7 @@ RETURNS JSON AS $$
 BEGIN
   RETURN CASE plan_type
     WHEN 'free' THEN '{"maxSnippets": 0, "maxAnimations": 0, "maxSlidesPerAnimation": 3, "maxSnippetsFolder": 0, "maxVideoExportCount": 0, "shareAsPublicURL": 50}'::json
-    WHEN 'started' THEN '{"maxSnippets": 50, "maxAnimations": 50, "maxSlidesPerAnimation": 10, "maxSnippetsFolder": 10, "maxVideoExportCount": 50, "shareAsPublicURL": 1000}'::json
+    WHEN 'starter' THEN '{"maxSnippets": 50, "maxAnimations": 50, "maxSlidesPerAnimation": 10, "maxSnippetsFolder": 10, "maxVideoExportCount": 50, "shareAsPublicURL": 1000}'::json
     WHEN 'pro' THEN '{"maxSnippets": null, "maxAnimations": null, "maxSlidesPerAnimation": null, "maxSnippetsFolder": null, "maxVideoExportCount": null, "shareAsPublicURL": null}'::json
   END;
 END;
