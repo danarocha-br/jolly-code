@@ -168,7 +168,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
 
 // Helper to get plan config by ID
 export function getPlanConfig(planId: PlanId | string): PlanConfig {
-  return PLANS[planId as PlanId] || PLANS['free'];
+  // Normalize legacy "started" to "starter" (database migration in progress)
+  const normalizedPlanId = planId === 'started' ? 'starter' : planId;
+  return PLANS[normalizedPlanId as PlanId] || PLANS['free'];
 }
 
 // Helper to check if a feature is available for a plan

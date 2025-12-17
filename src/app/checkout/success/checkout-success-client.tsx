@@ -22,6 +22,7 @@ export function CheckoutSuccessClient({
     // Invalidate user usage cache to force refetch with new plan
     queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY] });
     queryClient.invalidateQueries({ queryKey: ["user-plan"] });
+    queryClient.invalidateQueries({ queryKey: ["billing-info"] });
 
     // Show success toast
     toast.success(`Subscription activated!`, {
