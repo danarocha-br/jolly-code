@@ -8,6 +8,8 @@ import { getPlanConfig, type PlanId } from "@/lib/config/plans";
 import type { UsageSummary } from "@/lib/services/usage-limits";
 import { createClient } from "@/utils/supabase/client";
 import { trackAnimationEvent } from "@/features/animation/analytics";
+import { analytics } from "@/lib/services/tracking";
+import { VIDEO_EXPORT_EVENTS } from "@/lib/services/tracking/events";
 import type { User } from "@supabase/supabase-js";
 
 type UpgradeContext = {
@@ -98,6 +100,11 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
 
     // If we know the user already exhausted the limit from cached usage, prompt immediately.
     if (max !== null && current >= max) {
+      analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_LIMIT_REACHED, user, {
+        current,
+        max,
+        plan,
+      });
       trackAnimationEvent("limit_reached", user, {
         limit_type: "video_exports",
         current,
@@ -256,6 +263,13 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
       // before startExport is called, so we don't reset it here
 
       if (analyticsContext) {
+        analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_STARTED, user, {
+          format: analyticsContext.format,
+          resolution: analyticsContext.resolution,
+          slide_count: analyticsContext.slide_count,
+          total_duration: analyticsContext.total_duration,
+          transition_type: analyticsContext.transition_type,
+        });
         trackAnimationEvent("export_started", user, {
           format: analyticsContext.format,
           resolution: analyticsContext.resolution,
@@ -276,6 +290,12 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
     (analyticsContext?: ExportAnalyticsContext) => {
       setCancelExport(true);
       if (analyticsContext) {
+        analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_CANCELLED, user, {
+          progress_percent: analyticsContext.progress_percent,
+          format: analyticsContext.format,
+          resolution: analyticsContext.resolution,
+          slide_count: analyticsContext.slide_count,
+        });
         trackAnimationEvent("export_cancelled", user, {
           progress_percent: analyticsContext.progress_percent,
           format: analyticsContext.format,
@@ -304,6 +324,14 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
         URL.revokeObjectURL(url);
 
         if (analyticsContext) {
+          analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_COMPLETED, user, {
+            format: analyticsContext.format,
+            resolution: analyticsContext.resolution,
+            slide_count: analyticsContext.slide_count,
+            file_size_mb: analyticsContext.file_size_mb,
+            duration_seconds: analyticsContext.total_duration,
+            transition_type: analyticsContext.transition_type,
+          });
           trackAnimationEvent("export_completed", user, {
             format: analyticsContext.format,
             resolution: analyticsContext.resolution,
@@ -343,6 +371,14 @@ export function useVideoExport({ user, onUpgradePrompt }: UseVideoExportOptions)
       }
 
       if (analyticsContext) {
+        analytics.trackWithUser(VIDEO_EXPORT_EVENTS.VIDEO_EXPORT_FAILED, user, {
+          error_type: err?.message || "unknown",
+          format: analyticsContext.format,
+          resolution: analyticsContext.resolution,
+          slide_count: analyticsContext.slide_count,
+          transition_type: analyticsContext.transition_type,
+          progress_percent: analyticsContext.progress_percent,
+        });
         trackAnimationEvent("export_failed", user, {
           error_type: err?.message || "unknown",
           format: analyticsContext.format,

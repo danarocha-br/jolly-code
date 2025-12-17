@@ -4,6 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { createClient } from "@/utils/supabase/client";
+import { analytics } from "@/lib/services/tracking";
+import { AUTH_EVENTS } from "@/lib/services/tracking/events";
 
 import {
   Dialog,
@@ -47,6 +49,11 @@ export const LoginDialog = ({
 
   const { mutate: handleSignInWithGithub, isPending } = useMutation({
     mutationFn: async () => {
+      // Track login initiation
+      analytics.track(AUTH_EVENTS.LOGIN_INITIATED, {
+        provider: 'github',
+      });
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
@@ -55,6 +62,10 @@ export const LoginDialog = ({
       });
 
       if (error) {
+        analytics.track(AUTH_EVENTS.LOGIN_FAILED, {
+          provider: 'github',
+          error_message: error.message,
+        });
         toast.error("Sorry, something went wrong. Please try again.");
       }
     },

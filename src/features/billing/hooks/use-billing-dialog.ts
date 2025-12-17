@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useUserPlan } from "@/features/user/queries";
 import { getDowngradeTarget } from "@/lib/utils/downgrade-impact";
 import type { PlanId } from "@/lib/config/plans";
+import { analytics } from "@/lib/services/tracking";
+import { BILLING_EVENTS } from "@/lib/services/tracking/events";
 
 export const useBillingDialog = () => {
   const { user } = useUserStore();
@@ -22,6 +24,11 @@ export const useBillingDialog = () => {
   const downgradeTarget = currentPlan ? getDowngradeTarget(currentPlan) : null;
 
   const handleOpenPortal = () => {
+    // Track customer portal access
+    analytics.track(BILLING_EVENTS.CUSTOMER_PORTAL_ACCESSED, {
+      current_plan: currentPlan,
+    });
+
     startTransition(async () => {
       try {
         const result = await createPortalSession();

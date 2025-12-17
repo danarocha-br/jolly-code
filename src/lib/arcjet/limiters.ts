@@ -1,5 +1,7 @@
 import arcjet, { shield, tokenBucket } from "@arcjet/next";
 import { NextResponse } from "next/server";
+import { captureServerEvent } from "@/lib/services/tracking/server";
+import { ERROR_EVENTS } from "@/lib/services/tracking/events";
 
 /**
  * Arcjet Rate Limiting Configuration
@@ -171,8 +173,25 @@ export async function enforceRateLimit(
     const decision = await protectableInstance.protect(req, protectOptions);
 
     if (decision.isDenied()) {
-      const status = decision.reason.isRateLimit() ? 429 : 403;
-      const message = decision.reason.isRateLimit() ? "Too many requests" : "Forbidden";
+      const isRateLimit = decision.reason.isRateLimit();
+      const status = isRateLimit ? 429 : 403;
+      const message = isRateLimit ? "Too many requests" : "Forbidden";
+      
+      // Track rate limit hits (non-blocking to avoid delaying error response)
+      if (isRateLimit) {
+        void captureServerEvent(ERROR_EVENTS.RATE_LIMIT_HIT, {
+          userId: hasValidUserId ? userId : undefined,
+          properties: {
+            tags: options?.tags,
+            requested: options?.requested ?? 1,
+          },
+          requestMetadata: {
+            ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
+            userAgent: req.headers.get('user-agent') || undefined,
+          },
+        });
+      }
+      
       return NextResponse.json({ error: message }, { status });
     }
 

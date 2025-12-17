@@ -9,6 +9,8 @@ import type { PlanId } from '@/lib/config/plans';
 import { enforceRateLimit, publicLimiter, strictLimiter } from '@/lib/arcjet/limiters';
 import { resolveBaseUrl } from '@/lib/utils/resolve-base-url';
 import type { Database } from '@/types/database';
+import { captureServerEvent } from '@/lib/services/tracking/server';
+import { BILLING_EVENTS } from '@/lib/services/tracking/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +51,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
     const { plan, interval } = body;
+
+    // Track checkout started (non-blocking)
+    void captureServerEvent(BILLING_EVENTS.CHECKOUT_STARTED, {
+      userId: user.id,
+      properties: {
+        plan,
+        interval,
+      },
+      requestMetadata: {
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+        userAgent: request.headers.get('user-agent') || undefined,
+      },
+    });
 
     // Validate plan
     if (plan === 'free') {
@@ -181,7 +196,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ sessionId: session.id, url: session.url });
+      // Track checkout redirected (non-blocking to avoid delaying redirect)
+      void captureServerEvent(BILLING_EVENTS.CHECKOUT_REDIRECTED, {
+        userId: user.id,
+        properties: {
+          plan,
+          interval,
+          session_id: session.id,
+        },
+        requestMetadata: {
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+        },
+      });
+
+      return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Checkout error:', error);
     return NextResponse.json(

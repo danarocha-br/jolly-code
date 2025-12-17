@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 import type { NextRequest } from "next/server";
 import { enforceRateLimit, publicLimiter } from "@/lib/arcjet/limiters";
+import { captureServerEvent } from "@/lib/services/tracking/server";
+import { AUTH_EVENTS } from "@/lib/services/tracking/events";
 
 export async function GET(request: NextRequest) {
   const limitResponse = await enforceRateLimit(publicLimiter, request, {
@@ -19,14 +21,63 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error('OAuth callback error:', error.message);
+      // Track login failure (non-blocking)
+      void captureServerEvent(AUTH_EVENTS.LOGIN_FAILED, {
+        properties: {
+          error_message: error.message,
+          provider: 'github',
+        },
+        requestMetadata: {
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+        },
+      });
+      
       // Redirect to home with error parameter
       return NextResponse.redirect(
         new URL(`/?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
       );
     }
 
-    console.log('Session established successfully:', !!data.session);
+    if (data.session && data.user) {
+      // Check if this is a new user (signup) by checking if profile exists
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('created_at')
+        .eq('id', data.user.id)
+        .single();
+
+      const isNewUser = profile && new Date(profile.created_at).getTime() > Date.now() - 60000; // Created within last minute
+
+      // Track login success (non-blocking to avoid delaying redirect)
+      void captureServerEvent(AUTH_EVENTS.LOGIN_SUCCESS, {
+        userId: data.user.id,
+        properties: {
+          provider: 'github',
+          is_new_user: isNewUser,
+        },
+        requestMetadata: {
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+        },
+      });
+
+      // Track signup if new user (non-blocking)
+      if (isNewUser) {
+        void captureServerEvent(AUTH_EVENTS.SIGNUP_DETECTED, {
+          userId: data.user.id,
+          properties: {
+            provider: 'github',
+          },
+          requestMetadata: {
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+          },
+        });
+      }
+    }
+
+    // Session established successfully - tracking already done above
   }
 
   // URL to redirect to after sign in process completes

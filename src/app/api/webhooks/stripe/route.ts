@@ -8,6 +8,7 @@ import { constructWebhookEvent, getStripeClient } from '@/lib/services/stripe';
 import type { PlanId } from '@/lib/config/plans';
 import type { Json } from '@/types/database';
 import { captureServerEvent } from '@/lib/services/tracking/server';
+import { BILLING_EVENTS } from '@/lib/services/tracking/events';
 import { invalidateUserUsageCache } from '@/lib/services/usage-limits-cache';
 import { syncSubscriptionToDatabase } from '@/lib/services/subscription-sync';
 import { getPlanIdFromPriceId, getStripeCustomerId, resolveUserIdFromSubscription } from '@/lib/services/stripe-helpers';
@@ -249,6 +250,27 @@ async function handleSubscriptionChange(
     expand: ['items.data.price', 'latest_invoice'],
   });
 
+  // Get userId and previous plan BEFORE syncing to detect changes
+  let userId: string | null = null;
+  let previousPlan: PlanId | null = null;
+  let previousStatus: string | null = null;
+  
+  try {
+    userId = await resolveUserIdFromSubscription(subscription, supabase);
+    if (userId) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan, stripe_subscription_status')
+        .eq('id', userId)
+        .single();
+      
+      previousPlan = profile?.plan as PlanId | null;
+      previousStatus = profile?.stripe_subscription_status || null;
+    }
+  } catch (error) {
+    console.error('Error fetching previous plan for tracking:', error);
+  }
+
   // For customer.subscription.created, check if user had existing subscription BEFORE syncing
   // This determines if we should send welcome email
   let shouldSendWelcomeEmail = false;
@@ -257,10 +279,7 @@ async function handleSubscriptionChange(
   
   if (event.type === 'customer.subscription.created') {
     try {
-      // Get userId first (before syncing)
-      const userId = await resolveUserIdFromSubscription(subscription, supabase);
       if (userId) {
-        
         // Check if user already had a subscription BEFORE we sync
         const { data: profile } = await supabase
           .from('profiles')
@@ -273,7 +292,6 @@ async function handleSubscriptionChange(
         shouldSendWelcomeEmail = !hadExistingSubscription && !!profile?.email;
         userEmail = profile?.email || null;
         userName = profile?.username || undefined;
-        
       }
     } catch (error) {
       console.error('Error checking for welcome email in subscription.created:', error);
@@ -311,6 +329,64 @@ async function handleSubscriptionChange(
           userEmail: userEmail,
         },
       });
+    }
+  }
+
+  // Track subscription changes
+  if (userId && result) {
+    const newPlan = result.planId;
+    const newStatus = subscription.status;
+
+    // Track subscription changes (non-blocking to avoid delaying webhook response)
+    if (newStatus === 'canceled' && previousStatus !== 'canceled') {
+      void captureServerEvent(BILLING_EVENTS.SUBSCRIPTION_CANCELLED, {
+        userId,
+        properties: {
+          plan: previousPlan,
+          subscription_id: subscription.id,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+        },
+      });
+    }
+
+    // Track subscription reactivation
+    if (previousStatus === 'canceled' && newStatus === 'active') {
+      void captureServerEvent(BILLING_EVENTS.SUBSCRIPTION_REACTIVATED, {
+        userId,
+        properties: {
+          plan: newPlan,
+          subscription_id: subscription.id,
+        },
+      });
+    }
+
+    // Track plan upgrades/downgrades
+    if (previousPlan && newPlan && previousPlan !== newPlan) {
+      const planOrder: PlanId[] = ['free', 'starter', 'pro'];
+      const previousIndex = planOrder.indexOf(previousPlan);
+      const newIndex = planOrder.indexOf(newPlan);
+
+      if (newIndex > previousIndex) {
+        // Upgrade
+        void captureServerEvent(BILLING_EVENTS.SUBSCRIPTION_UPGRADED, {
+          userId,
+          properties: {
+            from_plan: previousPlan,
+            to_plan: newPlan,
+            subscription_id: subscription.id,
+          },
+        });
+      } else if (newIndex < previousIndex) {
+        // Downgrade
+        void captureServerEvent(BILLING_EVENTS.SUBSCRIPTION_DOWNGRADED, {
+          userId,
+          properties: {
+            from_plan: previousPlan,
+            to_plan: newPlan,
+            subscription_id: subscription.id,
+          },
+        });
+      }
     }
   }
 
@@ -368,6 +444,15 @@ async function handleSubscriptionDeleted(
     }
     throw error;
   }
+
+  // Track subscription cancellation (non-blocking)
+  void captureServerEvent(BILLING_EVENTS.SUBSCRIPTION_CANCELLED, {
+    userId,
+    properties: {
+      subscription_id: subscription.id,
+      plan_before_cancellation: 'free', // Already downgraded to free
+    },
+  });
 
   // Only reconcile if user still exists (user might have been deleted)
   const { error: reconcileError } = await (supabase as any).rpc('reconcile_over_limit_content', {

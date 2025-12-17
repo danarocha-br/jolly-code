@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useUserStore, useEditorStore, useAnimationStore } from "@/app/store";
 import { useQueryClient } from "@tanstack/react-query";
+import { analytics } from "@/lib/services/tracking";
+import { ACCOUNT_EVENTS } from "@/lib/services/tracking/events";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +25,7 @@ export function DeleteAccountSection() {
   const [isPending, startTransition] = useTransition();
 
   const handleDeleteAccount = async () => {
+    analytics.track(ACCOUNT_EVENTS.DELETE_ACCOUNT_CONFIRMED);
     setIsDeleting(true);
 
     try {
@@ -111,7 +114,10 @@ export function DeleteAccountSection() {
         </Alert>
         <Button
           variant="ghost"
-          onClick={() => setIsDialogOpen(true)}
+          onClick={() => {
+            analytics.track(ACCOUNT_EVENTS.DELETE_ACCOUNT_INITIATED);
+            setIsDialogOpen(true);
+          }}
           className="text-destructive w-full"
         >
           <i className="ri-delete-bin-line text-lg mr-2 text-destructive" />

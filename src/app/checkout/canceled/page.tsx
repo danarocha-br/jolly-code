@@ -1,3 +1,7 @@
+import { createClient } from "@/utils/supabase/server";
+import { captureServerEvent } from "@/lib/services/tracking/server";
+import { BILLING_EVENTS } from "@/lib/services/tracking/events";
+
 type Props = {
   searchParams: Promise<{ session_id?: string }>
 }
@@ -5,6 +9,19 @@ type Props = {
 export default async function CheckoutCanceledPage({ searchParams }: Props) {
   const params = await searchParams
   const sessionId = params?.session_id
+
+  // Track checkout cancellation
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (user) {
+    await captureServerEvent(BILLING_EVENTS.CHECKOUT_CANCELLED, {
+      userId: user.id,
+      properties: {
+        session_id: sessionId,
+      },
+    });
+  }
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center gap-3 px-4 text-center">

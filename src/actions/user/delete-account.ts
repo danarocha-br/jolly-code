@@ -10,6 +10,8 @@ import { deleteStripeCustomer } from '@/lib/services/stripe'
 import { sendEmail } from '@/lib/email/send-email'
 import AccountDeletedEmail from '@emails/account-deleted-email'
 import { getUsageLimitsCacheProvider } from '@/lib/services/usage-limits-cache'
+import { captureServerEvent } from '@/lib/services/tracking/server'
+import { ACCOUNT_EVENTS } from '@/lib/services/tracking/events'
 
 /**
  * Server Action: Delete user account
@@ -26,13 +28,16 @@ import { getUsageLimitsCacheProvider } from '@/lib/services/usage-limits-cache'
  * @returns ActionResult with success status or error message
  */
 export async function deleteAccount(): Promise<ActionResult<{ success: true }>> {
+  let user: { id: string; email?: string } | null = null;
   try {
     // Authenticate user
-    const { user, supabase } = await requireAuth()
+    const authResult = await requireAuth();
+    user = authResult.user;
+    const { supabase } = authResult;
 
     // Validate user ID
-    if (!user.id || typeof user.id !== 'string') {
-      console.error('[deleteAccount] Invalid user ID:', user.id)
+    if (!user?.id || typeof user.id !== 'string') {
+      console.error('[deleteAccount] Invalid user ID:', user?.id)
       return error('Invalid user account. Please try signing out and signing back in.')
     }
 
@@ -229,6 +234,15 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
         errorMessage = `Failed to delete account: ${deleteError.message}`
       }
       
+      // Track account deletion failed (non-blocking)
+      void captureServerEvent(ACCOUNT_EVENTS.DELETE_ACCOUNT_FAILED, {
+        userId: user.id,
+        properties: {
+          error_code: deleteError.code || deleteError.status,
+          error_message: deleteError.message,
+        },
+      })
+      
       return error(errorMessage)
     }
     
@@ -254,6 +268,14 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
       },
     })
 
+    // Track account deletion completed (non-blocking - user is already deleted)
+    void captureServerEvent(ACCOUNT_EVENTS.DELETE_ACCOUNT_COMPLETED, {
+      userId: user.id,
+      properties: {
+        had_stripe_customer: !!stripeCustomerId,
+      },
+    })
+
     return success({ success: true })
   } catch (err) {
     console.error('[deleteAccount] Unexpected error:', err)
@@ -263,6 +285,18 @@ export async function deleteAccount(): Promise<ActionResult<{ success: true }>> 
     Sentry.captureException(err, {
       tags: { operation: 'delete_account' },
     })
+
+    // Track account deletion failed (non-blocking)
+    // Note: user may not be defined in catch block if error occurred before requireAuth
+    const userId = user?.id;
+    if (userId) {
+      void captureServerEvent(ACCOUNT_EVENTS.DELETE_ACCOUNT_FAILED, {
+        userId,
+        properties: {
+          error_message: errorMessage,
+        },
+      });
+    }
 
     if (err instanceof Error && errorMessage.includes('authenticated')) {
       return error('User must be authenticated')

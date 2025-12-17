@@ -2,6 +2,8 @@
 
 import { Component, type ReactNode } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { analytics } from "@/lib/services/tracking";
+import { ERROR_EVENTS } from "@/lib/services/tracking/events";
 
 import { FriendlyError } from "./friendly-error";
 
@@ -26,6 +28,10 @@ export class ClientErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     Sentry.captureException(error, { extra: errorInfo });
+    analytics.trackError(ERROR_EVENTS.CLIENT_ERROR_OCCURRED, error, {
+      component_stack: errorInfo?.componentStack,
+      error_boundary: true,
+    });
   }
 
   handleReset = () => {

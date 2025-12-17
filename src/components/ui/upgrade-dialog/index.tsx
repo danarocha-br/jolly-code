@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { analytics } from "@/lib/services/tracking";
+import { BILLING_EVENTS } from "@/lib/services/tracking/events";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -119,6 +121,24 @@ export function UpgradeDialog({
   );
   const [isPending, startTransition] = useTransition();
 
+  const handleBillingIntervalChange = (interval: BillingInterval) => {
+    setBillingInterval(interval);
+    analytics.track(BILLING_EVENTS.BILLING_INTERVAL_SELECTED, {
+      interval,
+      current_plan: currentPlan,
+      selected_plan: selectedPlan,
+    });
+  };
+
+  const handlePlanSelection = (plan: PlanId) => {
+    setSelectedPlan(plan);
+    analytics.track(BILLING_EVENTS.PLAN_SELECTED, {
+      plan,
+      billing_interval: billingInterval,
+      current_plan: currentPlan,
+    });
+  };
+
   const limitLabel =
     limitType === "slides"
       ? "slides per animation"
@@ -222,7 +242,7 @@ export function UpgradeDialog({
                 <Button
                   key={interval}
                   variant="secondary"
-                  onClick={() => setBillingInterval(interval)}
+                  onClick={() => handleBillingIntervalChange(interval)}
                   className={cn(
                     "rounded-full px-3 py-2 transition",
                     billingInterval === interval
@@ -249,11 +269,11 @@ export function UpgradeDialog({
                   role="button"
                   aria-pressed={isSelected}
                   tabIndex={0}
-                  onClick={() => setSelectedPlan(plan.id)}
+                  onClick={() => handlePlanSelection(plan.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      setSelectedPlan(plan.id);
+                      handlePlanSelection(plan.id);
                     }
                   }}
                   className={cn(
@@ -307,7 +327,7 @@ export function UpgradeDialog({
                     }
                     onClick={(event) => {
                       event.stopPropagation();
-                      setSelectedPlan(plan.id);
+                      handlePlanSelection(plan.id);
                       if (plan.id !== currentPlan && plan.id !== "free") {
                         handleCheckout(plan.id);
                       }

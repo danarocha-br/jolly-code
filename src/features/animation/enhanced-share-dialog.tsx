@@ -29,6 +29,8 @@ import {
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { calculateTotalDuration } from "@/features/animation";
 import { trackAnimationEvent } from "@/features/animation/analytics";
+import { analytics } from "@/lib/services/tracking";
+import { SHARING_EVENTS } from "@/lib/services/tracking/events";
 import { debounce } from "@/lib/utils/debounce";
 import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import {
@@ -196,6 +198,10 @@ export const EnhancedAnimationShareDialog = () => {
   const trackMetadataUpdated = useMemo(
     () =>
       debounce((field: "title" | "description", hasValue: boolean) => {
+        analytics.trackWithUser(SHARING_EVENTS.SHARE_METADATA_UPDATED, user, {
+          field,
+          has_value: hasValue,
+        });
         trackAnimationEvent("share_metadata_updated", user, {
           field,
           has_value: hasValue,
@@ -361,6 +367,11 @@ export const EnhancedAnimationShareDialog = () => {
         form.reset(parsed.data);
         previewTrackedRef.current = false;
 
+        analytics.trackWithUser(SHARING_EVENTS.SHARE_LINK_GENERATED, user, {
+          slide_count: serializedSlides.length,
+          has_title: Boolean(parsed.data.title?.trim()),
+          has_description: Boolean(parsed.data.description?.trim()),
+        });
         trackAnimationEvent("share_animation_link", user, {
           slide_count: serializedSlides.length,
           has_title: Boolean(parsed.data.title?.trim()),
@@ -414,6 +425,7 @@ export const EnhancedAnimationShareDialog = () => {
     setOpen(nextOpen);
 
     if (nextOpen) {
+      analytics.trackWithUser(SHARING_EVENTS.SHARE_DIALOG_OPENED, user);
       trackAnimationEvent("share_modal_opened", user);
       void generateShareUrl();
     } else {
@@ -437,6 +449,10 @@ export const EnhancedAnimationShareDialog = () => {
 
     void copySnippet(contentToCopy);
 
+    analytics.trackWithUser(SHARING_EVENTS.SHARE_PLATFORM_CLICKED, user, {
+      platform,
+      has_title: Boolean(title?.trim()),
+    });
     trackAnimationEvent("share_platform_copy", user, {
       platform,
       has_title: Boolean(title?.trim()),
@@ -465,12 +481,18 @@ export const EnhancedAnimationShareDialog = () => {
   const handleSocialShare = (platform: "twitter" | "linkedin") => {
     const target = socialLinks[platform];
     if (!target) return;
+    analytics.trackWithUser(SHARING_EVENTS.SHARE_PLATFORM_CLICKED, user, {
+      platform,
+    });
     trackAnimationEvent("social_share_clicked", user, { platform });
     window.open(target, "_blank", "noopener,noreferrer");
   };
 
   const handleTabChange = (value: (typeof TAB_KEYS)[number]) => {
     setActiveTab(value);
+    analytics.trackWithUser(SHARING_EVENTS.SHARE_METHOD_SELECTED, user, {
+      method: value,
+    });
     trackAnimationEvent("share_tab_changed", user, { tab: value });
 
     if (value === "preview" && shareSlug && !previewTrackedRef.current) {
@@ -544,6 +566,10 @@ export const EnhancedAnimationShareDialog = () => {
         height: embedHeight || defaultEmbedSizes.height,
       });
 
+      analytics.trackWithUser(SHARING_EVENTS.EMBED_CODE_COPIED, user, {
+        embed_width: embedWidth || defaultEmbedSizes.width,
+        embed_height: embedHeight || defaultEmbedSizes.height,
+      });
       trackAnimationEvent("embed_code_copied", user, {
         embed_width: embedWidth || defaultEmbedSizes.width,
         embed_height: embedHeight || defaultEmbedSizes.height,
