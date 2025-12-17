@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/shallow";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +15,14 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { useEditorStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hotKeyList } from "@/lib/hot-key-list";
+import { 
+  useWatermarkPreference, 
+  useUpdateWatermarkPreference,
+  useUserPlan 
+} from "@/features/user/queries";
 
 type EditorViewPreference = "default" | "minimal";
 
@@ -28,6 +34,9 @@ const toggleEditorLineNumbers = hotKeyList.filter(
 );
 
 export const EditorOptionsMenu = () => {
+  const { user } = useUserStore();
+  const userId = user?.id;
+  
   const currentState = useEditorStore((state) => state.currentEditorState);
   const editor = useEditorStore((state) => state.editor);
 
@@ -48,6 +57,14 @@ export const EditorOptionsMenu = () => {
         };
     })
   );
+
+  // Watermark preference hooks
+  const { data: watermarkPref, isLoading: isWatermarkLoading } = useWatermarkPreference(userId);
+  const { data: userPlan } = useUserPlan(userId);
+  const updateWatermarkMutation = useUpdateWatermarkPreference(userId);
+
+  const isPro = userPlan === 'pro';
+  const hideWatermark = watermarkPref?.hideWatermark ?? false;
 
   function changeEditorViewPreference(value: EditorViewPreference) {
     const userSettings = useEditorStore.getState();
@@ -75,6 +92,34 @@ export const EditorOptionsMenu = () => {
         return editor;
       }),
       showLineNumbers: checked, // Global setting for animation view
+    });
+  }
+
+  function handleHideWatermark(checked: boolean) {
+    if (!userId) {
+      toast.error("Please sign in to update preferences");
+      return;
+    }
+
+    if (checked && !isPro) {
+      toast.error("Upgrade to PRO to remove watermarks", {
+        description: "PRO plan unlocks watermark-free exports and embeds",
+      });
+      return;
+    }
+
+    updateWatermarkMutation.mutate(checked, {
+      onSuccess: () => {
+        toast.success(
+          checked 
+            ? "Watermark will be hidden from your exports" 
+            : "Watermark will be shown on your exports"
+        );
+      },
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : "Failed to update preference";
+        toast.error(message);
+      },
     });
   }
 
@@ -124,6 +169,26 @@ export const EditorOptionsMenu = () => {
         >
           Show line numbers
         </DropdownMenuCheckboxItem>
+
+        {userId && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              inset
+              checked={hideWatermark}
+              onSelect={keepMenuOpen}
+              onCheckedChange={(checked: boolean) => handleHideWatermark(checked)}
+              disabled={isWatermarkLoading || updateWatermarkMutation.isPending}
+            >
+              <div className="flex items-center gap-2">
+                <span>Hide watermark</span>
+                {!isPro && (
+                  <span className="text-xs text-muted-foreground">(PRO)</span>
+                )}
+              </div>
+            </DropdownMenuCheckboxItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

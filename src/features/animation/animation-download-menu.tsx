@@ -20,6 +20,7 @@ import type { PlanId } from "@/lib/config/plans";
 import { ExportOverlay } from "./share-dialog/export-overlay";
 import { GifExporter } from "./gif-exporter";
 import { useVideoExport } from "./hooks/use-video-export";
+import { useWatermarkVisibility } from "./hooks/use-watermark-visibility";
 
 export const AnimationDownloadMenu = () => {
   const user = useUserStore((state) => state.user);
@@ -31,6 +32,10 @@ export const AnimationDownloadMenu = () => {
   const fontFamily = useEditorStore((state) => state.fontFamily);
   const fontSize = useEditorStore((state) => state.fontSize);
   const showBackground = useEditorStore((state) => state.showBackground);
+
+  // Check if watermark should be hidden
+  const { shouldShowWatermark } = useWatermarkVisibility(user?.id);
+  const hideWatermark = !shouldShowWatermark;
 
   const loadTimestampRef = useRef<number | null>(null);
   const firstExportTrackedRef = useRef(false);
@@ -268,6 +273,7 @@ export const AnimationDownloadMenu = () => {
                   resetExport();
                   toast("Export canceled.");
                 }}
+                hideWatermark={hideWatermark}
               />
             </div>
           ) : (
@@ -292,6 +298,7 @@ export const AnimationDownloadMenu = () => {
                 resetExport();
                 toast("Export canceled.");
               }}
+              hideWatermark={hideWatermark}
             />
           )}
         </div>

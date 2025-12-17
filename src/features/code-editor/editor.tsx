@@ -37,6 +37,7 @@ import { UpgradeDialog } from "@/components/ui/upgrade-dialog";
 import { USAGE_QUERY_KEY, useUserUsage } from "@/features/user/queries";
 import { ActionResult } from "@/actions/utils/action-result";
 import { getUsageLimitsCacheProvider } from "@/lib/services/usage-limits-cache";
+import { useWatermarkVisibility } from "@/features/animation/hooks/use-watermark-visibility";
 import * as S from "./styles";
 
 type EditorProps = {
@@ -201,6 +202,7 @@ export const Editor = forwardRef<any, EditorProps>(
     }, []);
 
     const user = useUserStore((state) => state.user);
+    const { shouldShowWatermark } = useWatermarkVisibility(user?.id);
 
     const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
     const showBackground = useEditorStore((state) => state.showBackground);
@@ -789,22 +791,24 @@ export const Editor = forwardRef<any, EditorProps>(
           <WidthMeasurement isVisible={isWidthVisible} width={width} />
 
           {/* Watermark (included in exports) */}
-          <div className="pointer-events-none select-none absolute bottom-0 right-0 hidden items-center gap-3 opacity-80 group-data-[exporting=true]/export:flex">
-            <span
-              className={cn(
-                "text-xs font-medium tracking-wide",
-                isDarkTheme ? "text-white/40" : "text-stone-800/40"
-              )}
-            >
-              jollycode.dev
-            </span>
-            <Logo
-              variant="short"
-              className={cn(
-                "scale-[0.4] -ml-6 grayscale contrast-150 opacity-30",
-              )}
-            />
-          </div>
+          {shouldShowWatermark && (
+            <div className="pointer-events-none select-none absolute bottom-0 right-0 hidden items-center gap-3 opacity-80 group-data-[exporting=true]/export:flex">
+              <span
+                className={cn(
+                  "text-xs font-medium tracking-wide",
+                  isDarkTheme ? "text-white/40" : "text-stone-800/40"
+                )}
+              >
+                jollycode.dev
+              </span>
+              <Logo
+                variant="short"
+                className={cn(
+                  "scale-[0.4] -ml-6 grayscale contrast-150 opacity-30",
+                )}
+              />
+            </div>
+          )}
         </div>
 
         <div

@@ -16,6 +16,7 @@ import { trackAnimationEvent } from "@/features/animation/analytics";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
+import { useWatermarkVisibility } from "@/features/animation/hooks/use-watermark-visibility";
 
 export type AnimateEmbedClientProps = {
   payload: AnimationSharePayload;
@@ -40,6 +41,11 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
 
   const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
   const fontFamily = useEditorStore((state) => state.fontFamily);
+
+  // Check if watermark should be shown
+  // Note: For embed view, we need to get the owner's user ID from the payload or slug
+  // For now, we'll show watermark by default for embeds (can be enhanced later to fetch owner preference)
+  const { shouldShowWatermark } = useWatermarkVisibility();
 
   // Determine if background is dark for watermark color
   const isDarkBackground = [
@@ -210,21 +216,23 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
         </div>
 
         {/* Watermark */}
-        <a
-          href="https://jollycode.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute bottom-6 right-6 flex items-center gap-0 hover:opacity-80 transition-opacity cursor-pointer"
-        >
-          <span
-            className={cn(
-              "text-xs font-medium tracking-wide",
-              isDarkBackground ? "text-white/90" : "text-foreground/90"
-            )}
+        {shouldShowWatermark && (
+          <a
+            href="https://jollycode.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-6 right-6 flex items-center gap-0 hover:opacity-80 transition-opacity cursor-pointer"
           >
-            jollycode.dev
-          </span>
-        </a>
+            <span
+              className={cn(
+                "text-xs font-medium tracking-wide",
+                isDarkBackground ? "text-white/90" : "text-foreground/90"
+              )}
+            >
+              jollycode.dev
+            </span>
+          </a>
+        )}
       </div>
     </QueryClientProvider>
   );
