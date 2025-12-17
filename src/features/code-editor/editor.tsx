@@ -290,8 +290,15 @@ export const Editor = forwardRef<any, EditorProps>(
         return user?.id;
       }
     }, [user]);
-    const { data: usage, isLoading: isUsageLoading } = useUserUsage(user_id);
+    const { data: usage, isLoading: isUsageLoading, refetch: refetchUsage } = useUserUsage(user_id);
     const snippetLimit = usage?.snippets;
+    
+    // Refetch usage data when user logs in
+    useEffect(() => {
+      if (user_id && !isUsageLoading) {
+        refetchUsage();
+      }
+    }, [user_id]); // Only depend on user_id to trigger on user change
     // Check if limit is reached: current >= max (can't save if at or over limit)
     // Also check overLimit flag which indicates existing over-limit content
     const snippetLimitReached =
@@ -541,6 +548,18 @@ export const Editor = forwardRef<any, EditorProps>(
     );
 
     const handleSaveSnippet = () => {
+      // Validate user session
+      if (!user || !user_id) {
+        toast.error("Please log in to save snippets.");
+        return;
+      }
+
+      // Wait for usage data to load before allowing save
+      if (isUsageLoading || !usage) {
+        toast.error("Loading your account limits. Please try again in a moment.");
+        return;
+      }
+
       if (snippetLimitReached) {
         analytics.track("limit_reached", {
           limit_type: "snippets",
