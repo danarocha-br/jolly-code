@@ -8,6 +8,11 @@ const appOrigin =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Optimize bundle size for Edge Runtime
+  experimental: {
+    // Optimize package imports for smaller bundles
+    optimizePackageImports: ['highlight.js'],
+  },
   // Enable Next.js Image optimization
   images: {
     // Enable image optimization (enabled by default, but explicit for clarity)
