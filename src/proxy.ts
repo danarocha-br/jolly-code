@@ -13,7 +13,7 @@ const getRequestOrigin = (request: NextRequest) => {
   return originHeader ?? null;
 };
 
-const normalizeOrigin = (origin: string | null): string | null => {
+const normalizeOrigin = (origin: string | null | undefined): string | null => {
   if (!origin) return null;
   try {
     const url = new URL(origin);

@@ -8,6 +8,9 @@ import {
 } from "@/lib/services/billing";
 import { BILLING_INFO_QUERY_KEY } from "@/features/user/queries";
 
+export const PAYMENT_METHOD_QUERY_KEY = "payment-method";
+export const INVOICES_QUERY_KEY = "invoices";
+
 const BILLING_QUERY_STALE_TIME_MS = 5 * 60 * 1000;
 
 export const fetchBillingInfo = async (
@@ -59,7 +62,7 @@ export const fetchPaymentMethod = async (
 
 export const usePaymentMethod = (customerId?: string) => {
   return useQuery<PaymentMethodInfo | null>({
-    queryKey: ["payment-method", customerId],
+    queryKey: [PAYMENT_METHOD_QUERY_KEY, customerId],
     queryFn: () => fetchPaymentMethod(customerId),
     staleTime: BILLING_QUERY_STALE_TIME_MS,
     enabled: Boolean(customerId),
@@ -89,7 +92,7 @@ export const fetchInvoices = async (
 
 export const useInvoices = (customerId?: string) => {
   return useQuery<InvoiceInfo[]>({
-    queryKey: ["invoices", customerId],
+    queryKey: [INVOICES_QUERY_KEY, customerId],
     queryFn: () => fetchInvoices(customerId),
     staleTime: BILLING_QUERY_STALE_TIME_MS,
     enabled: Boolean(customerId),

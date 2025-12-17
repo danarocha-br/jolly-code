@@ -70,7 +70,7 @@ export async function createSnippet(
         current: rpcResponse.current ?? 0,
         max: rpcResponse.max ?? null,
         plan: (normalizedPlan as UsageLimitCheck['plan']) ?? 'free',
-        overLimit: rpcResponse.overLimit ?? rpcResponse.over_limit ?? 0,
+        overLimit: rpcResponse.overLimit ?? rpcResponse.over_limit ?? undefined,
       }
 
       // Compute overLimit locally if not provided

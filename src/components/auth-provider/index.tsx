@@ -1,10 +1,27 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { useUserStore } from '@/app/store'
+
+type AuthContextValue = {
+  isInitialized: boolean
+}
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+/**
+ * Hook to access auth context including initialization state
+ */
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
 
 /**
  * AuthProvider sets up a Supabase auth state listener to automatically
@@ -15,12 +32,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
+  const [isInitialized, setIsInitialized] = useState(false)
+  const hasInitializedRef = useRef(false)
 
   useEffect(() => {
     // Set up auth state listener
+    // Note: onAuthStateChange fires immediately with current session state when subscribed
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Mark as initialized on the first auth state change event
+      // This happens immediately when the listener is set up
+      if (!hasInitializedRef.current) {
+        hasInitializedRef.current = true
+        setIsInitialized(true)
+      }
+
       // Update user store with new session data (synchronous, always runs)
       if (session?.user) {
         useUserStore.setState({ user: session.user })
@@ -67,8 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [queryClient, router])
+  }, [queryClient, router, supabase])
 
-  return <>{children}</>
+  const contextValue = useMemo(
+    () => ({ isInitialized }),
+    [isInitialized]
+  )
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 

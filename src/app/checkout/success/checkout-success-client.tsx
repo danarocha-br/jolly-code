@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,14 +21,8 @@ export function CheckoutSuccessClient({
 }: CheckoutSuccessClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const executedRef = useRef(false);
 
   useEffect(() => {
-    // Guard against multiple executions
-    if (executedRef.current) {
-      return;
-    }
-
     // Invalidate user usage cache to force refetch with new plan
     queryClient.invalidateQueries({ queryKey: [USAGE_QUERY_KEY] });
     queryClient.invalidateQueries({ queryKey: [USER_PLAN_QUERY_KEY] });
@@ -45,11 +39,8 @@ export function CheckoutSuccessClient({
       router.push("/");
     }, 1500);
 
-    // Mark as executed after running the logic
-    executedRef.current = true;
-
     return () => clearTimeout(redirectTimer);
-  }, [plan, sessionId, router, queryClient]);
+  }, []);
 
   // Show minimal loading state while redirecting
   return (
