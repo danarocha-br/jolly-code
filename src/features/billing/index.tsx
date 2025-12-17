@@ -242,33 +242,6 @@ export function BillingFeature({ open, onOpenChange }: BillingDialogProps) {
                   </Button>
                 )}
               </div>
-
-              {shouldShowBillingDetails && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground text-xs self-center h-auto py-1"
-                  onClick={async () => {
-                    const { syncSubscription } = await import(
-                      "@/actions/stripe/checkout"
-                    );
-                    toast.promise(
-                      syncSubscription({}),
-                      {
-                        loading: 'Syncing subscription status...',
-                        success: () => {
-                          window.location.reload();
-                          return 'Status updated';
-                        },
-                        error: 'Failed to sync status'
-                      }
-                    );
-                  }}
-                >
-                  <i className="ri-refresh-line mr-1" />
-                  Refresh subscription status
-                </Button>
-              )}
             </div>
             {!shouldShowBillingDetails && (
               <p className="text-xs text-center text-muted-foreground">
