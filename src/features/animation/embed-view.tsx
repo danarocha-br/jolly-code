@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/react-query/query-client";
 import {
-	UnifiedAnimationCanvas,
-	useAnimationController,
-	calculateTotalDuration,
+  UnifiedAnimationCanvas,
+  useAnimationController,
+  calculateTotalDuration,
 } from "@/features/animation";
 import { useAnimationStore, useEditorStore } from "@/app/store";
 import { themes } from "@/lib/themes-options";
@@ -18,172 +18,216 @@ import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 
 export type AnimateEmbedClientProps = {
-	payload: AnimationSharePayload;
-	slug: string;
+  payload: AnimationSharePayload;
+  slug: string;
 };
 
 const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
-	const [isReady] = useState(true);
-	const previewRef = useRef<HTMLDivElement>(null);
-	const hasStartedPlayback = useRef(false);
-	const hasTrackedView = useRef(false);
-	const queryClient = getQueryClient();
+  const [isReady] = useState(true);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const hasStartedPlayback = useRef(false);
+  const hasTrackedView = useRef(false);
+  const queryClient = getQueryClient();
 
-	const {
-		currentFrame,
-		progress,
-		isPlaying,
-		handlePlayPause,
-		handleReset,
-		slides,
-	} = useAnimationController();
+  const {
+    currentFrame,
+    progress,
+    isPlaying,
+    handlePlayPause,
+    handleReset,
+    slides,
+  } = useAnimationController();
 
-	const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
-	const fontFamily = useEditorStore((state) => state.fontFamily);
+  const backgroundTheme = useEditorStore((state) => state.backgroundTheme);
+  const fontFamily = useEditorStore((state) => state.fontFamily);
 
-	// Determine if background is dark for watermark color
-	const isDarkBackground = ['sublime', 'hyper', 'dracula', 'monokai', 'nord', 'gotham', 'blue', 'nightOwl'].includes(
-		backgroundTheme
-	);
+  // Determine if background is dark for watermark color
+  const isDarkBackground = [
+    "sublime",
+    "hyper",
+    "dracula",
+    "monokai",
+    "nord",
+    "gotham",
+    "blue",
+    "nightOwl",
+  ].includes(backgroundTheme);
 
-	// Start with a clean store state for the embed
-	const sanitizedSlides = useMemo(
-		() =>
-			(payload.slides || []).map((slide, index) => ({
-				id: slide.id || `embed-slide-${index + 1}`,
-				code: slide.code || "",
-				title: slide.title || `Slide ${index + 1}`,
-				language: slide.language || "plaintext",
-				autoDetectLanguage: slide.autoDetectLanguage ?? true,
-				duration: typeof slide.duration === "number" ? slide.duration : 2,
-			})),
-		[payload.slides]
-	);
+  // Start with a clean store state for the embed
+  const sanitizedSlides = useMemo(
+    () =>
+      (payload.slides || []).map((slide, index) => ({
+        id: slide.id || `embed-slide-${index + 1}`,
+        code: slide.code || "",
+        title: slide.title || `Slide ${index + 1}`,
+        language: slide.language || "plaintext",
+        autoDetectLanguage: slide.autoDetectLanguage ?? true,
+        duration: typeof slide.duration === "number" ? slide.duration : 2,
+      })),
+    [payload.slides]
+  );
 
-	const totalDuration = useMemo(() => calculateTotalDuration(sanitizedSlides), [sanitizedSlides]);
+  const totalDuration = useMemo(
+    () => calculateTotalDuration(sanitizedSlides),
+    [sanitizedSlides]
+  );
 
-	useEffect(() => {
-		// Initialize stores
-		useAnimationStore.setState((state) => ({
-			...state,
-			slides: sanitizedSlides,
-			activeSlideIndex: 0,
-			animationSettings: payload.settings
-				? { ...state.animationSettings, ...payload.settings }
-				: state.animationSettings,
-			isPlaying: false, // Don't auto-play immediately to avoid audio policy issues or jarring starts
-			currentPlaybackTime: 0,
-		}));
+  useEffect(() => {
+    // Initialize stores
+    useAnimationStore.setState((state) => ({
+      ...state,
+      slides: sanitizedSlides,
+      activeSlideIndex: 0,
+      animationSettings: payload.settings
+        ? { ...state.animationSettings, ...payload.settings }
+        : state.animationSettings,
+      isPlaying: false, // Don't auto-play immediately to avoid audio policy issues or jarring starts
+      currentPlaybackTime: 0,
+    }));
 
-		useEditorStore.setState((state) => ({
-			...state,
-			backgroundTheme: payload.editor?.backgroundTheme ?? state.backgroundTheme,
-			fontFamily: payload.editor?.fontFamily ?? state.fontFamily,
-			fontSize: payload.editor?.fontSize ?? state.fontSize,
-			showBackground: payload.editor?.showBackground ?? state.showBackground,
-			showLineNumbers: payload.editor?.showLineNumbers ?? state.showLineNumbers,
-			editor: payload.editor?.editor ?? state.editor,
-			presentational: true,
-		}));
+    useEditorStore.setState((state) => ({
+      ...state,
+      backgroundTheme: payload.editor?.backgroundTheme ?? state.backgroundTheme,
+      fontFamily: payload.editor?.fontFamily ?? state.fontFamily,
+      fontSize: payload.editor?.fontSize ?? state.fontSize,
+      showBackground: payload.editor?.showBackground ?? state.showBackground,
+      showLineNumbers: payload.editor?.showLineNumbers ?? state.showLineNumbers,
+      editor: payload.editor?.editor ?? state.editor,
+      presentational: true,
+    }));
 
-		return () => {
-			useEditorStore.setState((state) => ({
-				...state,
-				presentational: false,
-			}));
-		};
-	}, [payload, sanitizedSlides]);
+    return () => {
+      useEditorStore.setState((state) => ({
+        ...state,
+        presentational: false,
+      }));
+    };
+  }, [payload, sanitizedSlides]);
 
-	// Track view
-	useEffect(() => {
-		if (hasTrackedView.current) return;
-		hasTrackedView.current = true;
-		trackAnimationEvent("embed_animation_viewed", null, {
-			slug,
-			slide_count: sanitizedSlides.length,
-			total_duration: totalDuration,
-		});
-	}, [sanitizedSlides.length, slug, totalDuration]);
+  // Track view
+  useEffect(() => {
+    if (hasTrackedView.current) return;
+    hasTrackedView.current = true;
+    trackAnimationEvent("embed_animation_viewed", null, {
+      slug,
+      slide_count: sanitizedSlides.length,
+      total_duration: totalDuration,
+    });
+  }, [sanitizedSlides.length, slug, totalDuration]);
 
-	// Auto-play logic
-	useEffect(() => {
-		if (!isReady) return;
-		if (slides.length < 2) return;
-		if (hasStartedPlayback.current) return;
+  // Auto-play logic
+  useEffect(() => {
+    if (!isReady) return;
+    if (slides.length < 2) return;
+    if (hasStartedPlayback.current) return;
 
-		// Small delay to ensure everything rendered
-		const timer = setTimeout(() => {
-			hasStartedPlayback.current = true;
-			handleReset({ track: false });
-			if (!isPlaying) {
-				handlePlayPause({ track: false });
-			}
-		}, 500);
+    // Small delay to ensure everything rendered
+    const timer = setTimeout(() => {
+      hasStartedPlayback.current = true;
+      handleReset({ track: false });
+      if (!isPlaying) {
+        handlePlayPause({ track: false });
+      }
+    }, 500);
 
-		return () => clearTimeout(timer);
-	}, [handlePlayPause, handleReset, isPlaying, isReady, slides.length]);
+    return () => clearTimeout(timer);
+  }, [handlePlayPause, handleReset, isPlaying, isReady, slides.length]);
 
-	const handleReplay = () => {
-		handleReset({ track: true });
-		handlePlayPause({ track: true });
-	};
+  // Loop animation when it completes
+  useEffect(() => {
+    if (!isReady) return;
+    if (!hasStartedPlayback.current) return;
 
-	const handleOpenOriginal = () => {
-		window.open(`https://jollycode.dev/animate/shared/${slug}`, '_blank', 'noopener,noreferrer');
-	};
+    // Check if animation has completed (progress >= 100 and not playing)
+    if (progress >= 100 && !isPlaying) {
+      // Small delay before restarting for smooth transition
+      const timer = setTimeout(() => {
+        handleReset({ track: false });
+        handlePlayPause({ track: false });
+      }, 300);
 
-	if (!isReady) return null;
+      return () => clearTimeout(timer);
+    }
+  }, [progress, isPlaying, handleReset, handlePlayPause, isReady]);
 
-	return (
-		<QueryClientProvider client={queryClient}>
-			<link rel="stylesheet" href={themes[backgroundTheme].theme} crossOrigin="anonymous" />
-			<link rel="stylesheet" href={fonts[fontFamily].src} crossOrigin="anonymous" />
+  const handleReplay = () => {
+    handleReset({ track: true });
+    handlePlayPause({ track: true });
+  };
 
-			<div className="relative w-full h-screen overflow-hidden flex items-center justify-center bg-background">
-				<div className="w-full h-full max-w-[100vw] max-h-[100vh] flex items-center justify-center p-4">
-					<UnifiedAnimationCanvas
-						ref={previewRef}
-						mode="preview"
-						currentFrame={currentFrame}
-					/>
-				</div>
+  const handleOpenOriginal = () => {
+    window.open(
+      `https://jollycode.dev/animate/shared/${slug}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
 
-				{/* Overlay controls for replay/open */}
-				<div className="absolute top-4 right-4 flex gap-2 opacity-0 hover:opacity-100 transition-opacity duration-200">
-					<Button size="sm" variant="secondary" onClick={handleReplay}>
-						<i className="ri-replay-line mr-1"></i> Replay
-					</Button>
-					<Button size="sm" onClick={handleOpenOriginal}>
-						Open in Jolly Code <i className="ri-external-link-line ml-1"></i>
-					</Button>
-				</div>
+  if (!isReady) return null;
 
-				{/* Play/Pause overlay if user wants to stop */}
-				<div className="absolute bottom-4 left-4 opacity-0 hover:opacity-100 transition-opacity duration-200">
-					<Button size="icon" variant="ghost" className="bg-black/50 hover:bg-black/70 text-white rounded-full" onClick={() => handlePlayPause({ track: true })}>
-						<i className={isPlaying ? "ri-pause-fill" : "ri-play-fill"}></i>
-					</Button>
-				</div>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <link
+        rel="stylesheet"
+        href={themes[backgroundTheme].theme}
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="stylesheet"
+        href={fonts[fontFamily].src}
+        crossOrigin="anonymous"
+      />
 
-				{/* Watermark */}
-				<a
-					href="https://jollycode.dev"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="absolute bottom-6 right-6 flex items-center gap-0 hover:opacity-80 transition-opacity cursor-pointer"
-				>
-					<span
-						className={cn(
-							"text-xs font-medium tracking-wide",
-							isDarkBackground ? "text-white/90" : "text-foreground/90"
-						)}
-					>
-						jollycode.dev
-					</span>
-				</a>
-			</div>
-		</QueryClientProvider>
-	);
+      <div className="relative w-full h-screen overflow-hidden flex items-center justify-center bg-background">
+        <div className="w-full h-full max-w-[100vw] max-h-[100vh] flex items-center justify-center p-4">
+          <UnifiedAnimationCanvas
+            ref={previewRef}
+            mode="preview"
+            currentFrame={currentFrame}
+          />
+        </div>
+
+        {/* Overlay controls for replay/open */}
+        <div className="absolute top-4 right-4 flex gap-2 opacity-0 hover:opacity-100 transition-opacity duration-200">
+          <Button size="sm" variant="secondary" onClick={handleReplay}>
+            <i className="ri-replay-line mr-1"></i> Replay
+          </Button>
+          <Button size="sm" onClick={handleOpenOriginal}>
+            Open in Jolly Code <i className="ri-external-link-line ml-1"></i>
+          </Button>
+        </div>
+
+        {/* Play/Pause overlay if user wants to stop */}
+        <div className="absolute bottom-4 left-4 opacity-0 hover:opacity-100 transition-opacity duration-200">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="bg-black/50 hover:bg-black/70 text-white rounded-full"
+            onClick={() => handlePlayPause({ track: true })}
+          >
+            <i className={isPlaying ? "ri-pause-fill" : "ri-play-fill"}></i>
+          </Button>
+        </div>
+
+        {/* Watermark */}
+        <a
+          href="https://jollycode.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-6 right-6 flex items-center gap-0 hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <span
+            className={cn(
+              "text-xs font-medium tracking-wide",
+              isDarkBackground ? "text-white/90" : "text-foreground/90"
+            )}
+          >
+            jollycode.dev
+          </span>
+        </a>
+      </div>
+    </QueryClientProvider>
+  );
 };
 
 export default AnimateEmbedClient;
