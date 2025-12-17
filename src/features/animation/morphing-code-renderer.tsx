@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
@@ -102,15 +102,17 @@ export const MorphingCodeRenderer = ({
     [maxLineCount]
   );
 
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const content = (
     <div
+      ref={contentRef}
       className="relative w-full"
       style={{
         ...heightStyle,
         fontFamily: fonts[currentFontFamily].name,
         fontSize: currentFontSize,
         lineHeight: `${lineHeight}px`,
-        letterSpacing: "normal",
+        letterSpacing: 0,
       }}
     >
       {/* Hidden measurement span */}
@@ -118,7 +120,7 @@ export const MorphingCodeRenderer = ({
         ref={measureRef}
         className="opacity-0 absolute pointer-events-none"
         aria-hidden="true"
-        style={{ letterSpacing: "normal" }}
+        style={{ letterSpacing: 0 }}
       >
         M
       </span>
@@ -190,7 +192,7 @@ export const MorphingCodeRenderer = ({
                 transform: `translate3d(${left}px, ${top}px, 0) scale(${scale})`,
                 filter,
                 willChange: "transform, opacity, filter",
-                letterSpacing: "normal",
+                letterSpacing: 0,
               }}
             >
               {entity.content}

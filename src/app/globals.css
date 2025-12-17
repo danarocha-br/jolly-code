@@ -176,8 +176,8 @@
       @apply text-foreground bg-background;
     }
 
-    /* Ensure code elements have normal letter-spacing */
+    /* Ensure code elements have zero letter-spacing */
     code, pre, [style*="font-family"] {
-      letter-spacing: normal;
+      letter-spacing: 0;
     }
   }
