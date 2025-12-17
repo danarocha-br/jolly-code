@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { highlightCodeForOG, renderStyledSegments, truncateCodeForOG } from "@/lib/utils/og-syntax-highlight";
+import { getThemeColors } from "@/lib/og-theme-colors";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -102,12 +104,22 @@ export async function GET(request: Request) {
     const description =
       descriptionFromDb || descriptionOverride || decodedPayload?.editor?.fontFamily || "Bring your code to life with animated snippets.";
 
-    const codeSnippet =
-      (firstSlide?.code || fallbackSlide.code)?.split("\n").slice(0, 6).join("\n").slice(0, 200) ||
-      fallbackSlide.code;
+    // Get the full code and language
+    const rawCode = firstSlide?.code || fallbackSlide.code || "// No code available";
+    const language = firstSlide?.language || "typescript";
+    
+    // Truncate code to fit in OG image
+    const codeSnippet = truncateCodeForOG(rawCode, 10, 80);
 
     // Get the background theme from payload
     const backgroundTheme = (decodedPayload as any)?.editor?.backgroundTheme || "sublime";
+    
+    // Get syntax-highlighted code segments
+    const styledSegments = highlightCodeForOG(codeSnippet, language, backgroundTheme);
+    const renderableSegments = renderStyledSegments(styledSegments);
+    
+    // Get theme colors for the code window background
+    const themeColors = getThemeColors(backgroundTheme);
 
     // Theme background mapping (matching themes-options.ts)
     const themeBackgrounds: Record<string, string> = {
@@ -148,7 +160,7 @@ export async function GET(request: Request) {
               flexDirection: "column",
               width: "85%",
               borderRadius: "16px",
-              background: "#1e1e2e",
+              background: themeColors.background,
               boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
               border: "1px solid rgba(255, 255, 255, 0.1)",
               overflow: "hidden",
@@ -197,22 +209,31 @@ export async function GET(request: Request) {
             <div
               style={{
                 display: "flex",
+                flexDirection: "column",
                 padding: "32px",
                 height: "280px",
+                overflow: "hidden",
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                fontSize: "18px",
+                lineHeight: "1.6",
               }}
             >
-              <pre
-                style={{
-                  margin: 0,
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                  fontSize: "20px",
-                  lineHeight: "1.5",
-                  color: "#e2e8f0",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {codeSnippet}
-              </pre>
+              {renderableSegments.map((line, lineIndex) => (
+                <div
+                  key={lineIndex}
+                  style={{
+                    display: "flex",
+                    minHeight: "28.8px",
+                  }}
+                >
+                  {line.segments.map((segment, segmentIndex) => (
+                    <span key={segmentIndex} style={{ color: segment.color }}>
+                      {segment.text}
+                    </span>
+                  ))}
+                  {line.segments.length === 0 && <span style={{ color: "transparent" }}> </span>}
+                </div>
+              ))}
             </div>
           </div>
 
