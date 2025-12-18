@@ -151,7 +151,6 @@ export const Editor = forwardRef<any, EditorProps>(
     ref
   ) => {
     const editorRef = useRef(null);
-    const containerRef = useRef<HTMLDivElement>(null);
 
     const { theme } = useTheme();
     const memoizedTheme = useMemo(() => theme, [theme]);
@@ -568,13 +567,12 @@ export const Editor = forwardRef<any, EditorProps>(
           )}
           style={{ padding }}
           ref={(node) => {
-            // Merge refs: forwardRef and containerRef
+            // Forward ref to parent component
             if (typeof ref === "function") {
               ref(node);
             } else if (ref) {
               ref.current = node;
             }
-            containerRef.current = node;
           }}
           id={currentEditor?.id || "editor"}
         >

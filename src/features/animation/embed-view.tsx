@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/react-query/query-client";
 import {
@@ -24,10 +24,10 @@ export type AnimateEmbedClientProps = {
 };
 
 const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
-  const [isReady] = useState(true);
+  const isReady = true;
   const previewRef = useRef<HTMLDivElement>(null);
   const hasStartedPlayback = useRef(false);
-  const hasTrackedView = useRef(false);
+  const lastTrackedSlug = useRef<string | null>(null);
   const isLoopingRef = useRef(false);
   const queryClient = getQueryClient();
 
@@ -114,8 +114,8 @@ const AnimateEmbedClient = ({ payload, slug }: AnimateEmbedClientProps) => {
 
   // Track view
   useEffect(() => {
-    if (hasTrackedView.current) return;
-    hasTrackedView.current = true;
+    if (lastTrackedSlug.current === slug) return;
+    lastTrackedSlug.current = slug;
     trackAnimationEvent("embed_animation_viewed", null, {
       slug,
       slide_count: sanitizedSlides.length,

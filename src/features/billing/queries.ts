@@ -37,6 +37,7 @@ export const useBillingInfo = (userId?: string) => {
     queryKey: [BILLING_INFO_QUERY_KEY, userId ?? "current"],
     queryFn: () => fetchBillingInfo(userId),
     staleTime: BILLING_QUERY_STALE_TIME_MS,
+    enabled: Boolean(userId),
   });
 };
 

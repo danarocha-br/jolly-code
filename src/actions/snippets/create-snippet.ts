@@ -75,8 +75,8 @@ export async function createSnippet(
 
       // Compute overLimit locally if not provided
       const current = limitCheck.current ?? 0
-      const max = limitCheck.max ?? 0
-      const overLimit = limitCheck.overLimit ?? Math.max(current - max, 0)
+      const max = limitCheck.max ?? null
+      const overLimit = limitCheck.overLimit ?? (max == null ? 0 : Math.max(current - max, 0))
 
       if (!limitCheck.canSave) {
         const plan = limitCheck.plan
