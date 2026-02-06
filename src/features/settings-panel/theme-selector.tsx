@@ -1,4 +1,5 @@
 "use client";
+import { useRef, useState } from "react";
 
 import {
   Select,
@@ -18,10 +19,25 @@ export const ThemeSelector = () => {
   const backgroundTheme = useEditorStore(
     (state) => state.backgroundTheme
   );
+  const selectRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+
+  const handleCardClick = () => {
+    // Programmatically click the select trigger to open it
+    selectRef.current?.click();
+  };
 
   return (
-    <SettingsPanelItem value={backgroundTheme}>
+    <SettingsPanelItem
+      value={backgroundTheme}
+      onClick={handleCardClick}
+      role="combobox"
+      aria-expanded={open}
+      aria-haspopup="listbox"
+    >
       <Select
+        open={open}
+        onOpenChange={setOpen}
         value={backgroundTheme}
         onValueChange={(theme) => {
           useEditorStore.setState({
@@ -31,7 +47,12 @@ export const ThemeSelector = () => {
         }}
       >
         <Tooltip content="Change theme">
-          <SelectTrigger className="w-16">
+          <SelectTrigger
+            ref={selectRef}
+            className="w-16"
+            aria-hidden="true" // Hide from screen readers since parent handles interaction
+            tabIndex={-1} // Remove from tab order since parent is focusable
+          >
             <SelectValue placeholder="Theme" />
           </SelectTrigger>
         </Tooltip>

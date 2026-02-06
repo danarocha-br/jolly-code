@@ -7,9 +7,9 @@ import { updateCollection as updateCollectionInDb } from '@/lib/services/databas
 import type { Collection, Snippet } from '@/features/snippets/dtos'
 
 export type UpdateCollectionInput = {
-    id: string
-    title?: string
-    snippets?: Snippet[]
+	id: string
+	title?: string
+	snippets?: Snippet[]
 }
 
 /**
@@ -19,41 +19,49 @@ export type UpdateCollectionInput = {
  * @returns ActionResult with updated collection or error message
  */
 export async function updateCollection(
-    input: UpdateCollectionInput
+	input: UpdateCollectionInput
 ): Promise<ActionResult<Collection>> {
-    try {
-        const { id, title, snippets } = input
+	try {
+		const { id, title, snippets } = input
 
-        if (!id) {
-            return error('Collection ID is required')
-        }
+		if (!id) {
+			return error('Collection ID is required')
+		}
 
-        const { user, supabase } = await requireAuth()
+		const { user, supabase } = await requireAuth()
 
-        const data = await updateCollectionInDb({
-            id,
-            user_id: user.id,
-            title,
-            snippets,
-            supabase
-        } as any)
+		const data = await updateCollectionInDb({
+			id,
+			user_id: user.id,
+			title,
+			snippets,
+			supabase
+		} as any)
 
-        if (!data) {
-            return error('Failed to update collection')
-        }
+		if (!data) {
+			return error('Failed to update collection')
+		}
 
-        // Revalidate relevant paths
-        revalidatePath('/collections')
-        revalidatePath('/')
+		// updateCollectionInDb returns an array, extract the first element
+		const collection = Array.isArray(data) ? data[0] : data
+		if (!collection) {
+			return error('Failed to update collection')
+		}
+		// Debug log to verify title preservation
 
-        return success(data)
-    } catch (err) {
-        console.error('Error updating collection:', err)
 
-        if (err instanceof Error && err.message.includes('authenticated')) {
-            return error('User must be authenticated')
-        }
+		// Revalidate relevant paths
+		revalidatePath('/collections')
+		revalidatePath('/')
 
-        return error('Failed to update collection. Please try again later.')
-    }
+		return success(collection)
+	} catch (err) {
+		console.error('Error updating collection:', err)
+
+		if (err instanceof Error && err.message.includes('authenticated')) {
+			return error('User must be authenticated')
+		}
+
+		return error('Failed to update collection. Please try again later.')
+	}
 }

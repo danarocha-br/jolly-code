@@ -39,20 +39,88 @@ export function CSPostHogProvider({ children, user }: { children: ReactNode, use
 
   useEffect(() => {
     if (!ensurePostHogClient()) return
-    const email = user?.email?.toLowerCase()
-    if (user) {
-      posthog.identify(user.id ?? email, {
-        email,
-        name: user.user_metadata?.full_name,
-      })
-      if (posthog.setPersonPropertiesForFlags) {
-        posthog.setPersonPropertiesForFlags({
-          email,
-          name: user.user_metadata?.full_name,
-        })
-      }
-    } else {
+    if (!user) {
       posthog.reset()
+      return
+    }
+
+    const email = user?.email?.toLowerCase()
+    const userId = user.id || email || undefined
+    
+    if (!userId) {
+      // Cannot identify without user ID or email
+      return
+    }
+
+    // Fetch user profile to get plan and signup date (only if we have a numeric ID)
+    let cancelled = false
+    const fetchUserProperties = async () => {
+      try {
+        // Only fetch profile if we have a numeric user ID (not just email)
+        if (!user.id) {
+          // Skip profile fetch when userId is derived from email
+          posthog.identify(userId, {
+            email: email || undefined,
+            name: user.user_metadata?.full_name || undefined,
+          })
+          if (posthog.setPersonPropertiesForFlags) {
+            posthog.setPersonPropertiesForFlags({
+              email: email || undefined,
+              name: user.user_metadata?.full_name || undefined,
+            })
+          }
+          return
+        }
+
+        const { createClient } = await import('@/utils/supabase/client')
+        const supabase = createClient()
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan, created_at')
+          .eq('id', user.id)
+          .single()
+
+        if (cancelled) return
+
+        const userProperties: Record<string, any> = {
+          email: email || undefined,
+          name: user.user_metadata?.full_name || undefined,
+        }
+
+        if (profile) {
+          userProperties.plan = profile.plan
+          if (profile.created_at) {
+            userProperties.signup_date = profile.created_at
+          }
+        }
+
+        posthog.identify(userId, userProperties)
+        if (posthog.setPersonPropertiesForFlags) {
+          posthog.setPersonPropertiesForFlags(userProperties)
+        }
+      } catch (error) {
+        if (cancelled) return
+        // Fallback to basic identification if profile fetch fails
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch user profile for analytics:', error)
+        }
+        posthog.identify(userId, {
+          email: email || undefined,
+          name: user.user_metadata?.full_name || undefined,
+        })
+        if (posthog.setPersonPropertiesForFlags) {
+          posthog.setPersonPropertiesForFlags({
+            email: email || undefined,
+            name: user.user_metadata?.full_name || undefined,
+          })
+        }
+      }
+    }
+
+    fetchUserProperties()
+
+    return () => {
+      cancelled = true
     }
   }, [user])
 

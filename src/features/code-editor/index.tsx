@@ -84,7 +84,7 @@ export const CodeEditor = ({ isLoading }: CodeEditor) => {
         size={{ width, height: "auto" }}
       >
         <ScrollArea className="overflow-hidden">
-          <TabsList>
+          <TabsList className="gap-1">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}

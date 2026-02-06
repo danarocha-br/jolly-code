@@ -31,7 +31,7 @@ function AnimationsCollection({ collections, isRefetching }: AnimationsListProps
             </div>
           }
         >
-          <ScrollArea className="h-[calc(100vh-200px)] flex flex-col pr-2">
+          <ScrollArea className="flex-1 flex flex-col pr-2">
             <AnimationsList
               collections={collections}
               isRefetching={isRefetching}

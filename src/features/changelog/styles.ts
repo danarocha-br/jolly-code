@@ -11,7 +11,7 @@ export const container = cva([
 
 export const header = cva(["text-base", "pt-2", "px-3"]);
 
-export const title = cva(["text-sm", "flex", "items-center", "gap-3", "mb-4"]);
+export const title = cva(["text-sm", "flex", "flex-col", "gap-3", "mb-4"]);
 
 export const link = cva([
   "text-violet-300",

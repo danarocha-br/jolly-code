@@ -10,6 +10,8 @@ export default function NotFound() {
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="opacity-50 ml-6"
+         aria-hidden="true"
+         role="presentation"
       >
         <mask
           id="a"

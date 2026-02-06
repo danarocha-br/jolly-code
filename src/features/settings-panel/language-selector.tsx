@@ -129,10 +129,20 @@ export const LanguageSelector = () => {
     }
   }
 
+  const handleCardClick = () => {
+    setOpen(true);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
-        <SettingsPanelItem value={language || "plaintext"}>
+        <SettingsPanelItem
+          value={language || "plaintext"}
+          onClick={handleCardClick}
+          role="combobox"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+        >
           <Tooltip content="Choose a language">
             <Button
               asChild
@@ -140,6 +150,8 @@ export const LanguageSelector = () => {
               role="combobox"
               aria-expanded={open}
               className="w-full justify-between"
+              aria-hidden="true" // Hide from screen readers since parent handles interaction
+              tabIndex={-1} // Remove from tab order since parent is focusable
             >
               <div>
                 <span className="truncate">

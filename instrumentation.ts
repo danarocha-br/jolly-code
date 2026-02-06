@@ -3,9 +3,10 @@ export async function register() {
         await import('./sentry.server.config');
     }
 
-    if (process.env.NEXT_RUNTIME === 'edge') {
-        await import('./sentry.edge.config');
-    }
+    // Temporarily disable Sentry for edge runtime to reduce bundle size
+    // if (process.env.NEXT_RUNTIME === 'edge') {
+    //     await import('./sentry.edge.config');
+    // }
 }
 
 export const onRequestError = async (

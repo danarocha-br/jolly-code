@@ -12,7 +12,7 @@ export const container = cva(
     "flex",
     "flex-col",
     "sticky",
-    "max-h-[calc(100vh-2rem)]",
+    "h-[calc(100vh-2rem)]",
     "left-0",
     "top-2",
     "bottom-2",

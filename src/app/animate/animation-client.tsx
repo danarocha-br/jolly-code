@@ -27,6 +27,7 @@ import { useAnimationLimits } from "@/features/animations/hooks/use-animation-li
 import { AnimationTabs } from "@/features/animation/components/animation-tabs";
 import { AnimationBottomBar } from "@/features/animation/components/animation-bottom-bar";
 import { ThemeInjector } from "@/features/animation/components/theme-injector";
+import { ClientErrorBoundary } from "@/components/errors/client-error-boundary";
 
 export default function AnimationClientPage() {
   const router = useRouter();
@@ -147,7 +148,11 @@ export default function AnimationClientPage() {
   );
 
   return (
-    <>
+    <ClientErrorBoundary
+      title="The animation workspace hit a snag"
+      description="We ran into a problem inside the editor. Try again and you should be back in flow."
+      actionLabel="Retry editor"
+    >
       <ThemeInjector />
 
       <LoginDialog
@@ -222,6 +227,6 @@ export default function AnimationClientPage() {
           </div>
         </div>
       </Room>
-    </>
+    </ClientErrorBoundary>
   );
 }

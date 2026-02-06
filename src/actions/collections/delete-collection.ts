@@ -12,33 +12,33 @@ import { deleteCollection as deleteCollectionFromDb } from '@/lib/services/datab
  * @returns ActionResult with success status or error message
  */
 export async function deleteCollection(
-    collectionId: string
+	collectionId: string
 ): Promise<ActionResult<{ success: true }>> {
-    try {
-        if (!collectionId) {
-            return error('Collection ID is required')
-        }
+	try {
+		if (!collectionId) {
+			return error('Collection ID is required')
+		}
 
-        const { user, supabase } = await requireAuth()
+		const { user, supabase } = await requireAuth()
 
-        await deleteCollectionFromDb({
-            collection_id: collectionId,
-            user_id: user.id,
-            supabase
-        })
+		await deleteCollectionFromDb({
+			collection_id: collectionId,
+			user_id: user.id,
+			supabase
+		})
 
-        // Revalidate relevant paths
-        revalidatePath('/collections')
-        revalidatePath('/')
+		// Revalidate relevant paths
+		revalidatePath('/collections')
+		revalidatePath('/')
 
-        return success({ success: true })
-    } catch (err) {
-        console.error('Error deleting collection:', err)
+		return success({ success: true })
+	} catch (err) {
+		console.error('Error deleting collection:', err)
 
-        if (err instanceof Error && err.message.includes('authenticated')) {
-            return error('User must be authenticated')
-        }
+		if (err instanceof Error && err.message.includes('authenticated')) {
+			return error('User must be authenticated')
+		}
 
-        return error('Failed to delete collection. Please try again later.')
-    }
+		return error('Failed to delete collection. Please try again later.')
+	}
 }

@@ -15,6 +15,7 @@ import {
   deleteCollection,
 } from "@/actions";
 import type { UsageLimitCheck } from "@/lib/services/usage-limits";
+import type { ActionResult } from "@/actions/utils/action-result";
 
 
 
@@ -99,6 +100,7 @@ export async function createCollection({
  * @throws {Error} - Throws an error if collections cannot be fetched.
  */
 export async function fetchCollections(): Promise<Collection[]> {
+
   try {
     const result = await getCollections();
 
@@ -250,6 +252,7 @@ export const removeSnippetFromPreviousCollection = async (
       if (result.error) {
         toast.error("Something went wrong, please try again.");
       }
+    } else {
     }
   } catch (error) {
     toast.error("Something went wrong, please try again.");
@@ -321,12 +324,29 @@ export const updateCollection = async ({
         snippets: updatedSnippets.map(s => s.id) as any,
       });
 
+
       if (result.error) {
         toast.error(result.error);
         return undefined;
       }
 
-      return { ...result.data!, snippets: updatedSnippets };
+      // Preserve the existing title from currentCollection if title wasn't explicitly provided
+      // This ensures titles aren't lost during snippet-only updates
+      // Also handle cases where title might be empty/null/whitespace
+      const serverTitle = result.data!.title?.trim();
+      // If title was provided, use serverTitle (the updated value)
+      // If title was undefined (snippet-only update), prefer serverTitle but fallback to currentCollection.title
+      // Always fallback to currentCollection.title if serverTitle is empty/null
+      const preservedTitle = (serverTitle && serverTitle !== '')
+        ? serverTitle
+        : currentCollection.title;
+
+      const returnValue = {
+        ...result.data!,
+        title: preservedTitle,
+        snippets: updatedSnippets
+      };
+      return returnValue;
     } else {
       toast.error("This snippet already belongs to this collection.");
       return undefined;
@@ -387,7 +407,7 @@ export function transformState(state: EditorState) {
  * Create a new snippet.
  *
  * @param {CreateSnippetProps} snippetProps - The snippet properties.
- * @returns {Promise<{ data: Snippet }| undefined>} - The created snippet data or undefined.
+ * @returns {Promise<ActionResult<Snippet>>} - The action result with snippet data or error.
  */
 export async function createSnippet({
   id,
@@ -397,7 +417,7 @@ export async function createSnippet({
   code,
   language,
   state,
-}: CreateSnippetProps): Promise<CreateSnippetResponse | undefined> {
+}: CreateSnippetProps): Promise<ActionResult<Snippet>> {
   try {
     const url = createUrl(currentUrl, code, state, user_id);
 
@@ -410,30 +430,19 @@ export async function createSnippet({
     });
 
     if (result.error) {
-      toast.error(result.error);
-      return undefined;
+      return result;
     }
 
-    const snippet = result.data?.snippet;
-    const usage = result.data?.usage;
+    const snippet = result.data;
 
-    if (usage?.max && usage.current >= usage.max) {
-      toast.error(
-        `You've reached the free plan limit (${usage.current}/${usage.max} snippets). Upgrade to Pro for unlimited snippets!`
-      );
-    } else {
+    if (snippet) {
       toast.success("Your code snippet was saved.");
+      return { data: snippet };
     }
 
-    if (usage?.max && usage.current >= usage.max - 1) {
-      toast.message(`You're almost at your snippet limit (${usage.current}/${usage.max}).`);
-    }
-
-    return snippet ? { data: snippet, usage } : undefined;
+    return { error: "Failed to create snippet" };
   } catch (error) {
-    console.log(error);
-    toast.error(`Failed to save the snippet.`);
-    return undefined;
+    return { error: "Failed to save the snippet." };
   }
 }
 
@@ -515,6 +524,18 @@ export async function removeSnippet({
     if (result.error) {
       toast.error(result.error);
       return;
+    }
+
+    // Clear the usage limits cache before showing success toast to ensure fresh data on next fetch
+    if (user_id) {
+      try {
+        const { getUsageLimitsCacheProvider } = await import("@/lib/services/usage-limits-cache");
+        const cacheProvider = getUsageLimitsCacheProvider();
+        cacheProvider.delete(user_id);
+      } catch (cacheError) {
+        // Silently ignore cache invalidation errors - deletion was successful
+        // Cache will be refreshed on next fetch anyway
+      }
     }
 
     toast.success("Snippet was removed.");

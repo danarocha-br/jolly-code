@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { deleteSnippet as deleteSnippetFromDb } from '@/lib/services/database/snippets'
-import { decrementUsageCount } from '@/lib/services/usage-limits'
 
 /**
  * Server Action: Delete a snippet
@@ -26,10 +25,6 @@ export async function deleteSnippet(
             snippet_id: snippetId,
             user_id: user.id,
             supabase
-        })
-
-        await decrementUsageCount(supabase, user.id, 'snippets').catch((decrementError) => {
-            console.error('Failed to decrement snippet usage', decrementError)
         })
 
         // Revalidate relevant paths

@@ -34,7 +34,7 @@ const aj = arcjet({
 
 export async function GET(req: Request) {
   const decision = await aj.protect(req, { requested: 5 }); // Deduct 5 tokens from the bucket
-  console.log("Arcjet decision", decision);
+
 
   if (decision.isDenied()) {
     if (decision.reason.isRateLimit()) {

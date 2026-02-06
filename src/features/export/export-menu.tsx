@@ -4,6 +4,7 @@ import { toBlob, toJpeg, toPng, toSvg } from "html-to-image";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useShallow } from "zustand/shallow";
+import * as Sentry from "@sentry/nextjs";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,7 @@ import {
   DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu";
 import { hotKeyList } from "@/lib/hot-key-list";
-import { useEditorStore } from "@/app/store";
+import { useEditorStore, useUserStore } from "@/app/store";
 import { analytics } from "@/lib/services/tracking";
 
 type ImageFormat = "SVG" | "PNG" | "JPG";
@@ -37,6 +38,7 @@ const copyImg = hotKeyList.filter((item) => item.label === "Copy image");
 
 export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
   const editors = React.useRef<{ [key: string]: HTMLElement | null }>({});
+  const { user } = useUserStore();
 
   const currentEditorState = useEditorStore(
     (state) => state.currentEditorState
@@ -87,6 +89,8 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
         return;
       }
 
+      freshEditor.dataset.exporting = "true";
+
       const imageBlob = await toBlob(freshEditor!, {
         pixelRatio: 2,
       });
@@ -102,6 +106,12 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
       analytics.track("copy_image");
     } catch (error) {
       toast.error("Something went wrong! Please try again.");
+    } finally {
+      const currentId = currentEditorState?.id || "editor";
+      const freshEditor = document.getElementById(currentId);
+      if (freshEditor) {
+        freshEditor.dataset.exporting = "false";
+      }
     }
   }
 
@@ -120,7 +130,26 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
         toast.error("Code was not copied! Please try again.");
       }
     } catch (err) {
-      console.log(err);
+      // Capture and report error with contextual metadata
+      const error = err instanceof Error ? err : new Error(String(err));
+      
+      if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+        Sentry.withScope((scope) => {
+          scope.setTag("export_type", "copy_code");
+          scope.setTag("user_id", user?.id || "unknown");
+          scope.setContext("export_error", {
+            export_type: "copy_code",
+            user_id: user?.id,
+            editor_id: currentEditorState?.id,
+            editor_title: title,
+            code_length: code?.length || 0,
+            error_message: error.message,
+            error_name: error.name,
+          });
+          Sentry.captureException(error);
+        });
+      }
+      
       toast.error("Something went wrong!");
     }
   }
@@ -136,58 +165,96 @@ export const ExportMenu = ({ animationMode }: ExportMenuProps = {}) => {
     let imageURL, fileName;
     const currentId = currentEditorState?.id || "editor";
     const freshEditor = document.getElementById(currentId);
+    if (freshEditor) {
+      freshEditor.dataset.exporting = "true";
+    }
 
-    switch (format) {
-      case "PNG":
-        imageURL = await toPng(freshEditor!, {
-          pixelRatio: 2,
-        });
-        fileName = `${name}.png`;
-        break;
+    try {
+      switch (format) {
+        case "PNG": {
+          imageURL = await toPng(freshEditor!, {
+            pixelRatio: 2,
+          });
+          fileName = `${name}.png`;
+          break;
+        }
 
-      case "JPG":
-        imageURL = await toJpeg(freshEditor!, {
-          pixelRatio: 2,
-          backgroundColor: "#fff",
-        });
-        fileName = `${name}.jpg`;
-        break;
+        case "JPG": {
+          imageURL = await toJpeg(freshEditor!, {
+            pixelRatio: 2,
+            backgroundColor: "#fff",
+          });
+          fileName = `${name}.jpg`;
+          break;
+        }
 
-      case "SVG":
-        // Convert to PNG first (which works reliably), then wrap in SVG
-        // This avoids the known issues with html-to-image's toSvg function
-        const pngDataUrl = await toPng(freshEditor!, {
-          pixelRatio: 2,
-        });
+        case "SVG": {
+          // Convert to PNG first (which works reliably), then wrap in SVG
+          // This avoids the known issues with html-to-image's toSvg function
+          const pngDataUrl = await toPng(freshEditor!, {
+            pixelRatio: 2,
+          });
 
-        // Get the dimensions of the element
-        const rect = freshEditor!.getBoundingClientRect();
-        const width = rect.width * 2; // Account for pixelRatio
-        const height = rect.height * 2;
+          // Get the dimensions of the element
+          const rect = freshEditor!.getBoundingClientRect();
+          const width = rect.width * 2; // Account for pixelRatio
+          const height = rect.height * 2;
 
-        // Create an SVG that embeds the PNG
-        const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+          // Create an SVG that embeds the PNG
+          const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <image width="${width}" height="${height}" xlink:href="${pngDataUrl}"/>
 </svg>`;
 
-        // Convert to data URL
-        imageURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
-        fileName = `${name}.svg`;
-        break;
+          // Convert to data URL
+          imageURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
+          fileName = `${name}.svg`;
+          break;
+        }
 
-      default:
-        // If the provided format is not supported, return without doing anything
-        return;
+        default: {
+          // If the provided format is not supported, return without doing anything
+          return;
+        }
+      }
+
+      const link = document.createElement("a");
+      // Set the link's href to the image URL
+      link.href = imageURL;
+      // Set the link's download attribute to the file name
+      link.download = fileName;
+      // Programmatically trigger a click on the link element to initiate the file download
+      link.click();
+    } catch (error) {
+      // Capture and report export error with contextual metadata
+      const exportError = error instanceof Error ? error : new Error(String(error));
+      
+      if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+        Sentry.withScope((scope) => {
+          scope.setTag("export_type", "save_image");
+          scope.setTag("export_format", format);
+          scope.setTag("user_id", user?.id || "unknown");
+          scope.setContext("export_error", {
+            export_type: "save_image",
+            export_format: format,
+            export_name: name,
+            user_id: user?.id,
+            editor_id: currentEditorState?.id,
+            editor_title: title,
+            error_message: exportError.message,
+            error_name: exportError.name,
+          });
+          Sentry.captureException(exportError);
+        });
+      }
+      
+      // Rethrow to maintain normal error propagation
+      throw error;
+    } finally {
+      if (freshEditor) {
+        freshEditor.dataset.exporting = "false";
+      }
     }
-
-    const link = document.createElement("a");
-    // Set the link's href to the image URL
-    link.href = imageURL;
-    // Set the link's download attribute to the file name
-    link.download = fileName;
-    // Programmatically trigger a click on the link element to initiate the file download
-    link.click();
   }
 
   /**

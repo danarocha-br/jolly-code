@@ -1,74 +1,69 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
-import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { updateAnimation as updateAnimationDb } from '@/lib/services/database/animations'
 import type { Animation } from '@/features/animations/dtos'
 import type { AnimationSettings, AnimationSlide } from '@/types/animation'
 import { checkSlideLimit } from '@/lib/services/usage-limits'
 import type { PlanId } from '@/lib/config/plans'
+import { formatZodError, updateAnimationInputSchema } from '@/actions/utils/validation'
+import { withAuthAction } from '@/actions/utils/with-auth'
 
-export type UpdateAnimationInput = {
-    id: string
-    title?: string
-    slides?: AnimationSlide[]
-    settings?: AnimationSettings
-    url?: string | null
-}
+export type UpdateAnimationInput = z.infer<typeof updateAnimationInputSchema>
 
 export async function updateAnimation(
-    input: UpdateAnimationInput
+	input: UpdateAnimationInput
 ): Promise<ActionResult<Animation>> {
-    try {
-        const { id, title, slides, settings, url } = input
+	try {
+		const parsedInput = updateAnimationInputSchema.safeParse(input)
 
-        if (!id) {
-            return error('Animation id is required')
-        }
+		if (!parsedInput.success) {
+			return error(formatZodError(parsedInput.error) ?? 'Invalid animation data')
+		}
 
-        const { user, supabase } = await requireAuth()
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('plan')
-            .eq('id', user.id)
-            .single()
+		const payload = parsedInput.data
 
-        const plan = (profile?.plan as PlanId | null) ?? 'free'
+		return withAuthAction(payload, async ({ id, title, slides, settings, url }, { user, supabase }) => {
+			const { data: profile } = await supabase
+				.from('profiles')
+				.select('plan')
+				.eq('id', user.id)
+				.single()
 
-        if (slides && slides.length > 0) {
-            const slideLimit = checkSlideLimit(slides.length, plan)
-            if (!slideLimit.canSave) {
-                return error(`Free users can add up to ${slideLimit.max} slides per animation. Upgrade to Pro for unlimited slides!`)
-            }
-        }
+			const plan = (profile?.plan as PlanId | null) ?? 'free'
 
-        const data = await updateAnimationDb({
-            id,
-            user_id: user.id,
-            title: title || 'Untitled',
-            slides: slides || [],
-            settings: settings || ({} as AnimationSettings),
-            url: url || null,
-            supabase
-        })
+			if (slides && slides.length > 0) {
+				const slideLimit = checkSlideLimit(slides.length, plan)
+				if (!slideLimit.canSave) {
+					return error(`Your plan allows up to ${slideLimit.max} slides per animation. Upgrade to Pro for unlimited slides!`)
+				}
+			}
 
-        if (!data || data.length === 0) {
-            return error('Failed to update animation')
-        }
+			const data = await updateAnimationDb({
+				id,
+				user_id: user.id,
+				title,
+				slides,
+				settings,
+				url,
+				supabase
+			})
 
-        revalidatePath('/animate')
-        revalidatePath('/animations')
+			if (!data || data.length === 0) {
+				return error('Failed to update animation')
+			}
 
-        return success(data[0] as Animation)
-    } catch (err) {
-        console.error('Error updating animation:', err)
+			revalidatePath('/animate')
+			revalidatePath('/animations')
 
-        if (err instanceof Error && err.message.includes('authenticated')) {
-            return error('User must be authenticated')
-        }
+			return success(data[0] as Animation)
+		})
+	} catch (err) {
+		console.error('Error updating animation:', err)
 
-        return error('Failed to update animation. Please try again later.')
-    }
+		return error('Failed to update animation. Please try again later.')
+	}
 }

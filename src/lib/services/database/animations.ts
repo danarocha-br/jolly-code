@@ -43,7 +43,12 @@ export async function insertAnimation({
       .select();
 
     if (error) {
+      console.error('Error inserting animation:', error);
       throw error;
+    }
+
+    if (!animation || animation.length === 0) {
+      throw new Error('Animation insert returned no data');
     }
 
     if (animation && animation.length > 0) {
@@ -199,17 +204,19 @@ export async function getAnimationById({
   }
 }
 
-export async function getUsersAnimationsList({
+export async function getUsersAnimationsList<T = Animation>({
   user_id,
   supabase,
+  columns,
 }: {
   user_id: string;
   supabase: SupabaseClient<Database, "public", any>;
-}): Promise<Animation[]> {
+  columns?: string;
+}): Promise<T[]> {
   try {
     const { data, error } = await supabase
       .from("animation")
-      .select("*")
+      .select(columns || "*")
       .eq("user_id", user_id);
 
     if (error) {
@@ -217,7 +224,7 @@ export async function getUsersAnimationsList({
     }
 
     if (data) {
-      return data as Animation[];
+      return data as T[];
     }
 
     throw new Error("No animations found.");
@@ -235,22 +242,44 @@ export async function updateAnimation({
   settings,
   url,
   supabase,
-}: Animation): Promise<Animation[]> {
-  const sanitizedTitle = title?.trim() || "Untitled";
-
+}: Pick<Animation, 'id' | 'user_id' | 'supabase'> & Partial<Pick<Animation, 'title' | 'slides' | 'settings' | 'url'>>): Promise<Animation[]> {
   try {
+    // Build update object conditionally - only include fields that are provided
+    const updateData: Partial<{
+      user_id: string;
+      updated_at: string;
+      title: string;
+      slides: Animation['slides'];
+      settings: Animation['settings'];
+      url: string | null;
+    }> = {
+      user_id,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only update title if it's explicitly provided
+    if (title !== undefined) {
+      updateData.title = title?.trim() || "Untitled";
+    }
+
+    // Only update slides if provided
+    if (slides !== undefined) {
+      updateData.slides = slides;
+    }
+
+    // Only update settings if provided
+    if (settings !== undefined) {
+      updateData.settings = settings;
+    }
+
+    // Only update url if provided (including null to clear it)
+    if (url !== undefined) {
+      updateData.url = url;
+    }
+
     const { data, error } = await supabase
       .from("animation")
-      .update([
-        {
-          user_id,
-          title: sanitizedTitle,
-          slides,
-          settings,
-          url,
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .update(updateData)
       .eq("id", id)
       .eq("user_id", user_id)
       .select();
@@ -276,7 +305,7 @@ export async function getAnimationCollections({
   try {
     const [{ data: collections, error: collectionError }, { data: animations, error: animationError }] =
       await Promise.all([
-        supabase.from("animation_collection").select("*").eq("user_id", user_id),
+        supabase.from("animation_collection").select("*").eq("user_id", user_id).order("created_at", { ascending: true }),
         supabase.from("animation").select("*").eq("user_id", user_id),
       ]);
 
@@ -285,7 +314,7 @@ export async function getAnimationCollections({
 
     const mappedAnimations = animations || [];
 
-    return (collections || []).map((collection) => {
+    const mappedCollections = (collections || []).map((collection) => {
       const animationIds = normalizeIds(collection.animations as any);
       return {
         ...collection,
@@ -294,6 +323,8 @@ export async function getAnimationCollections({
           .filter(Boolean) as Animation[],
       };
     });
+
+    return mappedCollections;
   } catch (err) {
     console.error(err);
     throw new Error("An error occurred. Please try again later.");
@@ -353,7 +384,12 @@ export async function createAnimationCollection({
   title,
   animations,
   supabase,
-}: AnimationCollection): Promise<AnimationCollection[]> {
+}: {
+  user_id: string;
+  title: string;
+  animations?: string[];
+  supabase: SupabaseClient<Database, "public", any>;
+}): Promise<AnimationCollection[]> {
   const sanitizedTitle = title?.trim() || "Untitled";
 
   try {
@@ -363,7 +399,7 @@ export async function createAnimationCollection({
         {
           user_id,
           title: sanitizedTitle,
-          animations,
+          animations: animations ?? [],
           updated_at: new Date().toISOString(),
         },
       ])
@@ -387,20 +423,21 @@ export async function updateAnimationCollection({
   title,
   animations,
   supabase,
-}: AnimationCollection): Promise<AnimationCollection[]> {
-  const sanitizedTitle = title?.trim() || "Untitled";
+}: AnimationCollection & { title?: string }): Promise<AnimationCollection[]> {
+  const updateData: Record<string, any> = {
+    animations,
+    updated_at: new Date().toISOString(),
+  };
+
+  const trimmedTitle = typeof title === "string" ? title.trim() : title;
+  if (trimmedTitle !== undefined && trimmedTitle !== null && trimmedTitle !== "") {
+    updateData.title = trimmedTitle;
+  }
 
   try {
     const { data, error } = await supabase
       .from("animation_collection")
-      .update([
-        {
-          user_id,
-          title: sanitizedTitle,
-          animations,
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .update([updateData])
       .eq("id", id)
       .eq("user_id", user_id)
       .select();
@@ -426,14 +463,38 @@ export async function deleteAnimationCollection({
   supabase: SupabaseClient<Database, "public", any>;
 }): Promise<void> {
   try {
-    const { error } = await supabase
+    const { data: collection, error: fetchError } = await supabase
+      .from("animation_collection")
+      .select("animations")
+      .eq("id", collection_id)
+      .eq("user_id", user_id)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    if (!collection) {
+      throw new Error("Animation collection not found");
+    }
+
+    const animationIds = normalizeIds(collection.animations as any);
+
+    // Delete animations that belong to this collection
+    if (animationIds.length > 0) {
+      for (const animationId of animationIds) {
+        await deleteAnimation({ animation_id: animationId, user_id, supabase });
+      }
+    }
+
+    const { error: deleteError } = await supabase
       .from("animation_collection")
       .delete()
       .eq("id", collection_id)
       .eq("user_id", user_id);
 
-    if (error) {
-      throw error;
+    if (deleteError) {
+      throw deleteError;
     }
   } catch (err) {
     console.error(err);

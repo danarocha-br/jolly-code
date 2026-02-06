@@ -111,7 +111,7 @@ export const WindowChrome = ({
             : "text-stone-800 contrast-200 brightness-[0.65]",
           contentClassName
         )}
-        style={{ ...contentStyle, letterSpacing: "normal" }}
+        style={{ ...contentStyle, letterSpacing: 0 }}
       >
         {children}
       </section>

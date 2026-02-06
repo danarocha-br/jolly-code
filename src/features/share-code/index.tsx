@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { hotKeyList } from "@/lib/hot-key-list";
 import { useUserStore, useEditorStore } from "@/app/store";
 import { analytics } from "@/lib/services/tracking";
+import { LoginDialog } from "@/features/login";
 
 export const CopyURLToClipboard = () => {
   const user = useUserStore((state) => state.user);
+  const [showLogin, setShowLogin] = useState(false);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
   const currentEditorState = useEditorStore(
@@ -42,6 +44,10 @@ export const CopyURLToClipboard = () => {
 
   const postLinkDataToDatabase = useMutation({
     mutationFn: async (url: string) => {
+      if (!user) {
+        throw Object.assign(new Error("AUTH_REQUIRED"), { code: "AUTH_REQUIRED" });
+      }
+
       const response = await fetch("/api/shorten-url", {
         method: "POST",
         headers: {
@@ -64,12 +70,21 @@ export const CopyURLToClipboard = () => {
     onSuccess: async (shortUrl) => {
       await navigator.clipboard.writeText(`${currentUrl}/${shortUrl}`);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      if (error?.code === "AUTH_REQUIRED") {
+        setShowLogin(true);
+        return;
+      }
       toast.error("Oh no, something went wrong. Please try again.");
     },
   });
 
-  const handleCopyLinkToClipboard = useCallback(async () => {
+  const handleCopyLinkToClipboard = async () => {
+    if (!user) {
+      setShowLogin(true);
+      return;
+    }
+
     const stringifiedState = Object.fromEntries(
       Object.entries(currentEditorState || {}).map(([key, value]) => [
         key,
@@ -91,12 +106,9 @@ export const CopyURLToClipboard = () => {
     });
 
     toast.success("Link copied to clipboard.");
-  }, [postLinkDataToDatabase, currentUrl, code, currentEditorState]);
+  };
 
-  const copyLink = useMemo(
-    () => hotKeyList.filter((item) => item.label === "Copy link"),
-    []
-  );
+  const copyLink = hotKeyList.filter((item) => item.label === "Copy link");
 
   useHotkeys(copyLink[0]?.hotKey, () => {
     if (copyLink[0]) {
@@ -109,14 +121,17 @@ export const CopyURLToClipboard = () => {
   }
 
   return (
-    <Tooltip content={copyLink[0].keyboard}>
-      <Button
-        size="sm"
-        onClick={() => handleCopyLinkToClipboard()}
-        className="whitespace-nowrap"
-      >
-        <i className="ri-link text-lg mr-2"></i>Copy Link
-      </Button>
-    </Tooltip>
+    <>
+      <LoginDialog open={showLogin} onOpenChange={setShowLogin} hideTrigger />
+      <Tooltip content={copyLink[0].keyboard}>
+        <Button
+          size="sm"
+          onClick={() => handleCopyLinkToClipboard()}
+          className="whitespace-nowrap"
+        >
+          <i className="ri-link text-lg mr-2"></i>Copy Link
+        </Button>
+      </Tooltip>
+    </>
   );
 };

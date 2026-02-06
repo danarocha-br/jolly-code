@@ -30,6 +30,11 @@ BEGIN
     new.raw_user_meta_data->>'user_name',
     new.raw_user_meta_data->>'avatar_url'
   );
+  
+  -- Ensure usage_limits row exists for the new user
+  -- This is idempotent due to ON CONFLICT DO NOTHING in ensure_usage_limits_row
+  PERFORM ensure_usage_limits_row(new.id);
+  
   RETURN new;
 END;
 $$;

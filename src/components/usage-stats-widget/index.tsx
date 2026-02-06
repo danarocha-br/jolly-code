@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PLANS } from "@/lib/config/plans";
+import { getPlanConfig } from "@/lib/config/plans";
 import { cn } from "@/lib/utils";
 import type { UsageSummary } from "@/lib/services/usage-limits";
 
@@ -14,7 +14,7 @@ type UsageStatsWidgetProps = {
 };
 
 const getRatio = (current: number, max: number | null) => {
-  if (!max) return 0;
+  if (max === null || max === 0) return 0;
   return Math.min(current / max, 1);
 };
 
@@ -28,14 +28,16 @@ const UsageRow = ({
   label,
   current,
   max,
+  overLimit,
 }: {
   label: string;
   current: number;
   max: number | null;
+  overLimit?: number;
 }) => {
   const ratio = getRatio(current, max);
-  const maxLabel = max ? `${max}` : "Unlimited";
-  const progressWidth = max ? `${ratio * 100}%` : "100%";
+  const maxLabel = max === null ? "Unlimited" : `${max}`;
+  const progressWidth = max === null ? "100%" : `${ratio * 100}%`;
 
   return (
     <div className="space-y-2">
@@ -51,6 +53,11 @@ const UsageRow = ({
           style={{ width: progressWidth }}
         />
       </div>
+      {overLimit && overLimit > 0 ? (
+        <p className="text-[11px] text-destructive">
+          {overLimit} item{overLimit > 1 ? "s" : ""} over plan limit. Delete or upgrade to resume saving.
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -75,7 +82,7 @@ export function UsageStatsWidget({
 
   if (!usage) return null;
 
-  const planName = PLANS[usage.plan].name;
+  const planName = getPlanConfig(usage.plan).name;
 
   return (
     <Card className={cn("w-full shadow-none", className)}>
@@ -85,8 +92,8 @@ export function UsageStatsWidget({
             <p className="text-xs uppercase text-muted-foreground">Usage</p>
             <p className="text-sm font-semibold">{planName} plan</p>
           </div>
-          <Badge variant={usage.plan === "pro" ? "default" : "success"}>
-            {usage.plan === "pro" ? "Pro" : "Free"}
+          <Badge variant={usage.plan === "free" ? "outline" : "default"}>
+            {planName}
           </Badge>
         </div>
 
@@ -94,20 +101,31 @@ export function UsageStatsWidget({
           label="Snippets"
           current={usage.snippets.current}
           max={usage.snippets.max}
+          overLimit={usage.snippets.overLimit}
         />
         <UsageRow
           label="Animations"
           current={usage.animations.current}
           max={usage.animations.max}
+          overLimit={usage.animations.overLimit}
+        />
+        <UsageRow
+          label="Folders"
+          current={usage.folders.current}
+          max={usage.folders.max}
+        />
+        <UsageRow
+          label="Public views"
+          current={usage.publicShares.current}
+          max={usage.publicShares.max}
         />
 
-        {usage.plan === "free" && (
+        {usage.plan !== "pro" && onUpgrade && (
           <Button size="sm" className="w-full mt-3" onClick={onUpgrade} variant="default">
-            Upgrade (Coming soon)
+            Upgrade to {usage.plan === "free" ? "Starter" : "Pro"}
           </Button>
         )}
       </CardContent>
     </Card>
   );
 }
-

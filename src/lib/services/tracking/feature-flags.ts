@@ -73,12 +73,7 @@ async function requestFeatureFlag(
     // However, for stateless serverless functions, we might need a different approach.
     // Since this is Next.js App Router, a singleton variable at module scope should persist across requests in the same lambda container.
 
-    if (!isEnabled) {
-      console.log(`[Feature Flags] Flag '${flagKey}' is disabled for user '${distinctId}'`, {
-        reason: 'posthog_eval_false',
-        distinctId,
-      })
-    }
+
 
     return {
       isEnabled: Boolean(isEnabled),

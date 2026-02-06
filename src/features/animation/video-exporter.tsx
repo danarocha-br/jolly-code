@@ -24,6 +24,7 @@ interface VideoExporterProps {
   onError: (error: Error) => void;
   cancelled?: boolean;
   onCancelled?: () => void;
+  hideWatermark?: boolean;
 }
 
 const getResolutionDimensions = (resolution: "720p" | "1080p") => {
@@ -40,12 +41,14 @@ export const VideoExporter = ({
   onError,
   cancelled = false,
   onCancelled,
+  hideWatermark = false,
 }: VideoExporterProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentFrame, setCurrentFrame] = useState<AnimationFrame | null>(null);
   const frameRenderedResolver = useRef<(() => void) | null>(null);
   const processingRef = useRef(false);
   const cancelRef = useRef(cancelled);
+  const { width, height } = getResolutionDimensions(settings.resolution);
 
   useEffect(() => {
     cancelRef.current = cancelled;
@@ -227,8 +230,6 @@ export const VideoExporter = ({
     processAnimation();
   }, [settings, slides, editorSettings, onProgress, onComplete, onError, cancelled, onCancelled]); // Added editorSettings to deps
 
-  const { width, height } = getResolutionDimensions(settings.resolution);
-
   // Render content similar to UnifiedAnimationCanvas but scaled/fixed
   const renderContent = () => {
     if (!currentFrame) return null;
@@ -342,30 +343,32 @@ export const VideoExporter = ({
           </AnimationContainer>
 
           {/* Watermark */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 24,
-              right: 32,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <span
-              className={cn(isDarkBackground ? 'text-white' : 'text-foreground')}
+          {!hideWatermark && (
+            <div
               style={{
-                fontSize: 18,
-                fontWeight: 500,
-                letterSpacing: '0.02em',
+                position: 'absolute',
+                bottom: 24,
+                right: 32,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
               }}
             >
-              jollycode.dev
-            </span>
-            <div>
-              <Logo variant="short" className={cn("scale-75 grayscale contrast-150", isDarkBackground ? 'text-white' : 'text-foreground')} />
+              <span
+                className={cn(isDarkBackground ? 'text-white' : 'text-foreground')}
+                style={{
+                  fontSize: 18,
+                  fontWeight: 500,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                jollycode.dev
+              </span>
+              <div>
+                <Logo variant="short" className={cn("scale-75 grayscale contrast-150", isDarkBackground ? 'text-white' : 'text-foreground')} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

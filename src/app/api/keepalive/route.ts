@@ -3,10 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { applyRequestContextToSentry, applyResponseContextToSentry } from '@/lib/sentry-context'
+import { enforceRateLimit, publicLimiter } from '@/lib/arcjet/limiters'
 
 export const GET = wrapRouteHandlerWithSentry(
     async function GET(request: NextRequest) {
         applyRequestContextToSentry({ request })
+        const limitResponse = await enforceRateLimit(publicLimiter, request, {
+            tags: ["keepalive"],
+        });
+        if (limitResponse) return limitResponse;
 
         try {
             const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

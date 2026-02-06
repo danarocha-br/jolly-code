@@ -3,7 +3,6 @@
 import { requireAuth } from '@/actions/utils/auth'
 import { success, error, type ActionResult } from '@/actions/utils/action-result'
 import { getUsersCollectionList } from '@/lib/services/database/collections'
-import { getUsersSnippetsList } from '@/lib/services/database/snippets'
 import type { Collection, Snippet } from '@/features/snippets/dtos'
 
 /**
@@ -12,44 +11,56 @@ import type { Collection, Snippet } from '@/features/snippets/dtos'
  * @returns ActionResult with array of collections or error message
  */
 export async function getCollections(): Promise<ActionResult<Collection[]>> {
-    try {
-        const { user, supabase } = await requireAuth()
+	try {
+		const { user, supabase } = await requireAuth()
 
-        const [collectionsData, snippetsData] = await Promise.all([
-            getUsersCollectionList({
-                user_id: user.id,
-                supabase
-            }),
-            getUsersSnippetsList({
-                user_id: user.id,
-                supabase
-            })
-        ])
+		const collectionsData = await getUsersCollectionList({
+			user_id: user.id,
+			supabase
+		})
 
-        if (!collectionsData) {
-            return success([])
-        }
+		if (!collectionsData) {
+			return success([])
+		}
 
-        // Create a map of snippets for faster lookup
-        const snippetsMap = new Map(snippetsData?.map(s => [s.id, s]) || [])
+		// Collections already have snippets populated from the service layer
+		// Map to DTO format, ensuring id is always present and filtering out any null values
+		const populatedCollections: Collection[] = collectionsData
+			.filter((collection): collection is typeof collection & { id: string } => !!collection.id)
+			.map((collection) => {
+				// Defensive check: log if title is null/empty (shouldn't happen if database is correct)
+				if (!collection.title || collection.title.trim() === '') {
+					console.error('[getCollections] WARNING: Collection has null/empty title:', { id: collection.id, title: collection.title });
+				}
+				return {
+					id: collection.id,
+					user_id: collection.user_id,
+					title: collection.title, // Preserve title as-is from database
+					snippets: (collection.snippets || [])
+						.filter((s): boolean => s !== null && typeof s === 'object' && 'id' in s && s.id !== undefined)
+						.map((s): Snippet => ({
+							id: s.id,
+							user_id: s.user_id,
+							code: s.code,
+							language: s.language,
+							title: s.title,
+							url: s.url,
+							created_at: s.created_at,
+						})),
+					created_at: collection.created_at,
+					updated_at: collection.updated_at,
+				};
+			})
 
-        // Populate collections with snippet objects
-        const populatedCollections = collectionsData.map((collection: any) => ({
-            ...collection,
-            snippets: (collection.snippets || [])
-                .map((id: string) => snippetsMap.get(id))
-                .filter((s: Snippet | undefined): s is Snippet => s !== undefined)
-        }))
+		return success(populatedCollections)
+	} catch (err) {
+		console.error('Error fetching collections:', err)
 
-        return success(populatedCollections as Collection[])
-    } catch (err) {
-        console.error('Error fetching collections:', err)
+		if (err instanceof Error && err.message.includes('authenticated')) {
+			return error('User must be authenticated')
+		}
 
-        if (err instanceof Error && err.message.includes('authenticated')) {
-            return error('User must be authenticated')
-        }
-
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch collections. Please try again later.';
-        return error(errorMessage)
-    }
+		const errorMessage = err instanceof Error ? err.message : 'Failed to fetch collections. Please try again later.';
+		return error(errorMessage)
+	}
 }
